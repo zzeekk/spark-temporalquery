@@ -100,8 +100,8 @@ object TemporalQueryUtil {
     else if (tstmp.before(hc.maxDate)) Timestamp.from(tstmp.toInstant.minusMillis(1))
     else tstmp
   }
-  val udf_hash:UserDefinedFunction = udf((row: Row) => row.hashCode)
-  def createKeyCondition( df1:DataFrame, df2:DataFrame, keys:Seq[String] ) : Column = {
+  private val udf_hash:UserDefinedFunction = udf((row: Row) => row.hashCode)
+  private def createKeyCondition( df1:DataFrame, df2:DataFrame, keys:Seq[String] ) : Column = {
     keys.foldLeft(lit(true)){ case (cond,key) => cond and df1(key)===df2(key) }
   }
 
