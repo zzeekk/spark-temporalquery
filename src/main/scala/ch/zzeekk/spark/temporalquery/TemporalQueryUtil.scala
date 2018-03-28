@@ -77,8 +77,8 @@ object TemporalQueryUtil {
     /*
      Kombiniert aufeinanderfolgende Records des gleichen Keys, wenn es auf den Attributen keine Änderungen gibt
       */
-    def temporalCombine( keys:Seq[String] )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalCombineImpl( df1, keys )
+    def temporalCombine( keys:Seq[String], ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+      temporalCombineImpl( df1, keys, ignoreColNames )
     }
 
     /*
@@ -86,6 +86,13 @@ object TemporalQueryUtil {
       */
     def temporalUnifyRanges( keys:Seq[String] )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       temporalUnifyRangesImpl( df1, keys )
+    }
+
+    /*
+     Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
+      */
+    def temporalExtendRange( keys:Seq[String], extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+      temporalExtendRangeImpl( df1, keys, extendMin, extendMax )
     }
   }
 
@@ -186,12 +193,13 @@ object TemporalQueryUtil {
   /*
    Combine consecutive records with same data values
     */
-  private def temporalCombineImpl( df:DataFrame, keys:Seq[String] )
+  private def temporalCombineImpl( df:DataFrame, keys:Seq[String], ignoreColNames:Seq[String]  )
                      (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     val udf_plusMillisecond = udf(plusMillisecond _)
     val dataCols = df.columns.diff( keys ++ hc.technicalColNames )
-    df.withColumn("_hash", udf_hash(struct(dataCols.map(col):_*)))
+    val hashCols = dataCols.diff( ignoreColNames )
+    df.withColumn("_hash", udf_hash(struct(hashCols.map(col(_)):_*)))
       .withColumn("_hash_prev", lag($"_hash",1).over(Window.partitionBy(keys.map(col):_*).orderBy(col(hc.fromColName))))
       .withColumn("_ersetzt_prev", lag(col(hc.toColName),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col(hc.fromColName))))
       .withColumn("_consecutive", $"_hash_prev".isNotNull and $"_hash"===$"_hash_prev" and udf_plusMillisecond($"_ersetzt_prev")===col(hc.fromColName))
@@ -215,6 +223,20 @@ object TemporalQueryUtil {
     val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_join(_)) :+
       $"range_von".as(hc.fromColName) :+ $"range_bis".as(hc.toColName)
     df_join.select(selCols:_*)
+  }
+
+  /*
+   extend gueltig_ab/bis to min/maxDate
+    */
+  def temporalExtendRangeImpl( df:DataFrame, keys:Seq[String], extendMin:Boolean, extendMax:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+    import ss.implicits._
+    val keyCols = if (keys.nonEmpty) keys.map(col(_)) else Seq(lit(1)) // if no keys are given, we work with the global minimum.
+    val df_prep = df
+      .withColumn( "_gueltig_ab_min", if( extendMin ) min(col(hc.fromColName)).over(Window.partitionBy(keyCols:_*)) else lit(null))
+      .withColumn( "_gueltig_bis_max", if( extendMax ) max(col(hc.toColName)).over(Window.partitionBy(keyCols:_*)) else lit(null))
+    val selCols = df.columns.filter( c => c!=hc.fromColName && c!=hc.toColName ).map(col) :+ when($"gueltig_ab"===$"_gueltig_ab_min", lit(hc.minDate)).otherwise(col(hc.fromColName)).as(hc.fromColName) :+
+      when($"gueltig_bis"===$"_gueltig_bis_max", lit(hc.maxDate)).otherwise(col(hc.toColName)).as(hc.toColName)
+    df_prep.select( selCols:_* )
   }
 
 }
