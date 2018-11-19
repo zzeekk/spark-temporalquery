@@ -4,6 +4,8 @@ Implicit functions for querying temporal data with Apache Spark/Scala
 ## usage
 
 - add maven dependency to project
+  repo: https://dl.bintray.com/zach/zzeekk-release
+  artifact: ch.zzeekk, spark-temporalquery, 0.9.3
 
 - initialize
 ```
