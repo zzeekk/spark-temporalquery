@@ -199,7 +199,7 @@ object TemporalQueryUtil {
     val udf_plusMillisecond = udf(plusMillisecond _)
     val dataCols = df.columns.diff( keys ++ hc.technicalColNames )
     val hashCols = dataCols.diff( ignoreColNames )
-    df.withColumn("_hash", udf_hash(struct(hashCols.map(col(_)):_*)))
+    df.withColumn("_hash", if(hashCols.isEmpty) lit(1) else udf_hash(struct(hashCols.map(col(_)):_*)))
       .withColumn("_hash_prev", lag($"_hash",1).over(Window.partitionBy(keys.map(col):_*).orderBy(col(hc.fromColName))))
       .withColumn("_ersetzt_prev", lag(col(hc.toColName),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col(hc.fromColName))))
       .withColumn("_consecutive", $"_hash_prev".isNotNull and $"_hash"===$"_hash_prev" and udf_plusMillisecond($"_ersetzt_prev")===col(hc.fromColName))
