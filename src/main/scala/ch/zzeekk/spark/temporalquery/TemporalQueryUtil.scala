@@ -19,7 +19,6 @@ val df_joined = df1.temporalJoin(df2)
 */
 
 object TemporalQueryUtil {
-
   /*
    Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
@@ -56,11 +55,12 @@ object TemporalQueryUtil {
     /*
      implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
      - rnkExpressions: Priorität zum vorgängigen Bereinigen von Überlappungen in df2
+     - additionalCleanupExtendKeys: If df2 has another granularity than df1, additional keys can be given here which are used for temporalCleanupExtend before the join
      - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
       */
-    def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column = lit(true) )
+    def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalCleanupExtendKeys:Seq[String] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalKeyLeftJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition )
+      temporalKeyLeftJoinImpl( df1, df2, keys, rnkExpressions, additionalCleanupExtendKeys, additionalJoinFilterCondition )
     }
 
     /*
@@ -181,11 +181,11 @@ object TemporalQueryUtil {
   /*
    left outer join
     */
-  private def temporalKeyLeftJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column )
+  private def temporalKeyLeftJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalCleanupExtendKeys:Seq[String], additionalJoinFilterCondition:Column )
                          (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     // extend df2
-    val df2_extended = temporalCleanupExtendImpl( df2, keys, rnkExpressions, Seq(), rnkFilter=true )
+    val df2_extended = temporalCleanupExtendImpl( df2, keys ++ additionalCleanupExtendKeys, rnkExpressions, Seq(), rnkFilter=true )
     // left join df1 & df2
     temporalJoinImpl( df1, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, "left" ).drop($"_defined")
   }
