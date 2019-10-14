@@ -26,6 +26,7 @@ You can then use the following additional functions on Dataset/DataFrame
 - `def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column = lit(true))`
   Left Outer Join of two temporal datasets using a list of key-columns named the same as condition (using-join)
   - rnkExpressions: Defines the priorities to cleanup potential temporal overlaps in df2
+  - additionalCleanupExtendKeys: If df2 has another granularity than df1, additional keys can be given here which are used for temporalCleanupExtend before the join
   - additionalJoinFilterCondition: you can provide additional non-equi-join conditions which will be combined with the conditions generated from the list of keys.
 - `temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)], rnkFilter:Boolean = true )`
   Solve temporal overlaps by a prioritizing Records according to rnkExpressions and extend the temporal range of each key to be defined over the whole timeline. The resulting DataFrame has an additional column `_defined` which is false for extended ranges.
