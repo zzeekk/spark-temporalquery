@@ -72,6 +72,9 @@ class TemporalQueryUtilTest extends FunSuite {
   }
 
   test("temporalLeftJoin2") {
+    /* Testing temporalLeftJoin where the join attributes violate uniqueness in right frame
+     * right frame: dfMap which maps a set of images img to id over time:
+     * e.g. 1 ↦ {A,B} in Jan 2018 ; 1 ↦ {B,C} in Feb 2018 ; 1 ↦ {D} in Mar 2018 */
     val actual = dfLeft.temporalLeftJoin(dfMap, Seq("id"), Seq(col(defaultConfig.fromColName)))
     val rowsExpected = Seq(
       (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
