@@ -7,7 +7,7 @@ import org.apache.spark.sql.functions.lit
 
 object TestUtils {
   implicit val ss: SparkSession = SparkSession.builder.master("local").appName("TemporalQueryUtilTest").getOrCreate()
-  ss.conf.set("spark.sql.shuffle.partitions", 10)
+  ss.conf.set("spark.sql.shuffle.partitions", 1)
 
   import ss.implicits._
 

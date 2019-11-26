@@ -54,13 +54,12 @@ object TemporalQueryUtil {
 
     /*
      implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-     - rnkExpressions: Priorität zum vorgängigen Bereinigen von Überlappungen in df2
-     - additionalCleanupExtendKeys: If df2 has another granularity than df1, additional keys can be given here which are used for temporalCleanupExtend before the join
+     - rnkExpressions: Priorität zum vorgängigen Bereinigen von Überlappungen in df2. Ist die Seq leer, wird keine Bereinigung gemacht.
      - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
       */
-    def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalCleanupExtendKeys:Seq[String] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
+    def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalKeyLeftJoinImpl( df1, df2, keys, rnkExpressions, additionalCleanupExtendKeys, additionalJoinFilterCondition )
+      temporalKeyLeftJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition )
     }
 
     /*
@@ -162,18 +161,19 @@ object TemporalQueryUtil {
     val df_ranges = temporalRangesImpl( df, keys, extend=true )
     val keyCondition = createKeyCondition( df, df_ranges, keys )
     // left join back on input df
-    val df_join = df_ranges.join( df, keyCondition and $"range_von">=col(hc.fromColName) and $"range_von"<col(hc.toColName), "left" )
+    val df_join = df_ranges.join( df, keyCondition and $"range_von">=col(hc.fromColName) and $"range_von"<=col(hc.toColName), "left" )
       .withColumn("_defined", col(hc.toColName).isNotNull)
     // add aggregations if defined, implemented as analytical functions...£
     val df_agg = aggExpressions.foldLeft( df_join ){
       case (df_acc, (name,expr)) => df_acc.withColumn(name, expr.over(Window.partitionBy( keys.map(df_ranges(_)):+$"range_von":_*)))
     }
     // Prioritize and clean overlaps
-    val df_rnk = df_agg
-      .withColumn("_rnk", row_number.over(Window.partitionBy( keys.map(df_ranges(_)):+$"range_von":_*).orderBy( rnkExpressions:_* )))
-    val df_clean = if (rnkFilter) df_rnk.where($"_rnk"===1) else df_rnk
+    val df_clean = if (rnkExpressions.nonEmpty) {
+      val df_rnk = df_agg.withColumn("_rnk", row_number.over(Window.partitionBy(keys.map(df_ranges(_)) :+ $"range_von": _*).orderBy(rnkExpressions: _*)))
+      if (rnkFilter) df_rnk.where($"_rnk"===1) else df_rnk
+    } else df_agg
     // select final schema
-    val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++ aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter) Seq($"_rnk") else Seq()) :+
+    val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++ aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq($"_rnk") else Seq()) :+
       $"range_von".as(hc.fromColName) :+ $"range_bis".as(hc.toColName) :+ $"_defined"
     df_clean.select(selCols:_*)
   }
@@ -181,11 +181,11 @@ object TemporalQueryUtil {
   /*
    left outer join
     */
-  private def temporalKeyLeftJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalCleanupExtendKeys:Seq[String], additionalJoinFilterCondition:Column )
+  private def temporalKeyLeftJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column )
                          (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     // extend df2
-    val df2_extended = temporalCleanupExtendImpl( df2, keys ++ additionalCleanupExtendKeys, rnkExpressions, Seq(), rnkFilter=true )
+    val df2_extended = temporalCleanupExtendImpl( df2, keys, rnkExpressions, Seq(), rnkFilter=true )
     // left join df1 & df2
     temporalJoinImpl( df1, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, "left" ).drop($"_defined")
   }
