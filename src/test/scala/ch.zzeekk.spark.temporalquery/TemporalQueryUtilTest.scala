@@ -33,7 +33,7 @@ class TemporalQueryUtilTest extends FunSuite {
     val expectedWithArgumentColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual)(expectedWithArgumentColumns)
 
-    if (!resultat) printFailedTestResult("temporalExtendRange1")(dfLeft)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalExtendRange1",dfLeft)(actual)(expected)
     assert(resultat)
   }
 
@@ -51,7 +51,7 @@ class TemporalQueryUtilTest extends FunSuite {
     val expectedWithArgumentColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual)(expectedWithArgumentColumns)
 
-    if (!resultat) printFailedTestResult("temporalExtendRange2")(dfRight)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalExtendRange2",dfRight)(actual)(expected)
     assert(resultat)
   }
 
@@ -67,26 +67,40 @@ class TemporalQueryUtilTest extends FunSuite {
       .orderBy("Id",defaultConfig.fromColName)
     val resultat = dfEqual(actual)(expected)
 
-    if (!resultat) printFailedTestResult("temporalLeftJoin1")(dfRight)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalLeftJoin1",Seq(dfLeft,dfRight))(actual)(expected)
     assert(resultat)
   }
 
   test("temporalLeftJoin2") {
-    /* Testing temporalLeftJoin where the join attributes violate uniqueness in right frame
-     * right frame: dfMap which maps a set of images img to id over time:
-     * e.g. 1 ↦ {A,B} in Jan 2018 ; 1 ↦ {B,C} in Feb 2018 ; 1 ↦ {D} in Mar 2018 */
+    // Testing temporalLeftJoin where the left dataFrame is not unique for join attributes
     val actual = dfLeft.temporalLeftJoin(dfMap, Seq("id"), Seq(col(defaultConfig.fromColName)))
     val rowsExpected = Seq(
-      (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
-      (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,4.2,Some("D"),Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
-      (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")))
+      // img = {}
+      (0,4.2,None,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      // img = {B,C}
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-19 23:59:59.999")),
+      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-19 23:59:59.999")),
+      // img = {B,C,D}
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
+      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
+      (0,4.2,Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
+      // img = {B,C,D,X}
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,4.2,Some("D"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,4.2,Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      // img = {B,C,D}
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("D"),Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      // img = {D}
+      (0,4.2,Some("D"),Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")))
+    // img = {}
+      (0,4.2,None ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999"))
     val expected = rowsExpected.toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
 
-    if (!resultat) printFailedTestResult("temporalLeftJoin2")(dfRight)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalLeftJoin2",Seq(dfLeft,dfMap))(actual)(expected)
     assert(resultat)
   }
 
@@ -102,7 +116,61 @@ class TemporalQueryUtilTest extends FunSuite {
     val expectedWithArgumentColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual)(expectedWithArgumentColumns)
 
-    if (!resultat) printFailedTestResult("temporalExtendRange1")(dfRight)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalCombine",dfRight)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalUnifyRanges1") {
+    val actual = dfMoment.temporalUnifyRanges(Seq("id"))
+    val expected = dfMoment
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalUnifyRanges1",dfMoment)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalUnifyRanges2") {
+    val actual = dfMsOverlap.temporalUnifyRanges(Seq("id"))
+    val rowsExpected = Seq(
+      // img = {A,B}
+      (0,"A",Timestamp.valueOf("2019-01-01 00:00:00"),Timestamp.valueOf("2019-01-01 9:59:59.999")),
+      (0,"A",Timestamp.valueOf("2019-01-01 10:00:00"),Timestamp.valueOf("2019-01-01 10:00:00")),
+      (0,"B",Timestamp.valueOf("2019-01-01 10:00:00"),Timestamp.valueOf("2019-01-01 10:00:00")),
+      (0,"B",Timestamp.valueOf("2019-01-01 10:00:00.001"),Timestamp.valueOf("2019-01-01 23:59:59.999")))
+    val expected = rowsExpected.toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalUnifyRanges2",dfMsOverlap)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalUnifyRanges3") {
+    val actual = dfMap.temporalUnifyRanges(Seq("id"))
+    val rowsExpected = Seq(
+      // img = {A,B}
+      (0,"A",Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,"B",Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      // img = {B,C}
+      (0,"B",Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-19 23:59:59.999")),
+      (0,"C",Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-19 23:59:59.999")),
+      // img = {B,C,D}
+      (0,"B",Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
+      (0,"C",Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
+      (0,"D",Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
+      // img = {B,C,D,X}
+      (0,"B",Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,"C",Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,"D",Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,"X",Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      // img = {B,C,D}
+      (0,"B",Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,"C",Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,"D",Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      // img = {D}
+      (0,"D",Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")))
+    val expected = rowsExpected.toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    //val expectedWithArgumentColumns = expected.select(actual.columns.map(col):_*)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalUnifyRanges3",dfMap)(actual)(expected)
     assert(resultat)
   }
 
