@@ -19,7 +19,6 @@ val df_joined = df1.temporalJoin(df2)
 */
 
 object TemporalQueryUtil {
-
   /*
    Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
@@ -55,7 +54,7 @@ object TemporalQueryUtil {
 
     /*
      implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-     - rnkExpressions: Priorität zum vorgängigen Bereinigen von Überlappungen in df2
+     - rnkExpressions: Priorität zum vorgängigen Bereinigen von Überlappungen in df2. Ist die Seq leer, wird keine Bereinigung gemacht.
      - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
       */
     def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column = lit(true) )
@@ -162,18 +161,19 @@ object TemporalQueryUtil {
     val df_ranges = temporalRangesImpl( df, keys, extend=true )
     val keyCondition = createKeyCondition( df, df_ranges, keys )
     // left join back on input df
-    val df_join = df_ranges.join( df, keyCondition and $"range_von">=col(hc.fromColName) and $"range_von"<col(hc.toColName), "left" )
+    val df_join = df_ranges.join( df, keyCondition and $"range_von">=col(hc.fromColName) and $"range_von"<=col(hc.toColName), "left" )
       .withColumn("_defined", col(hc.toColName).isNotNull)
     // add aggregations if defined, implemented as analytical functions...£
     val df_agg = aggExpressions.foldLeft( df_join ){
       case (df_acc, (name,expr)) => df_acc.withColumn(name, expr.over(Window.partitionBy( keys.map(df_ranges(_)):+$"range_von":_*)))
     }
     // Prioritize and clean overlaps
-    val df_rnk = df_agg
-      .withColumn("_rnk", row_number.over(Window.partitionBy( keys.map(df_ranges(_)):+$"range_von":_*).orderBy( rnkExpressions:_* )))
-    val df_clean = if (rnkFilter) df_rnk.where($"_rnk"===1) else df_rnk
+    val df_clean = if (rnkExpressions.nonEmpty) {
+      val df_rnk = df_agg.withColumn("_rnk", row_number.over(Window.partitionBy(keys.map(df_ranges(_)) :+ $"range_von": _*).orderBy(rnkExpressions: _*)))
+      if (rnkFilter) df_rnk.where($"_rnk"===1) else df_rnk
+    } else df_agg
     // select final schema
-    val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++ aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter) Seq($"_rnk") else Seq()) :+
+    val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++ aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq($"_rnk") else Seq()) :+
       $"range_von".as(hc.fromColName) :+ $"range_bis".as(hc.toColName) :+ $"_defined"
     df_clean.select(selCols:_*)
   }
@@ -218,7 +218,7 @@ object TemporalQueryUtil {
     val df_ranges = temporalRangesImpl( df, keys, extend=false )
     val keyCondition = createKeyCondition( df, df_ranges, keys )
     // join back on input df
-    val df_join = df_ranges.join( df, keyCondition and $"range_von">=col(hc.fromColName) and $"range_von"<col(hc.toColName) )
+    val df_join = df_ranges.join( df, keyCondition and $"range_von">=col(hc.fromColName) and $"range_von"<=col(hc.toColName) )
     // select result
     val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_join(_)) :+
       $"range_von".as(hc.fromColName) :+ $"range_bis".as(hc.toColName)
