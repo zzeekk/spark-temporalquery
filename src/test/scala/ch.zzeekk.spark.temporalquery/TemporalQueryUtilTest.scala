@@ -125,6 +125,7 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalUnifyRanges1") {
     val actual = dfMoment.temporalUnifyRanges(Seq("id"))
+      .select(dfMoment.columns.map(col):_*) // re-order columns
     val expected = dfMoment
     val resultat = dfEqual(actual)(expected)
     if (!resultat) printFailedTestResult("temporalUnifyRanges1",dfMoment)(actual)(expected)
