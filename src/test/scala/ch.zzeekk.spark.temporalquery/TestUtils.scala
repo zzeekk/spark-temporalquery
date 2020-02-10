@@ -48,6 +48,8 @@ object TestUtils {
   val dfMsOverlap: DataFrame = rowsMsOverlap.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
 
   def symmetricDifference(df1: DataFrame)(df2: DataFrame): DataFrame = {
+    // attention, "except" works on Dataset and not on DataFrame. We need to check that schema is equal.
+    require(df1.columns.toSeq==df2.columns.toSeq, "Cannot calculate symmetric difference for DataFrames with different schema")
     df1.except(df2).withColumn("_df", lit(1))
       .union(df2.except(df1).withColumn("_df", lit(2)))
   }

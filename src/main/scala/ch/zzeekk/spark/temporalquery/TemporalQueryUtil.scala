@@ -218,7 +218,7 @@ object TemporalQueryUtil {
     val df_ranges = temporalRangesImpl( df, keys, extend=false )
     val keyCondition = createKeyCondition( df, df_ranges, keys )
     // join back on input df
-    val df_join = df_ranges.join( df, keyCondition and $"range_von">=col(hc.fromColName) and $"range_von"<col(hc.toColName) )
+    val df_join = df_ranges.join( df, keyCondition and $"range_von">=col(hc.fromColName) and $"range_von"<=col(hc.toColName) )
     // select result
     val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_join(_)) :+
       $"range_von".as(hc.fromColName) :+ $"range_bis".as(hc.toColName)

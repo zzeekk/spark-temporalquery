@@ -7,7 +7,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.zzeekk</groupId>
 	<artifactId>spark-temporalquery</artifactId>
-	<version>0.9.5.2-SNAPSHOT</version>
+	<version>0.9.5.3-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<properties>
@@ -21,11 +21,6 @@
 			<artifactId>spark-sql_2.11</artifactId>
 			<version>2.4.4</version>
 			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.scalactic</groupId>
-			<artifactId>scalactic_2.11</artifactId>
-			<version>3.0.8</version>
 		</dependency>
 		<dependency>
 			<groupId>org.scalatest</groupId>
