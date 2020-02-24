@@ -56,7 +56,7 @@ class TemporalQueryUtilTest extends FunSuite {
   }
 
   test("temporalLeftJoin1") {
-    val actual = dfLeft.temporalLeftJoin(dfRight,Seq("id"),Seq(col(defaultConfig.fromColName)))
+    val actual = dfLeft.temporalLeftJoin(dfRight,Seq("id"))
     val rowsExpected = Seq(
       (0,4.2,None       ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
       (0,4.2,Some(97.15),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
@@ -73,7 +73,7 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalLeftJoin_rightMap") {
     // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
-    val actual = dfLeft.temporalLeftJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq())
+    val actual = dfLeft.temporalLeftJoin(df2=dfMap, keys=Seq("id"))
     val rowsExpected = Seq(
       // img = {}
       (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
