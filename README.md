@@ -25,7 +25,8 @@ You can then use the following additional functions on Dataset/DataFrame
   Inner Join of two temporal datasets using a given expression as join condition
 - `temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalCleanupExtendKeys:Seq[String] = Seq(), additionalJoinFilterCondition:Column = lit(true))`
   Left Outer Join of two temporal datasets using a list of key-columns named the same as condition (using-join). "Left join" means that the result for a given key contains all periods from DataFrame 1 with null values for attributes of DataFrame 2 where it is not defined.
-  - rnkExpressions: Defines the priorities to cleanup potential temporal overlaps in df2
+  - rnkExpressions: In case df2 is not a temporal 1-to-1 or many-to-1 mapping, this parameter is used to select a sub-dataFrame which constitutes a temporal 1-1 mapping:
+   by ordering for each key according to rnkExpressions and selecting the first row. In case df2 is a to-many relation you need to skip this cleaning by not setting the parameter rnkExpressions or by setting it to the empty sequence.  
   - additionalCleanupExtendKeys: If df2 has another granularity than df1, additional keys can be given here which are used for temporalCleanupExtend before the join
   - additionalJoinFilterCondition: you can provide additional non-equi-join conditions which will be combined with the conditions generated from the list of keys.
 - `temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)], rnkFilter:Boolean = true )`

@@ -54,10 +54,13 @@ object TemporalQueryUtil {
 
     /*
      implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-     - rnkExpressions: Priorität zum vorgängigen Bereinigen von Überlappungen in df2. Ist die Seq leer, wird keine Bereinigung gemacht.
+     - rnkExpressions: Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt.
+     Ist aber df2 eine to-many Relation, so wird durch setzen von rnkExpressions = Seq() diese Bereinigung nicht durchgeführt.
+
      - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
       */
-    def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column = lit(true) )
+    def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       temporalKeyLeftJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition )
     }
@@ -90,7 +93,7 @@ object TemporalQueryUtil {
     /*
      Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
       */
-    def temporalExtendRange( keys:Seq[String], extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+    def temporalExtendRange( keys:Seq[String], extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
       temporalExtendRangeImpl( df1, keys, extendMin, extendMax )
     }
   }
@@ -199,7 +202,7 @@ object TemporalQueryUtil {
     val udf_plusMillisecond = udf(plusMillisecond _)
     val dataCols = df.columns.diff( keys ++ hc.technicalColNames )
     val hashCols = dataCols.diff( ignoreColNames )
-    df.withColumn("_hash", if(hashCols.isEmpty) lit(1) else udf_hash(struct(hashCols.map(col(_)):_*)))
+    df.withColumn("_hash", if(hashCols.isEmpty) lit(1) else udf_hash(struct(hashCols.map(col):_*)))
       .withColumn("_hash_prev", lag($"_hash",1).over(Window.partitionBy(keys.map(col):_*).orderBy(col(hc.fromColName))))
       .withColumn("_ersetzt_prev", lag(col(hc.toColName),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col(hc.fromColName))))
       .withColumn("_consecutive", $"_hash_prev".isNotNull and $"_hash"===$"_hash_prev" and udf_plusMillisecond($"_ersetzt_prev")===col(hc.fromColName))
@@ -228,9 +231,9 @@ object TemporalQueryUtil {
   /*
    extend gueltig_ab/bis to min/maxDate
     */
-  def temporalExtendRangeImpl( df:DataFrame, keys:Seq[String], extendMin:Boolean, extendMax:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+  def temporalExtendRangeImpl( df:DataFrame, keys:Seq[String], extendMin:Boolean, extendMax:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
     import ss.implicits._
-    val keyCols = if (keys.nonEmpty) keys.map(col(_)) else Seq(lit(1)) // if no keys are given, we work with the global minimum.
+    val keyCols = if (keys.nonEmpty) keys.map(col) else Seq(lit(1)) // if no keys are given, we work with the global minimum.
     val df_prep = df
       .withColumn( "_gueltig_ab_min", if( extendMin ) min(col(hc.fromColName)).over(Window.partitionBy(keyCols:_*)) else lit(null))
       .withColumn( "_gueltig_bis_max", if( extendMax ) max(col(hc.toColName)).over(Window.partitionBy(keyCols:_*)) else lit(null))
