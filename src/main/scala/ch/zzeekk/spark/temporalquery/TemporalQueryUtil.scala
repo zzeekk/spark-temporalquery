@@ -6,21 +6,20 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.{UserDefinedFunction, Window}
 import org.apache.spark.sql.functions._
 
-/*
-Copyright (c) 2017 Zacharias Kull under MIT Licence
-
-Usage:
-
-import ch.zzeekk.spark-temporalquery.TemporalQueryUtil._ // this imports temporalquery* implicit functions on DataFrame
-implicit val tqc = TemporalQueryConfig() // configure options for temporalquery operations
-implicit val sss = ss // make SparkSession implicitly available
-
-val df_joined = df1.temporalJoin(df2)
+/**
+* Copyright (c) 2017 Zacharias Kull under MIT Licence
+*
+* Usage:
+*
+* import ch.zzeekk.spark-temporalquery.TemporalQueryUtil._ // this imports temporalquery* implicit functions on DataFrame
+* implicit val tqc = TemporalQueryConfig() // configure options for temporalquery operations
+* implicit val sss = ss // make SparkSession implicitly available
+*
+* val df_joined = df1.temporalJoin(df2)
 */
-
 object TemporalQueryUtil {
-  /*
-   Configuration Parameters. An instance of this class is needed as implicit parameter.
+  /**
+   * Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
   case class TemporalQueryConfig ( minDate:Timestamp = Timestamp.valueOf("0000-01-01 00:00:00")
                                  , maxDate:Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
@@ -32,67 +31,68 @@ object TemporalQueryUtil {
     val technicalColNames:Seq[String] = Seq( fromColName, toColName ) ++ additionalTechnicalColNames
   }
 
-  /*
-   Pimp-my-library pattern für's DataFrame
-    */
+  /**
+   * Pimp-my-library pattern für's DataFrame
+   */
   implicit class TemporalDataFrame(df1: Dataset[Row]) {
-    /*
-     implementiert ein inner-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-      */
+    /**
+     * Implementiert ein inner-join von historisierten Daten über eine Liste von gleichbenannten Spalten
+     */
     def temporalInnerJoin( df2:DataFrame, keys:Seq[String] )
                          (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       temporalKeyJoinImpl( df1, df2, keys )
     }
 
-    /*
-     implementiert ein inner-join von historisierten Daten über eine ausformulierte Join-Bedingung
-      */
+    /**
+     * Implementiert ein inner-join von historisierten Daten über eine ausformulierte Join-Bedingung
+     */
     def temporalInnerJoin( df2:DataFrame, keyCondition:Column )
                          (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       temporalJoinImpl( df1, df2, keyCondition )
     }
 
-    /*
-     implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-     - rnkExpressions: Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
-     wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt.
-     Ist aber df2 eine to-many Relation, so wird durch setzen von rnkExpressions = Seq() diese Bereinigung nicht durchgeführt.
-
-     - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
-      */
+    /**
+     * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
+     * - rnkExpressions: Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     *   wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt. Dies entspricht also ein join
+     *   mit der Einschränkung, dass kein Muliplikation der Records in df1 stattfinden kann.
+     *   Soll df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
+     *   Records aus df1 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet.
+     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     */
     def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       temporalKeyLeftJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition )
     }
 
-    /*
-     Löst zeitliche Überlappungen
-     - rnkExpressions: Priorität zum Bereinigen
-     - aggExpressions: Beim Bereinigen zu erstellende Aggregationen
-     - rnkFilter: Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
-      */
+    /**
+     * Löst zeitliche Überlappungen
+     * - rnkExpressions: Priorität zum Bereinigen
+     * - aggExpressions: Beim Bereinigen zu erstellende Aggregationen
+     * - rnkFilter: Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
+     */
     def temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Seq(), rnkFilter:Boolean = true )
                              (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       temporalCleanupExtendImpl( df1, keys, rnkExpressions, aggExpressions, rnkFilter )
     }
 
-    /*
-     Kombiniert aufeinanderfolgende Records des gleichen Keys, wenn es auf den Attributen keine Änderungen gibt
-      */
+    /**
+     * Kombiniert aufeinanderfolgende Records des gleichen Keys, wenn es auf den Attributen keine Änderungen gibt
+     */
     def temporalCombine( keys:Seq[String], ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       temporalCombineImpl( df1, keys, ignoreColNames )
     }
 
-    /*
-     Scheidet bei Überlappungen die Records in Stücke, so dass beim Start der Überlappung alle gültigen Records aufgeteilt werden
-      */
+    /**
+     * Schneidet bei Überlappungen die Records in Stücke, so dass beim Start der Überlappung alle gültigen Records aufgeteilt werden
+     */
     def temporalUnifyRanges( keys:Seq[String] )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       temporalUnifyRangesImpl( df1, keys )
     }
 
-    /*
-     Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
-      */
+    /**
+     * Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
+     */
     def temporalExtendRange( keys:Seq[String], extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
       temporalExtendRangeImpl( df1, keys, extendMin, extendMax )
     }
@@ -114,9 +114,9 @@ object TemporalQueryUtil {
     keys.foldLeft(lit(true)){ case (cond,key) => cond and df1(key)===df2(key) }
   }
 
-  /*
-   join two temporalquery dataframes
-    */
+  /**
+   * join two temporalquery dataframes
+   */
   private def temporalJoinImpl( df1:DataFrame, df2:DataFrame, keyCondition:Column, joinType:String = "inner" )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     // history join
     val df2ren = df2.withColumnRenamed(hc.fromColName,hc.fromColName2).withColumnRenamed(hc.toColName,hc.toColName2)
@@ -131,9 +131,9 @@ object TemporalQueryUtil {
     temporalJoinImpl( df1, df2, createKeyCondition(df1, df2, keys), joinType )
   }
 
-  /*
-   build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
-    */
+  /**
+   * build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
+   */
   private def temporalRangesImpl( df:DataFrame, keys:Seq[String], extend:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     val udf_plusMillisecond = udf(plusMillisecond _)
     val udf_minusMillisecond = udf(minusMillisecond _)
@@ -154,9 +154,9 @@ object TemporalQueryUtil {
       .where(col("range_bis").isNotNull)
   }
 
-  /*
-   cleanup overlaps, fill holes and extend to min/maxDate
-    */
+  /**
+   * cleanup overlaps, fill holes and extend to min/maxDate
+   */
   private def temporalCleanupExtendImpl( df:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)], rnkFilter:Boolean )
                            (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     import ss.implicits._
@@ -181,9 +181,9 @@ object TemporalQueryUtil {
     df_clean.select(selCols:_*)
   }
 
-  /*
-   left outer join
-    */
+  /**
+   * left outer join
+   */
   private def temporalKeyLeftJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column )
                          (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
@@ -193,9 +193,9 @@ object TemporalQueryUtil {
     temporalJoinImpl( df1, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, "left" ).drop($"_defined")
   }
 
-  /*
-   Combine consecutive records with same data values
-    */
+  /**
+   * Combine consecutive records with same data values
+   */
   private def temporalCombineImpl( df:DataFrame, keys:Seq[String], ignoreColNames:Seq[String]  )
                      (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
@@ -211,9 +211,9 @@ object TemporalQueryUtil {
       .drop($"_cnt").drop($"_nb")
   }
 
-  /*
-   Unify ranges
-    */
+  /**
+   * Unify ranges
+   */
   private def temporalUnifyRangesImpl( df:DataFrame, keys:Seq[String] )
                          (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
@@ -228,9 +228,9 @@ object TemporalQueryUtil {
     df_join.select(selCols:_*)
   }
 
-  /*
-   extend gueltig_ab/bis to min/maxDate
-    */
+  /**
+   * extend gueltig_ab/bis to min/maxDate
+   */
   def temporalExtendRangeImpl( df:DataFrame, keys:Seq[String], extendMin:Boolean, extendMax:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
     import ss.implicits._
     val keyCols = if (keys.nonEmpty) keys.map(col) else Seq(lit(1)) // if no keys are given, we work with the global minimum.
