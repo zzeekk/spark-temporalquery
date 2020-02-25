@@ -19,6 +19,7 @@ object TestUtils {
   val dfLeft: DataFrame = rowsLeft.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_l")
     .orderBy("id", defaultConfig.fromColName)
 
+
   val rowsRight: Seq[(Int, Timestamp, Timestamp, Option[Double])] = Seq(
     (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), Some(97.15)),
     // gap in history
