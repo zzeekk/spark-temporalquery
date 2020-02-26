@@ -3,7 +3,7 @@ package ch.zzeekk.spark.temporalquery
 import java.sql.Timestamp
 
 import org.apache.spark.sql._
-import org.apache.spark.sql.expressions.{UserDefinedFunction, Window}
+import org.apache.spark.sql.expressions.{UserDefinedFunction, Window, WindowSpec}
 import org.apache.spark.sql.functions._
 
 /**
@@ -18,6 +18,8 @@ import org.apache.spark.sql.functions._
 * val df_joined = df1.temporalJoin(df2)
 */
 object TemporalQueryUtil {
+  val logger: org.slf4j.Logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
@@ -77,10 +79,11 @@ object TemporalQueryUtil {
     }
 
     /**
-     * Kombiniert aufeinanderfolgende Records des gleichen Keys, wenn es auf den Attributen keine Änderungen gibt
+     * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung gibt
      */
-    def temporalCombine( keys:Seq[String], ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalCombineImpl( df1, keys, ignoreColNames )
+    def temporalCombine( keys:Seq[String] = Seq() , ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+      if(keys.isEmpty) logger.warn("Parameter keys is superfluous. Please refrain from using it!")
+      temporalCombineImpl( df1, ignoreColNames )
     }
 
     /**
@@ -109,7 +112,6 @@ object TemporalQueryUtil {
     else if (tstmp.before(hc.maxDate)) Timestamp.from(tstmp.toInstant.minusMillis(1))
     else tstmp
   }
-  private val udf_hash:UserDefinedFunction = udf((row: Row) => row.hashCode)
   private def createKeyCondition( df1:DataFrame, df2:DataFrame, keys:Seq[String] ) : Column = {
     keys.foldLeft(lit(true)){ case (cond,key) => cond and df1(key)===df2(key) }
   }
@@ -196,19 +198,18 @@ object TemporalQueryUtil {
   /**
    * Combine consecutive records with same data values
    */
-  private def temporalCombineImpl( df:DataFrame, keys:Seq[String], ignoreColNames:Seq[String]  )
-                     (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+  private def temporalCombineImpl( df:DataFrame, ignoreColNames:Seq[String]  )
+                                 (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     val udf_plusMillisecond = udf(plusMillisecond _)
-    val dataCols = df.columns.diff( keys ++ hc.technicalColNames )
-    val hashCols = dataCols.diff( ignoreColNames )
-    df.withColumn("_hash", if(hashCols.isEmpty) lit(1) else udf_hash(struct(hashCols.map(col):_*)))
-      .withColumn("_hash_prev", lag($"_hash",1).over(Window.partitionBy(keys.map(col):_*).orderBy(col(hc.fromColName))))
-      .withColumn("_ersetzt_prev", lag(col(hc.toColName),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col(hc.fromColName))))
-      .withColumn("_consecutive", $"_hash_prev".isNotNull and $"_hash"===$"_hash_prev" and udf_plusMillisecond($"_ersetzt_prev")===col(hc.fromColName))
-      .withColumn("_nb", sum(when($"_consecutive",lit(0)).otherwise(lit(1))).over(Window.partitionBy(keys.map(col):_*).orderBy(col(hc.fromColName))))
-      .groupBy( keys.map(col):+$"_nb":_*).agg( count("*").as("_cnt"), dataCols.map(c => first(col(c)).as(c)) :+ min(col(hc.fromColName)).as(hc.fromColName) :+ max(col(hc.toColName)).as(hc.toColName):_* )
-      .drop($"_cnt").drop($"_nb")
+    val compairCols: Array[String] = df.columns.diff( ignoreColNames ++ hc.technicalColNames )
+    val fenestra: WindowSpec = Window.partitionBy(compairCols.map(col):_*).orderBy(col(hc.fromColName))
+
+    df.withColumn("_consecutive", coalesce(udf_plusMillisecond(lag(col(hc.toColName),1).over(fenestra))===col(hc.fromColName),lit(false)))
+      .withColumn("_nb", sum(when($"_consecutive",lit(0)).otherwise(lit(1))).over(fenestra))
+      .groupBy( compairCols.map(col):+$"_nb":_*)
+      .agg( min(col(hc.fromColName)).as(hc.fromColName) , max(col(hc.toColName)).as(hc.toColName))
+      .drop($"_nb")
   }
 
   /**

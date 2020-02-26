@@ -41,12 +41,15 @@ class TemporalQueryUtilTest extends FunSuite {
     // argument: dfRight from object TestUtils
     val actual = dfRight.temporalExtendRange(Seq("id"))
     val rowsExpected = Seq(
-      (0,Some(97.15),defaultConfig.minDate                     ,Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11.0"),Timestamp.valueOf("2018-10-23 03:50:09.999")),
-      (0,Some(97.15),Timestamp.valueOf("2018-10-23 03:50:10")  ,Timestamp.valueOf("2019-12-31 23:59:59.999")),
-      (0,Some(97.15),Timestamp.valueOf("2020-01-01 00:00:00")  ,defaultConfig.maxDate),
-      (1,None       ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-12-31 23:59:59.999")),
-      (1,None       ,Timestamp.valueOf("2018-10-23 00:00:00.0"),defaultConfig.maxDate))
+      (0,Some(97.15) ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,Some(97.15) ,Timestamp.valueOf("2018-06-01 05:24:11.0"),Timestamp.valueOf("2018-10-23 03:50:09.999")),
+      (0,Some(97.15) ,Timestamp.valueOf("2018-10-23 03:50:10")  ,Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (0,Some(97.15) ,Timestamp.valueOf("2020-01-01 00:00:00")  ,defaultConfig.maxDate),
+      (1,None        ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-12-31 23:59:59.999")),
+      (1,Some(2019.0),Timestamp.valueOf("2019-01-01 00:00:00.0"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (1,Some(2020.0),Timestamp.valueOf("2020-01-01 00:00:00.0"),Timestamp.valueOf("2020-12-31 23:59:59.999")),
+      (1,None        ,Timestamp.valueOf("2021-01-01 00:00:00.0"),defaultConfig.maxDate)
+    )
     val expected = rowsExpected.toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
       .orderBy("id",defaultConfig.fromColName)
     val expectedWithArgumentColumns = expected.select(actual.columns.map(col):_*)
@@ -60,12 +63,14 @@ class TemporalQueryUtilTest extends FunSuite {
     // argument: dfRight from object TestUtils
     val actual = dfRight.temporalExtendRange()
     val rowsExpected = Seq(
-      (0,Some(97.15),defaultConfig.minDate                     ,Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11.0"),Timestamp.valueOf("2018-10-23 03:50:09.999")),
-      (0,Some(97.15),Timestamp.valueOf("2018-10-23 03:50:10")  ,Timestamp.valueOf("2019-12-31 23:59:59.999")),
-      (0,Some(97.15),Timestamp.valueOf("2020-01-01 00:00:00")  ,defaultConfig.maxDate),
-      (1,None       ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-12-31 23:59:59.999")),
-      (1,None       ,Timestamp.valueOf("2018-10-23 00:00:00.0"),Timestamp.valueOf("2019-12-31 23:59:59.999"))
+      (0,Some(97.15) ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,Some(97.15) ,Timestamp.valueOf("2018-06-01 05:24:11.0"),Timestamp.valueOf("2018-10-23 03:50:09.999")),
+      (0,Some(97.15) ,Timestamp.valueOf("2018-10-23 03:50:10")  ,Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (0,Some(97.15) ,Timestamp.valueOf("2020-01-01 00:00:00")  ,defaultConfig.maxDate),
+      (1,None        ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-12-31 23:59:59.999")),
+      (1,Some(2019.0),Timestamp.valueOf("2019-01-01 00:00:00.0"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (1,Some(2020.0),Timestamp.valueOf("2020-01-01 00:00:00.0"),Timestamp.valueOf("2020-12-31 23:59:59.999")),
+      (1,None        ,Timestamp.valueOf("2021-01-01 00:00:00.0"),Timestamp.valueOf("2099-12-31 23:59:59.999"))
     )
     val expected = rowsExpected.toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
       .orderBy("id",defaultConfig.fromColName)
@@ -154,12 +159,15 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalCombine") {
     // argument: dfRight from object TestUtils
-    val actual = dfRight.temporalCombine(Seq("id"))
+    val actual = dfRight.temporalCombine()
     val rowsExpected = Seq(
-      (0,Some(97.15),Timestamp.valueOf("2018-01-01 00:00:00.0"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11.0"),Timestamp.valueOf("9999-12-31 23:59:59.999")),
-      (1,None       ,Timestamp.valueOf("2018-01-01 00:00:00.0"),Timestamp.valueOf("2018-12-31 23:59:59.999")),
-      (1,None       ,Timestamp.valueOf("2018-10-23 00:00:00.0"),Timestamp.valueOf("2019-12-31 23:59:59.999")))
+      (0,Some(97.15) ,Timestamp.valueOf("2018-01-01 00:00:00.0"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,Some(97.15) ,Timestamp.valueOf("2018-06-01 05:24:11.0"),Timestamp.valueOf("9999-12-31 23:59:59.999")),
+      (1,None        ,Timestamp.valueOf("2018-01-01 00:00:00.0"),Timestamp.valueOf("2018-12-31 23:59:59.999")),
+      (1,Some(2019.0),Timestamp.valueOf("2019-01-01 00:00:00.0"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (1,Some(2020.0),Timestamp.valueOf("2020-01-01 00:00:00.0"),Timestamp.valueOf("2020-12-31 23:59:59.999")),
+      (1,None        ,Timestamp.valueOf("2021-01-01 00:00:00.0"),Timestamp.valueOf("2099-12-31 23:59:59.999"))
+    )
     val expected = rowsExpected.toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val expectedWithArgumentColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual)(expectedWithArgumentColumns)

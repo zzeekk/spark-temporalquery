@@ -3,7 +3,7 @@ package ch.zzeekk.spark.temporalquery
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
 import java.sql.Timestamp
 import org.apache.spark.sql._
-import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.functions.{lit,when}
 
 object TestUtils {
   implicit val ss: SparkSession = SparkSession.builder.master("local").appName("TemporalQueryUtilTest").getOrCreate()
@@ -27,7 +27,9 @@ object TestUtils {
     (0, Timestamp.valueOf("2018-10-23 03:50:10"), Timestamp.valueOf("2019-12-31 23:59:59.999"), Some(97.15)),
     (0, Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 23:59:59.999"), Some(97.15)),
     (1, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), None),
-    (1, Timestamp.valueOf("2018-10-23 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), None))
+    (1, Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), Some(2019)),
+    (1, Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), Some(2020)),
+    (1, Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"), None))
   val dfRight: DataFrame = rowsRight.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
   /*
     * dfMap: dfMap which maps a set of images img to id over time:
@@ -75,7 +77,9 @@ object TestUtils {
     println("   Expected ")
     printDf(expected)
     println("   symmetric Difference ")
-    symmetricDifference(actual)(expected).show(false)
+    symmetricDifference(actual)(expected)
+      .withColumn("_df", when($"_df" === 1,"actual").otherwise("expected"))
+      .show(false)
   }
 
   def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame)(expected: DataFrame): Unit = printFailedTestResult(testName, Seq(argument))(actual)(expected)
