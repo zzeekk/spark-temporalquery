@@ -40,8 +40,27 @@ object TestUtils {
     (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999"), "B"),
     (0, Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999"), "C"),
     (0, Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), "D"),
-    (0, Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"), "X"))
+    (0, Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"), "X")
+  )
   val dfMap: DataFrame = rowsMap.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
+
+  val rowsMapToCombine = Seq(
+    (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), Some("A")),
+    (0, Timestamp.valueOf("2018-04-01 00:00:00"), Timestamp.valueOf("2018-07-31 23:59:59.999"), Some("A")),
+    (0, Timestamp.valueOf("2018-08-01 00:00:00"), Timestamp.valueOf("2018-08-31 23:59:59.999"), Some("A")),
+    (0, Timestamp.valueOf("2018-09-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), Some("A")),
+    (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-15 23:59:59.999"), Some("B")),
+    (0, Timestamp.valueOf("2018-01-16 00:00:00"), Timestamp.valueOf("2018-02-03 23:59:59.999"), Some("B")),
+    (0, Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2020-02-29 23:59:59.999"), None),
+    (0, Timestamp.valueOf("2020-03-01 00:00:00"), Timestamp.valueOf("2020-04-30 23:59:59.999"), None),
+    (0, Timestamp.valueOf("2020-06-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), None),
+    (1, Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2020-02-29 23:59:59.999"), Some("one")),
+    (1, Timestamp.valueOf("2020-03-01 00:00:00"), Timestamp.valueOf("2020-04-30 23:59:59.999"), Some("one")),
+    (1, Timestamp.valueOf("2020-06-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), Some("one")),
+    (0, Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), Some("D")),
+    (0, Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"), Some("X"))
+  )
+  val dfMapToCombine: DataFrame = rowsMapToCombine.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
 
   val rowsMoment: Seq[(Int, Timestamp, Timestamp, String)] = Seq((0, Timestamp.valueOf("2019-11-25 11:12:13.005"), Timestamp.valueOf("2019-11-25 11:12:13.005"), "A"))
   val dfMoment: DataFrame = rowsMoment.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")

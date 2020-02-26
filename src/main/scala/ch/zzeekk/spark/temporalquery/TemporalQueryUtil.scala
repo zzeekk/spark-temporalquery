@@ -82,7 +82,7 @@ object TemporalQueryUtil {
      * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung gibt
      */
     def temporalCombine( keys:Seq[String] = Seq() , ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      if(keys.isEmpty) logger.warn("Parameter keys is superfluous. Please refrain from using it!")
+      if(keys.nonEmpty) logger.warn("Parameter keys is superfluous and therefore ignored. Please refrain from using it!")
       temporalCombineImpl( df1, ignoreColNames )
     }
 
@@ -202,7 +202,8 @@ object TemporalQueryUtil {
                                  (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     val udf_plusMillisecond = udf(plusMillisecond _)
-    val compairCols: Array[String] = df.columns.diff( ignoreColNames ++ hc.technicalColNames )
+    val dfColumns = df.columns
+    val compairCols: Array[String] = dfColumns.diff( ignoreColNames ++ hc.technicalColNames )
     val fenestra: WindowSpec = Window.partitionBy(compairCols.map(col):_*).orderBy(col(hc.fromColName))
 
     df.withColumn("_consecutive", coalesce(udf_plusMillisecond(lag(col(hc.toColName),1).over(fenestra))===col(hc.fromColName),lit(false)))
@@ -210,6 +211,7 @@ object TemporalQueryUtil {
       .groupBy( compairCols.map(col):+$"_nb":_*)
       .agg( min(col(hc.fromColName)).as(hc.fromColName) , max(col(hc.toColName)).as(hc.toColName))
       .drop($"_nb")
+      .select(dfColumns.head,dfColumns.tail:_*)
   }
 
   /**
