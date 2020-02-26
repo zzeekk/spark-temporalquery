@@ -3,7 +3,7 @@ package ch.zzeekk.spark.temporalquery
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
 import java.sql.Timestamp
 import org.apache.spark.sql._
-import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.functions.{lit,when}
 
 object TestUtils {
   implicit val ss: SparkSession = SparkSession.builder.master("local").appName("TemporalQueryUtilTest").getOrCreate()
@@ -24,9 +24,12 @@ object TestUtils {
     (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), Some(97.15)),
     // gap in history
     (0, Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2018-10-23 03:50:09.999"), Some(97.15)),
-    (0, Timestamp.valueOf("2018-10-23 03:50:10"), Timestamp.valueOf("9999-12-31 23:59:59.999"), Some(97.15)),
+    (0, Timestamp.valueOf("2018-10-23 03:50:10"), Timestamp.valueOf("2019-12-31 23:59:59.999"), Some(97.15)),
+    (0, Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 23:59:59.999"), Some(97.15)),
     (1, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), None),
-    (1, Timestamp.valueOf("2018-10-23 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), None))
+    (1, Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), Some(2019)),
+    (1, Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), Some(2020)),
+    (1, Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"), None))
   val dfRight: DataFrame = rowsRight.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
   /*
     * dfMap: dfMap which maps a set of images img to id over time:
@@ -37,8 +40,27 @@ object TestUtils {
     (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999"), "B"),
     (0, Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999"), "C"),
     (0, Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), "D"),
-    (0, Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"), "X"))
+    (0, Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"), "X")
+  )
   val dfMap: DataFrame = rowsMap.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
+
+  val rowsMapToCombine = Seq(
+    (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), Some("A")),
+    (0, Timestamp.valueOf("2018-04-01 00:00:00"), Timestamp.valueOf("2018-07-31 23:59:59.999"), Some("A")),
+    (0, Timestamp.valueOf("2018-08-01 00:00:00"), Timestamp.valueOf("2018-08-31 23:59:59.999"), Some("A")),
+    (0, Timestamp.valueOf("2018-09-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), Some("A")),
+    (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-15 23:59:59.999"), Some("B")),
+    (0, Timestamp.valueOf("2018-01-16 00:00:00"), Timestamp.valueOf("2018-02-03 23:59:59.999"), Some("B")),
+    (0, Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2020-02-29 23:59:59.999"), None),
+    (0, Timestamp.valueOf("2020-03-01 00:00:00"), Timestamp.valueOf("2020-04-30 23:59:59.999"), None),
+    (0, Timestamp.valueOf("2020-06-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), None),
+    (1, Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2020-02-29 23:59:59.999"), Some("one")),
+    (1, Timestamp.valueOf("2020-03-01 00:00:00"), Timestamp.valueOf("2020-04-30 23:59:59.999"), Some("one")),
+    (1, Timestamp.valueOf("2020-06-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), Some("one")),
+    (0, Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), Some("D")),
+    (0, Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"), Some("X"))
+  )
+  val dfMapToCombine: DataFrame = rowsMapToCombine.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
 
   val rowsMoment: Seq[(Int, Timestamp, Timestamp, String)] = Seq((0, Timestamp.valueOf("2019-11-25 11:12:13.005"), Timestamp.valueOf("2019-11-25 11:12:13.005"), "A"))
   val dfMoment: DataFrame = rowsMoment.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
@@ -74,7 +96,9 @@ object TestUtils {
     println("   Expected ")
     printDf(expected)
     println("   symmetric Difference ")
-    symmetricDifference(actual)(expected).show(false)
+    symmetricDifference(actual)(expected)
+      .withColumn("_df", when($"_df" === 1,"actual").otherwise("expected"))
+      .show(false)
   }
 
   def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame)(expected: DataFrame): Unit = printFailedTestResult(testName, Seq(argument))(actual)(expected)

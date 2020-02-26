@@ -33,8 +33,9 @@ You can then use the following additional functions on Dataset/DataFrame
   Solve temporal overlaps by a prioritizing Records according to rnkExpressions and extend the temporal range of each key to be defined over the whole timeline. The resulting DataFrame has an additional column `_defined` which is false for extended ranges.
   - aggExpressions: Aggregates to be calculated on overlapping records (e.g. count)
   - rnkFilter: Flag if overlapping records should be tagged or filtered (default=filtered=true)
-- `temporalCombine( keys:Seq[String], ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, hc:TemporalQueryConfig)`
-  Combine successive Records of the same key, if there are no changes on the attributes
+- `temporalCombine( keys:Seq[String] = Seq(), ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, hc:TemporalQueryConfig)`
+  Combines successive records if there are no changes on the non-technical attributes.
+  **The parameter `keys` is superfluous. Please refrain from using it!** It is still present in order not to break the API.
   - ignoreColName: A list of columns to be ignored in change detection
 - `temporalUnifyRanges( keys:Seq[String] )(implicit ss:SparkSession, hc:TemporalQueryConfig)`
   Unify temporal ranges in group of records defined by 'keys' (needed for temporal aggregations).
