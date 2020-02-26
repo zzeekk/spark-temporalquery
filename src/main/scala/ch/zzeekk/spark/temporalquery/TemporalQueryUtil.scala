@@ -93,7 +93,7 @@ object TemporalQueryUtil {
     /**
      * Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
      */
-    def temporalExtendRange( keys:Seq[String], extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
+    def temporalExtendRange( keys:Seq[String]=Seq(), extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
       temporalExtendRangeImpl( df1, keys, extendMin, extendMax )
     }
   }

@@ -24,7 +24,8 @@ object TestUtils {
     (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), Some(97.15)),
     // gap in history
     (0, Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2018-10-23 03:50:09.999"), Some(97.15)),
-    (0, Timestamp.valueOf("2018-10-23 03:50:10"), Timestamp.valueOf("9999-12-31 23:59:59.999"), Some(97.15)),
+    (0, Timestamp.valueOf("2018-10-23 03:50:10"), Timestamp.valueOf("2019-12-31 23:59:59.999"), Some(97.15)),
+    (0, Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 23:59:59.999"), Some(97.15)),
     (1, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), None),
     (1, Timestamp.valueOf("2018-10-23 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), None))
   val dfRight: DataFrame = rowsRight.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
