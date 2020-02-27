@@ -42,6 +42,7 @@ object TestUtils {
     println("   symmetric Difference ")
     symmetricDifference(actual)(expected)
       .withColumn("_df", when($"_in_first_df","actual").otherwise("expected"))
+      .drop($"_in_first_df")
       .show(false)
   }
 

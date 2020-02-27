@@ -11,6 +11,25 @@ import UDF._
 class TemporalQueryUtilTest extends FunSuite {
   import ss.implicits._
 
+  test("roundDiscreteTime") {
+    val actual = dfDirtyTimeRanges.roundDiscreteTime(defaultConfig)
+    val zeilen_expected: Seq[(Int, String, String, Double)] = Seq(
+      (0,"2019-01-01 00:00:00.124","2019-01-05 12:34:56.123", 3.14),
+      (0,"2019-01-05 12:34:56.124","2019-02-01 02:34:56.123", 2.72),
+      (0,"2019-02-01 01:00:0"     ,"2019-02-01 02:34:56.124", 2.72),
+      (0,"2019-02-01 02:34:56.124","2019-02-01 02:34:56.124",42.0 ),
+      (0,"2019-02-01 02:34:56.125","2019-03-03 00:00:0"     ,13.0 ),
+      (0,"2019-03-03 00:00:0"     ,"2019-04-04 00:00:0"     ,13.0 ),
+      (0,"2020-01-01 01:00:0"     ,"9999-12-31 00:00:0"     ,18.17),
+      (1,"2019-01-01 00:00:0.124" ,"2019-02-02 00:00:0"     ,-1.0 ),
+      (1,"2019-03-03 01:00:0"     ,"2021-12-01 02:34:56.1"  ,-2.0 ))
+    val expected = zeilen_expected.map(makeRowsWithTimeRange[Int, Double]).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
+
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("roundDiscreteTime",Seq(dfDirtyTimeRanges))(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalExtendRange_dfLeft") {
     // argument: dfLeft from object TestUtils
     val actual = dfLeft.temporalExtendRange(Seq("id"))
