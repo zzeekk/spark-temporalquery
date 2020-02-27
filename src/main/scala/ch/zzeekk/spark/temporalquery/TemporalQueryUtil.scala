@@ -1,7 +1,6 @@
 package ch.zzeekk.spark.temporalquery
 
 import java.sql.Timestamp
-
 import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.{UserDefinedFunction, Window, WindowSpec}
 import org.apache.spark.sql.functions._
@@ -102,16 +101,13 @@ object TemporalQueryUtil {
   }
 
   // helpers
-  def plusMillisecond(tstmp: Timestamp)(implicit hc:TemporalQueryConfig) : Timestamp = {
+  def addMillisecond(numMillis: Int)(tstmp: Timestamp)(implicit hc:TemporalQueryConfig) : Timestamp = {
     if (tstmp==null) tstmp
-    else if (tstmp.before(hc.maxDate)) Timestamp.from(tstmp.toInstant.plusMillis(1))
+    else if (0<numMillis && tstmp.before(hc.maxDate)) Timestamp.from(tstmp.toInstant.plusMillis(numMillis))
+    else if (0>numMillis && tstmp.after(hc.minDate)) Timestamp.from(tstmp.toInstant.plusMillis(numMillis))
     else tstmp
   }
-  def minusMillisecond(tstmp: Timestamp)(implicit hc:TemporalQueryConfig) : Timestamp = {
-    if (tstmp==null) tstmp
-    else if (tstmp.before(hc.maxDate)) Timestamp.from(tstmp.toInstant.minusMillis(1))
-    else tstmp
-  }
+
   private def createKeyCondition( df1:DataFrame, df2:DataFrame, keys:Seq[String] ) : Column = {
     keys.foldLeft(lit(true)){ case (cond,key) => cond and df1(key)===df2(key) }
   }
@@ -137,8 +133,8 @@ object TemporalQueryUtil {
    * build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
    */
   private def temporalRangesImpl( df:DataFrame, keys:Seq[String], extend:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-    val udf_plusMillisecond = udf(plusMillisecond _)
-    val udf_minusMillisecond = udf(minusMillisecond _)
+    val udf_plusMillisecond = udf(addMillisecond(1) _)
+    val udf_minusMillisecond = udf(addMillisecond(-1) _)
     val keyCols = keys.map(col)
     // get start/end-points for every key
     val df_points = df.select( keyCols :+ col(hc.fromColName).as("_dt"):_*).union( df.select( keyCols :+ udf_plusMillisecond(col(hc.toColName)).as("_dt"):_* ))
@@ -201,7 +197,7 @@ object TemporalQueryUtil {
   private def temporalCombineImpl( df:DataFrame, ignoreColNames:Seq[String]  )
                                  (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
-    val udf_plusMillisecond = udf(plusMillisecond _)
+    val udf_plusMillisecond = udf(addMillisecond(1) _)
     val dfColumns = df.columns
     val compairCols: Array[String] = dfColumns.diff( ignoreColNames ++ hc.technicalColNames )
     val fenestra: WindowSpec = Window.partitionBy(compairCols.map(col):_*).orderBy(col(hc.fromColName))

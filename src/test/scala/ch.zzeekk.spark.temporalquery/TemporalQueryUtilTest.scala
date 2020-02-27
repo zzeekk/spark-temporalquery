@@ -12,14 +12,14 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("plusMillisecond") {
     val argument = Timestamp.valueOf("2019-09-01 14:00:00")
-    val actual = plusMillisecond(argument)
+    val actual = addMillisecond(1)(argument)
     val expected = Timestamp.valueOf("2019-09-01 14:00:00.001")
     assert(actual==expected)
   }
 
   test("minusMillisecond") {
     val argument = Timestamp.valueOf("2019-09-01 14:00:00")
-    val actual = minusMillisecond(argument)
+    val actual = addMillisecond(-1)(argument)
     val expected = Timestamp.valueOf("2019-09-01 13:59:59.999")
     assert(actual==expected)
   }
