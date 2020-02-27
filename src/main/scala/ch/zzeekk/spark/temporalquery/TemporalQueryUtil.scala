@@ -5,6 +5,8 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.{UserDefinedFunction, Window, WindowSpec}
 import org.apache.spark.sql.functions._
 
+import UDF._
+
 /**
 * Copyright (c) 2017 Zacharias Kull under MIT Licence
 *
@@ -98,18 +100,29 @@ object TemporalQueryUtil {
     def temporalExtendRange( keys:Seq[String]=Seq(), extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
       temporalExtendRangeImpl( df1, keys, extendMin, extendMax )
     }
+
+
+    /**
+      * Abrunden der Zeitintervalle der Gültigkeit
+      * @return
+      */
+    def roundDiscreteTime(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(hc))(hc)
+
   }
 
   // helpers
-  def addMillisecond(numMillis: Int)(tstmp: Timestamp)(implicit hc:TemporalQueryConfig) : Timestamp = {
-    if (tstmp==null) tstmp
-    else if (0<numMillis && tstmp.before(hc.maxDate)) Timestamp.from(tstmp.toInstant.plusMillis(numMillis))
-    else if (0>numMillis && tstmp.after(hc.minDate)) Timestamp.from(tstmp.toInstant.plusMillis(numMillis))
-    else tstmp
-  }
 
   private def createKeyCondition( df1:DataFrame, df2:DataFrame, keys:Seq[String] ) : Column = {
     keys.foldLeft(lit(true)){ case (cond,key) => cond and df1(key)===df2(key) }
+  }
+
+  private def shrinkValidityImpl(df: DataFrame)(udfFloorOrPred: UserDefinedFunction)(implicit hc:TemporalQueryConfig): DataFrame= {
+    val spalten: Seq[String] = df.columns
+    df.withColumn(hc.fromColName,udf_ceilTimestamp(hc)(col({hc.fromColName})))
+      .withColumn(hc.toColName,udfFloorOrPred(col({hc.toColName})))
+      .where(s"${hc.fromColName} <= ${hc.toColName}")
+      // return columns in same order as provided
+      .select(spalten.map(col):_*)
   }
 
   /**
@@ -197,12 +210,11 @@ object TemporalQueryUtil {
   private def temporalCombineImpl( df:DataFrame, ignoreColNames:Seq[String]  )
                                  (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
-    val udf_plusMillisecond = udf(addMillisecond(1) _)
     val dfColumns = df.columns
     val compairCols: Array[String] = dfColumns.diff( ignoreColNames ++ hc.technicalColNames )
     val fenestra: WindowSpec = Window.partitionBy(compairCols.map(col):_*).orderBy(col(hc.fromColName))
 
-    df.withColumn("_consecutive", coalesce(udf_plusMillisecond(lag(col(hc.toColName),1).over(fenestra))===col(hc.fromColName),lit(false)))
+    df.withColumn("_consecutive", coalesce(lag(col(hc.toColName),1).over(fenestra) === udf_predecessorTime(hc)(col(hc.fromColName)),lit(false)))
       .withColumn("_nb", sum(when($"_consecutive",lit(0)).otherwise(lit(1))).over(fenestra))
       .groupBy( compairCols.map(col):+$"_nb":_*)
       .agg( min(col(hc.fromColName)).as(hc.fromColName) , max(col(hc.toColName)).as(hc.toColName))

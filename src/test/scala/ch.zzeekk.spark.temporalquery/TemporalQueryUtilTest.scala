@@ -1,28 +1,15 @@
 package ch.zzeekk.spark.temporalquery
 
 import java.sql.Timestamp
-
 import org.apache.spark.sql.functions.col
+import org.scalatest.FunSuite
+
 import TemporalQueryUtil._
 import TestUtils._
-import org.scalatest.FunSuite
+import UDF._
 
 class TemporalQueryUtilTest extends FunSuite {
   import ss.implicits._
-
-  test("plusMillisecond") {
-    val argument = Timestamp.valueOf("2019-09-01 14:00:00")
-    val actual = addMillisecond(1)(argument)
-    val expected = Timestamp.valueOf("2019-09-01 14:00:00.001")
-    assert(actual==expected)
-  }
-
-  test("minusMillisecond") {
-    val argument = Timestamp.valueOf("2019-09-01 14:00:00")
-    val actual = addMillisecond(-1)(argument)
-    val expected = Timestamp.valueOf("2019-09-01 13:59:59.999")
-    assert(actual==expected)
-  }
 
   test("temporalExtendRange_dfLeft") {
     // argument: dfLeft from object TestUtils
@@ -192,15 +179,13 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
-  test("temporalCombine_df_TimeRanges") {
-    val actual = df_TimeRanges.temporalCombine()
+  test("temporalCombine_dirtyTimeRanges") {
+    val actual = dfDirtyTimeRanges.temporalCombine()
     val rowsExpected = Seq(
       (0,"2019-01-01 00:00:00.123456789","2019-01-05 12:34:56.123456789", 3.14),
-      (0,"2019-01-05 12:34:56.123456789","2019-02-01 02:34:56.1235"     , 2.72),
-      (0,"2019-02-01 01:00:00.0"        ,"2019-02-01 02:34:56.1245"     , 2.72),
+      (0,"2019-01-05 12:34:56.123456789","2019-02-01 02:34:56.1245"     , 2.72),
       (0,"2019-02-01 02:34:56.1236"     ,"2019-02-01 02:34:56.1245"     ,42.0 ),
-      (0,"2019-02-01 02:34:56.1245"     ,"2019-03-03 00:00:0"           ,13.0 ),
-      (0,"2019-03-03 00:00:0"           ,"2019-04-04 00:00:0"           ,12.0 ),
+      (0,"2019-02-01 02:34:56.1245"     ,"2019-04-04 00:00:0"           ,13.0 ),
       (0,"2019-09-05 02:34:56.1231"     ,"2019-09-05 02:34:56.1239"     ,42.0 ),
       (0,"2020-01-01 01:00:0"           ,"9999-12-31 23:59:59.999999999",18.17),
       (1,"2019-01-01 00:00:0.123456789" ,"2019-02-02 00:00:00"          ,-1.0 ),
@@ -209,7 +194,7 @@ class TemporalQueryUtilTest extends FunSuite {
     val expected = rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
     val resultat = dfEqual(actual)(expected)
 
-    if (!resultat) printFailedTestResult("temporalCombine_df_TimeRanges",dfMapToCombine)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalCombine_dirtyTimeRanges",dfMapToCombine)(actual)(expected)
     assert(resultat)
   }
 
