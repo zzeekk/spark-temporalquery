@@ -69,6 +69,20 @@ object TemporalQueryUtil {
     }
 
     /**
+     * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
+     * - rnkExpressions: Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     *   wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt. Dies entspricht also ein join
+     *   mit der Einschränkung, dass kein Muliplikation der Records in df1 stattfinden kann.
+     *   Soll df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
+     *   Records aus df1 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet.
+     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     */
+    def temporalLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true) )
+                            (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+      temporalLeftAntiJoinImpl( df1, df2, joinColumns, additionalJoinFilterCondition )
+    }
+
+    /**
      * Löst zeitliche Überlappungen
      * - rnkExpressions: Priorität zum Bereinigen
      * - aggExpressions: Beim Bereinigen zu erstellende Aggregationen
@@ -155,11 +169,9 @@ object TemporalQueryUtil {
    * build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
    */
   private def temporalRangesImpl( df:DataFrame, keys:Seq[String], extend:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-    val udf_plusMillisecond = udf(addMillisecond(1) _)
-    val udf_minusMillisecond = udf(addMillisecond(-1) _)
     val keyCols = keys.map(col)
     // get start/end-points for every key
-    val df_points = df.select( keyCols :+ col(hc.fromColName).as("_dt"):_*).union( df.select( keyCols :+ udf_plusMillisecond(col(hc.toColName)).as("_dt"):_* ))
+    val df_points = df.select( keyCols :+ col(hc.fromColName).as("_dt"):_*).union( df.select( keyCols :+ udf_plusMillisecond(hc)(col(hc.toColName)).as("_dt"):_* ))
     // if desired, extend every key with min/maxDate-points
     val df_pointsExt = if (extend) {
       df_points
@@ -170,7 +182,8 @@ object TemporalQueryUtil {
     // build ranges
     df_pointsExt
       .withColumnRenamed("_dt", "range_von")
-      .withColumn( "range_bis", udf_minusMillisecond(lead(col("range_von"),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col("range_von")))))
+      .withColumn( "range_bis",
+        udf_predecessorTime(hc)(lead(col("range_von"),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col("range_von")))))
       .where(col("range_bis").isNotNull)
   }
 
@@ -211,6 +224,58 @@ object TemporalQueryUtil {
     val df2_extended = temporalCleanupExtendImpl( df2, keys, rnkExpressions, Seq(), rnkFilter=true )
     // left join df1 & df2
     temporalJoinImpl( df1, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, "left" ).drop($"_defined")
+  }
+
+
+  /**
+   * left outer join
+   */
+  private def temporalLeftAntiJoinImpl( df1:DataFrame, df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column )
+                                      (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+    import ss.implicits._
+    logger.debug(s"temporalLeftAntiJoinImpl START: joinColumns = ${joinColumns.mkString(", ")}")
+    val resultColumns = df1.columns
+    val df1Cleaned = df1.temporalCombine()
+    val df2Cleaned = df2.select(hc.fromColName, hc.toColName+:joinColumns:_*).temporalCombine()
+      .withColumnRenamed(hc.fromColName,hc.fromColName2).withColumnRenamed(hc.toColName,hc.toColName2)
+    val joinCondition: Column = createKeyCondition(df1Cleaned, df2Cleaned, joinColumns).and(additionalJoinFilterCondition)
+
+    val dfAntiJoin = df1Cleaned.join(df2Cleaned, joinCondition, "leftanti")
+    println("*** dfAntiJoin ***")
+    dfAntiJoin.printSchema()
+    dfAntiJoin.show(false)
+
+    val dfComplement1 = df1Cleaned.join( df2Cleaned, joinCondition.and(col(hc.fromColName) < col(hc.fromColName2)) )
+      .select(df1Cleaned("id").as("id"),$"wert_l",col(hc.fromColName2),col(hc.toColName2)
+        ,col(hc.fromColName).as(s"${hc.fromColName}_neu2")
+        ,least(col(hc.toColName),udf_predecessorTime(hc)(col(hc.fromColName2))).as(s"${hc.toColName}_neu2")
+      )
+    println("*** dfComplement1 ***")
+    dfComplement1.printSchema()
+    dfComplement1.show(false)
+
+    val dfComplement2 = df1Cleaned.join( df2Cleaned, joinCondition.and(col(hc.toColName2) < col(hc.toColName)) )
+      .select(df1Cleaned("id").as("id"),$"wert_l",col(hc.fromColName2),col(hc.toColName2)
+        ,greatest(col(hc.fromColName),udf_plusMillisecond(hc)(col(hc.toColName2))).as(s"${hc.fromColName}_neu1")
+        ,col(hc.toColName).as(s"${hc.toColName}_neu2")
+      )
+    println("*** dfComplement2 ***")
+    dfComplement2.printSchema()
+    dfComplement2.show(false)
+
+    val joinConditionComplement: Column = createKeyCondition(dfComplement1, dfComplement2, joinColumns).and(additionalJoinFilterCondition)
+    val dfComplement = dfComplement1.join( dfComplement2,
+      joinConditionComplement
+        .and(dfComplement1(hc.fromColName2) === dfComplement2(hc.fromColName2))
+        .and(dfComplement1(hc.toColName2) === dfComplement2(hc.toColName2)),
+      "outer"
+    )//.select(df1Cleaned("id"),df1Cleaned("wert_l"))
+    println("*** dfComplement ***")
+    dfComplement.printSchema()
+    dfComplement.show(false)
+
+    dfComplement
+    //dfAntiJoin.union(dfComplement1).union(dfComplement2).select(resultColumns.head, resultColumns.tail:_*).temporalCombine()
   }
 
   /**

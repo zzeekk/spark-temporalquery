@@ -46,7 +46,6 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalExtendRange(Seq("id"))
     val rowsExpected = Seq((0,4.2,defaultConfig.minDate,defaultConfig.maxDate))
     val expected = rowsExpected.toDF("id", "Wert_L", defaultConfig.fromColName, defaultConfig.toColName )
-      .orderBy("Id",defaultConfig.fromColName)
     val expectedWithActualColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual)(expectedWithActualColumns)
 
@@ -67,7 +66,6 @@ class TemporalQueryUtilTest extends FunSuite {
       (1,None        ,Timestamp.valueOf("2021-01-01 00:00:00.0"),defaultConfig.maxDate)
     )
     val expected = rowsExpected.toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
-      .orderBy("id",defaultConfig.fromColName)
     val expectedWithActualColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual)(expectedWithActualColumns)
 
@@ -89,7 +87,6 @@ class TemporalQueryUtilTest extends FunSuite {
       (1,None        ,Timestamp.valueOf("2021-01-01 00:00:00.0"),Timestamp.valueOf("2099-12-31 23:59:59.999"))
     )
     val expected = rowsExpected.toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
-      .orderBy("id",defaultConfig.fromColName)
     val expectedWithActualColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual)(expectedWithActualColumns)
 
@@ -97,7 +94,33 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
-  test("temporalLeftJoin1") {
+  test("temporalLeftAntiJoin_dfRight") {
+    val actual = dfLeft.temporalLeftAntiJoin(dfRight,Seq("id"))
+    val rowsExpected = Seq(
+      (0, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
+      (0, "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", 4.2)
+    )
+    val expected = rowsExpected.toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_l")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalLeftAntiJoin_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalLeftAntiJoin_dfMap") {
+    val actual = dfLeft.temporalLeftAntiJoin(dfRight,Seq("id"))
+    val rowsExpected = Seq(
+      (0, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
+      (0, "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", 4.2)
+    )
+    val expected = rowsExpected.toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_l")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalLeftAntiJoin_dfMap",Seq(dfLeft,dfRight))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalLeftJoin_dfRight") {
     val actual = dfLeft.temporalLeftJoin(dfRight,Seq("id"))
     val rowsExpected = Seq(
       (0,4.2,None       ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
@@ -106,10 +129,9 @@ class TemporalQueryUtilTest extends FunSuite {
       (0,4.2,Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11"),Timestamp.valueOf("2018-10-23 03:50:09.999")),
       (0,4.2,Some(97.15),Timestamp.valueOf("2018-10-23 03:50:10"),Timestamp.valueOf("2018-12-08 23:59:59.999")))
     val expected = rowsExpected.toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
-      .orderBy("Id",defaultConfig.fromColName)
     val resultat = dfEqual(actual)(expected)
 
-    if (!resultat) printFailedTestResult("temporalLeftJoin1",Seq(dfLeft,dfRight))(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalLeftJoin_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
     assert(resultat)
   }
 

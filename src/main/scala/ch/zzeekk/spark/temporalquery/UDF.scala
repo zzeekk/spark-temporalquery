@@ -23,6 +23,7 @@ object UDF extends Serializable {
     else if (!tempus.after(hc.minDate)) hc.minDate
     else Timestamp.from(tempus.toInstant.plusMillis(numMillis))
   }
+  def udf_plusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(1) _)
 
   /**
     * rounds down timestamp tempus to the nearest millisecond
