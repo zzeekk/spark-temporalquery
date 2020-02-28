@@ -16,7 +16,13 @@ object TestUtils {
 
   def symmetricDifference(df1: DataFrame)(df2: DataFrame): DataFrame = {
     // attention, "except" works on Dataset and not on DataFrame. We need to check that schema is equal.
-    require(df1.columns.toSeq==df2.columns.toSeq, "Cannot calculate symmetric difference for DataFrames with different schema")
+   require(df1.columns.toSeq==df2.columns.toSeq,
+      s"""Cannot calculate symmetric difference for DataFrames with different schema.
+         |schema of df1: ${df1.columns.toSeq.mkString(" ;")}
+         |${df1.schema.treeString}
+         |schema of df2: ${df2.columns.toSeq.mkString(" ;")}
+         |${df2.schema.treeString}
+         |         |""".stripMargin)
     df1.except(df2).withColumn("_in_first_df",lit(true))
       .union(df2.except(df1).withColumn("_row_in_first_df",lit(false)))
   }
@@ -141,13 +147,17 @@ object TestUtils {
     (0,"2019-01-01 00:00:00.123456789","2019-01-05 12:34:56.123456789", 3.14),
     (0,"2019-01-05 12:34:56.123456789","2019-02-01 02:34:56.1235"     , 2.72),
     (0,"2019-02-01 01:00:00.0"        ,"2019-02-01 02:34:56.1245"     , 2.72), // overlaps with previous record
-    (0,"2019-03-01 00:00:00.0"        ,"2019-02-01 00:00:00.0"        , 2.72), // ends before it starts
-    (0,"2019-02-01 02:34:56.1236"     ,"2019-02-01 02:34:56.1245"     ,42.0 ),
+    (0,"2019-03-01 00:00:00.0"        ,"2019-02-01 00:00:00.0"        , 2.72),
+    (0,"2019-02-01 02:34:56.1236"     ,"2019-02-01 02:34:56.1235"     ,42.0 ), // ends before it starts
     (0,"2019-02-01 02:34:56.1245"     ,"2019-03-03 00:00:0"           ,13.0 ),
     (0,"2019-03-03 00:00:0"           ,"2019-04-04 00:00:0"           ,13.0 ),
-    (0,"2019-09-05 02:34:56.1231"     ,"2019-09-05 02:34:56.1239"     ,42.0 ),
+    (0,"2019-09-05 02:34:56.1231"     ,"2019-09-05 02:34:56.1239"     ,42.0 ), // duration less than a millisecond without touching bounds of millisecond intervall
     (0,"2020-01-01 01:00:0"           ,"9999-12-31 23:59:59.999999999",18.17),
-    (1,"2019-01-01 00:00:0.123456789" ,"2019-02-02 00:00:00"          ,-1.0 ),
+    (1,"2019-01-01 00:00:0.123456789" ,"2019-02-02 00:00:0"           ,-1.0 ),
+    (1,"2019-03-01 00:00:0"           ,"2019-03-01 00:00:00.0001"     , 0.1 ), // duration less than a millisecond
+    (1,"2019-03-01 00:00:0.0009"      ,"2019-03-01 00:00:00.001"      , 0.1 ), // duration less than a millisecond
+    (1,"2019-03-01 00:00:1.0009"      ,"2019-03-01 00:00:01.0021"     , 1.2 ), // duration less than a millisecond
+    (1,"2019-03-01 00:00:0.0001"      ,"2019-03-01 00:00:00.0009"     , 0.8 ), // duration less than a millisecond
     (1,"2019-03-03 01:00:0"           ,"2021-12-01 02:34:56.1"        ,-2.0 ))
   val dfDirtyTimeRanges: DataFrame = rowsDirtyTimeRanges.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
 

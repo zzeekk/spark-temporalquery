@@ -8,16 +8,16 @@ import org.apache.spark.sql.functions._
 import UDF._
 
 /**
-* Copyright (c) 2017 Zacharias Kull under MIT Licence
-*
-* Usage:
-*
-* import ch.zzeekk.spark-temporalquery.TemporalQueryUtil._ // this imports temporalquery* implicit functions on DataFrame
-* implicit val tqc = TemporalQueryConfig() // configure options for temporalquery operations
-* implicit val sss = ss // make SparkSession implicitly available
-*
-* val df_joined = df1.temporalJoin(df2)
-*/
+ * Copyright (c) 2017 Zacharias Kull under MIT Licence
+ *
+ * Usage:
+ *
+ * import ch.zzeekk.spark-temporalquery.TemporalQueryUtil._ // this imports temporalquery* implicit functions on DataFrame
+ * implicit val tqc = TemporalQueryConfig() // configure options for temporalquery operations
+ * implicit val sss = ss // make SparkSession implicitly available
+ *
+ * val df_joined = df1.temporalJoin(df2)
+ */
 object TemporalQueryUtil {
   val logger: org.slf4j.Logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
@@ -25,10 +25,10 @@ object TemporalQueryUtil {
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
   case class TemporalQueryConfig ( minDate:Timestamp = Timestamp.valueOf("0000-01-01 00:00:00")
-                                 , maxDate:Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
-                                 , fromColName:String    = "gueltig_ab"
-                                 , toColName:String      = "gueltig_bis"
-                                 , additionalTechnicalColNames:Seq[String] = Seq()) {
+                                   , maxDate:Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
+                                   , fromColName:String    = "gueltig_ab"
+                                   , toColName:String      = "gueltig_bis"
+                                   , additionalTechnicalColNames:Seq[String] = Seq()) {
     val fromColName2:String = fromColName+"2"
     val toColName2:String = toColName+"2"
     val technicalColNames:Seq[String] = Seq( fromColName, toColName ) ++ additionalTechnicalColNames
@@ -80,7 +80,10 @@ object TemporalQueryUtil {
     }
 
     /**
-     * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung gibt
+     * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung gibt.
+     * Zuerst wird der Dataframe mittels [[roundDiscreteTime]] etwas bereinigt, siehe Beschreibung dort
+     *
+     * @return temporal dataframe with combined validities
      */
     def temporalCombine( keys:Seq[String] = Seq() , ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       if(keys.nonEmpty) logger.warn("Parameter keys is superfluous and therefore ignored. Please refrain from using it!")
@@ -101,11 +104,17 @@ object TemporalQueryUtil {
       temporalExtendRangeImpl( df1, keys, extendMin, extendMax )
     }
 
-
     /**
-      * Abrunden der Zeitintervalle der Gültigkeit
-      * @return
-      */
+     * Sets the discreteness of the time scale to milliseconds.
+     * Hereby the validity intervals may be shortened on the lower bound and extended on the upper bound.
+     * To the lower bound ceiling is applied whereas to the upper bound flooring.
+     * If the dataframe has a discreteness of millisecond or coarser,
+     * then the only two changes are:
+     * If a timestamp lies outside of [minDate , maxDate] it will be replaced by minDate, maxDate respectively.
+     * Rows for which the validity ends before it starts, i.e. with toCol.before(fromCol), are removed.
+     *
+     * @return temporal dataframe with a discreteness of milliseconds
+     */
     def roundDiscreteTime(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(hc))(hc)
 
   }
@@ -169,7 +178,7 @@ object TemporalQueryUtil {
    * cleanup overlaps, fill holes and extend to min/maxDate
    */
   private def temporalCleanupExtendImpl( df:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)], rnkFilter:Boolean )
-                           (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+                                       (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     import ss.implicits._
     // get ranges
     val df_ranges = temporalRangesImpl( df, keys, extend=true )
@@ -196,7 +205,7 @@ object TemporalQueryUtil {
    * left outer join
    */
   private def temporalKeyLeftJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column )
-                         (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+                                     (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     // extend df2
     val df2_extended = temporalCleanupExtendImpl( df2, keys, rnkExpressions, Seq(), rnkFilter=true )
@@ -214,7 +223,8 @@ object TemporalQueryUtil {
     val compairCols: Array[String] = dfColumns.diff( ignoreColNames ++ hc.technicalColNames )
     val fenestra: WindowSpec = Window.partitionBy(compairCols.map(col):_*).orderBy(col(hc.fromColName))
 
-    df.withColumn("_consecutive", coalesce(lag(col(hc.toColName),1).over(fenestra) === udf_predecessorTime(hc)(col(hc.fromColName)),lit(false)))
+    df.roundDiscreteTime(hc)
+      .withColumn("_consecutive", coalesce(udf_predecessorTime(hc)(col(hc.fromColName)) <= lag(col(hc.toColName),1).over(fenestra),lit(false)))
       .withColumn("_nb", sum(when($"_consecutive",lit(0)).otherwise(lit(1))).over(fenestra))
       .groupBy( compairCols.map(col):+$"_nb":_*)
       .agg( min(col(hc.fromColName)).as(hc.fromColName) , max(col(hc.toColName)).as(hc.toColName))
@@ -226,7 +236,7 @@ object TemporalQueryUtil {
    * Unify ranges
    */
   private def temporalUnifyRangesImpl( df:DataFrame, keys:Seq[String] )
-                         (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+                                     (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     // get ranges
     val df_ranges = temporalRangesImpl( df, keys, extend=false )

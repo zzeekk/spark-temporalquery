@@ -10,11 +10,18 @@ object UDF extends Serializable {
   // "extends Serializable" needed to avoid
   // org.apache.spark.SparkException: Task not serializable
 
-  def addMillisecond(numMillis: Int)(tstmp: Timestamp)(implicit hc:TemporalQueryConfig) : Timestamp = {
-    if (tstmp == null) null
-    else if (!tstmp.before(hc.maxDate)) hc.maxDate
-    else if (!tstmp.after(hc.minDate)) hc.minDate
-    else Timestamp.from(tstmp.toInstant.plusMillis(numMillis))
+  /**
+   * rounds down timestamp tempus to the nearest millisecond
+   * if tempus is not before hc.maxDate then return hc.maxDate
+   * @param numMillis: number of milliseconds to add
+   * @param tempus: timestamp to which the milliseconds are to be added
+   * @return rounded down timestamp
+   */
+  def addMillisecond(numMillis: Int)(tempus: Timestamp)(implicit hc:TemporalQueryConfig) : Timestamp = {
+    if (tempus == null) null
+    else if (!tempus.before(hc.maxDate)) hc.maxDate
+    else if (!tempus.after(hc.minDate)) hc.minDate
+    else Timestamp.from(tempus.toInstant.plusMillis(numMillis))
   }
 
   /**

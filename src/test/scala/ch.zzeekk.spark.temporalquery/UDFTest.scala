@@ -9,20 +9,16 @@ import UDF._
 class UDFTest extends org.scalatest.FunSuite {
 
 
-  test("plusMillisecond") {
-    val argExpMap: Map[Timestamp,Timestamp] = Map(
-      Timestamp.valueOf("1998-09-05 14:34:56.123456789") -> Timestamp.valueOf("1998-09-05 14:34:56.124456789"),
-      Timestamp.valueOf("2019-03-03 00:00:0") -> Timestamp.valueOf("2019-03-03 00:00:0.001")
+  test("addMillisecond") {
+    val argExpMap: Map[(Int,Timestamp),Timestamp] = Map(
+      ( 1,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124456789"),
+      ( 1,Timestamp.valueOf("2019-03-03 00:00:0"))            -> Timestamp.valueOf("2019-03-03 00:00:0.001"),
+      (-1,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.122456789"),
+      (-1,Timestamp.valueOf("2019-03-03 00:00:0"))            -> Timestamp.valueOf("2019-03-02 23:59:59.999"),
+      ( 0,Timestamp.valueOf("2019-03-03 00:00:0"))            -> Timestamp.valueOf("2019-03-03 00:00:0"),
+      ( 0,Timestamp.valueOf("2019-03-03 00:00:0"))            -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
-    testArgumentExpectedMap[Timestamp, Timestamp](addMillisecond(1))(argExpMap)
-  }
-
-  test("minusMillisecond") {
-    val argExpMap: Map[Timestamp,Timestamp] = Map(
-      Timestamp.valueOf("1998-09-05 14:34:56.123456789") -> Timestamp.valueOf("1998-09-05 14:34:56.122456789"),
-      Timestamp.valueOf("2019-03-03 00:00:0") -> Timestamp.valueOf("2019-03-02 23:59:59.999")
-    )
-    testArgumentExpectedMap[Timestamp, Timestamp](addMillisecond(-1))(argExpMap)
+    testArgumentExpectedMap[(Int,Timestamp), Timestamp](x=>addMillisecond(x._1)(x._2))(argExpMap)
   }
 
   test("udf_floorTimestamp") {
