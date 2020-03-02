@@ -6,7 +6,6 @@ import org.scalatest.FunSuite
 
 import TemporalQueryUtil._
 import TestUtils._
-import UDF._
 
 class TemporalQueryUtilTest extends FunSuite {
   import ss.implicits._
@@ -108,15 +107,88 @@ class TemporalQueryUtilTest extends FunSuite {
   }
 
   test("temporalLeftAntiJoin_dfMap") {
-    val actual = dfLeft.temporalLeftAntiJoin(dfRight,Seq("id"))
+    val actual = dfLeft.temporalLeftAntiJoin(dfMap,Seq("id"))
     val rowsExpected = Seq(
       (0, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
-      (0, "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", 4.2)
+      (0, "2018-04-01 00:00:00", "2018-12-08 23:59:59.999", 4.2)
     )
     val expected = rowsExpected.toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_l")
     val resultat = dfEqual(actual)(expected)
 
-    if (!resultat) printFailedTestResult("temporalLeftAntiJoin_dfMap",Seq(dfLeft,dfRight))(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalLeftAntiJoin_dfMap",Seq(dfLeft,dfMap))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalLeftAntiJoin_dfRight_dfMap") {
+    val actual = dfRight.temporalLeftAntiJoin(dfMap,Seq("id"))
+    val rowsExpected: Seq[(Int, String, String, Option[Double])] = Seq(
+      (0, "2018-06-01 05:24:11", "9999-12-31 00:00:00",     Some(97.15)),
+      (1, "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
+      (1, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019)),
+      (1, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020)),
+      (1, "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None))
+    val expected = rowsExpected.map(makeRowsWithTimeRange)
+      .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_r")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalLeftAntiJoin_dfRight_dfMap",Seq(dfRight,dfMap))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalLeftAntiJoin_dfMap_dfRight") {
+    val actual = dfMap.temporalLeftAntiJoin(dfRight,Seq("id"))
+    val rowsExpected: Seq[(Int, String, String, String)] = Seq(
+      (0, "2018-02-01 00:00:00", "2018-02-28 23:59:59.999", "B"),
+      (0, "2018-02-01 00:00:00", "2018-02-28 23:59:59.999", "C"),
+      (0, "2018-02-20 00:00:00", "2018-03-31 23:59:59.999", "D"),
+      (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X")
+    )
+    val expected = rowsExpected.map(makeRowsWithTimeRange)
+      .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalLeftAntiJoin_dfMap_dfRight",Seq(dfMap,dfRight))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalLeftAntiJoin_segmented") {
+    val minuend = Seq(
+      (1,"2019-01-01 00:00:0", "2020-01-01 00:00:0"),
+      (2,"2019-01-01 00:00:0", "2020-01-01 00:00:5"),
+      (3,"2020-01-01 00:05:7", "2021-12-31 23:59:59.999"),
+      (4,"2020-01-01 00:02:5", "2020-01-01 00:03:5"),
+      (5,"2019-01-01 00:00:0", "2020-01-01 00:01:9.999"),
+      (6,"2019-01-01 00:00:0", "2021-12-31 23:59:59.999")
+    ).map(x => (x._1,Timestamp.valueOf(x._2),Timestamp.valueOf(x._3)))
+      .toDF("id",defaultConfig.fromColName, defaultConfig.toColName)
+    val subtrahend = Seq(
+      ("2020-01-01 00:04:4","2020-01-01 00:05:0"),
+      ("2020-01-01 00:00:1","2020-01-01 00:01:0"),
+      ("2020-01-01 00:03:3","2020-01-01 00:04:0"),
+      ("2020-01-01 00:05:5","2020-01-01 00:06:0"),
+      ("2020-01-01 00:02:2","2020-01-01 00:03:0")
+    ).map(x => (0,Timestamp.valueOf(x._1),Timestamp.valueOf(x._2)))
+      .toDF("id",defaultConfig.fromColName, defaultConfig.toColName)
+
+    val actual = minuend.temporalLeftAntiJoin(subtrahend,Seq())
+    val expected = Seq(
+      (1,"2019-01-01 00:00:0"    ,"2020-01-01 00:00:0"),
+      (2,"2019-01-01 00:00:0"    ,"2020-01-01 00:00:0.999"),
+      (3,"2020-01-01 00:06:0.001","2021-12-31 23:59:59.999"),
+      (4,"2020-01-01 00:03:0.001","2020-01-01 00:03:2.999"),
+      (5,"2020-01-01 00:01:0.001","2020-01-01 00:01:9.999"),
+      (5,"2019-01-01 00:00:0"    ,"2020-01-01 00:00:0.999"),
+      (6,"2020-01-01 00:06:0.001","2021-12-31 23:59:59.999"),
+      (6,"2020-01-01 00:05:0.001","2020-01-01 00:05:4.999"),
+      (6,"2020-01-01 00:04:0.001","2020-01-01 00:04:3.999"),
+      (6,"2020-01-01 00:03:0.001","2020-01-01 00:03:2.999"),
+      (6,"2020-01-01 00:01:0.001","2020-01-01 00:02:1.999"),
+      (6,"2019-01-01 00:00:0"    ,"2020-01-01 00:00:0.999")
+    ).map(x => (x._1,Timestamp.valueOf(x._2),Timestamp.valueOf(x._3)))
+      .toDF("id",defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalLeftAntiJoin_segmented",Seq(minuend,subtrahend))(actual)(expected)
     assert(resultat)
   }
 
