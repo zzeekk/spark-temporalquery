@@ -38,9 +38,17 @@ class UDFTest extends org.scalatest.FunSuite {
   test("udf_predecessorTime") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
-      ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59.999")
+      ("subtract a millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59.999")
     )
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](predecessorTime)(argExpMap)
+  }
+
+  test("udf_successorTime") {
+    val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
+      ("round up millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
+      ("add a millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0.001")
+    )
+    testArgumentExpectedMapWithComment[Timestamp, Timestamp](successorTime)(argExpMap)
   }
 
   test("udf_temporalComplement") {

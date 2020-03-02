@@ -171,7 +171,7 @@ object TemporalQueryUtil {
   private def temporalRangesImpl( df:DataFrame, keys:Seq[String], extend:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     val keyCols = keys.map(col)
     // get start/end-points for every key
-    val df_points = df.select( keyCols :+ col(hc.fromColName).as("_dt"):_*).union( df.select( keyCols :+ udf_plusMillisecond(hc)(col(hc.toColName)).as("_dt"):_* ))
+    val df_points = df.select( keyCols :+ col(hc.fromColName).as("_dt"):_*).union( df.select( keyCols :+ udf_successorTime(hc)(col(hc.toColName)).as("_dt"):_* ))
     // if desired, extend every key with min/maxDate-points
     val df_pointsExt = if (extend) {
       df_points

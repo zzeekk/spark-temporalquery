@@ -29,7 +29,6 @@ object UDF extends Serializable {
     else if (!tempus.after(hc.minDate)) hc.minDate
     else Timestamp.from(tempus.toInstant.plusMillis(numMillis))
   }
-  def udf_plusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(1) _)
 
   /**
    * rounds down timestamp tempus to the nearest millisecond
@@ -79,6 +78,23 @@ object UDF extends Serializable {
   def udf_predecessorTime(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(predecessorTime _)
 
   /**
+   * returns the predecessor timestamp with respect to ChronoUnit
+   * @param tempus: timestamp to truncate
+   * @return truncated timestamp
+   */
+  def successorTime(tempus: Timestamp)(implicit hc:TemporalQueryConfig): Timestamp = {
+    if (tempus == null) {
+      logger.debug(s"successorTime: tempus=$tempus")
+      null
+    }
+    else {
+      val resultat: Timestamp = ceilTimestamp(tempus)(hc)
+      if (resultat.equals(tempus)) addMillisecond(1)(resultat) else resultat
+    }
+  }
+  def udf_successorTime(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(successorTime _)
+
+  /**
    * returns the complement of union of subtrahends relative to the interval [validFrom, validTo]
    * Hereby we use A ∖ (⋃ B_i) = A ∖ B₀∖ B₁∖ B₂∖ ...
    * @param validFrom: start of time interval
@@ -98,7 +114,7 @@ object UDF extends Serializable {
     def getOneComplement(minuend: (Timestamp, Timestamp), subtrahend: (Timestamp,Timestamp)):  Seq[(Timestamp,Timestamp)] = {
       logger.debug(s"         getOneComplement: minuend = $minuend")
       logger.debug(s"         getOneComplement: subtrahend = $subtrahend")
-      List( (addMillisecond(1)(subtrahend._2),minuend._2) , (minuend._1,predecessorTime(subtrahend._1)) )
+      List( (successorTime(subtrahend._2),minuend._2) , (minuend._1,predecessorTime(subtrahend._1)) )
         .filterNot(x => x._2.before(x._1))
     }
 
