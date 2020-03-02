@@ -192,15 +192,47 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
+  test("temporalLeftJoinNew_dfRight") {
+    val actual = dfLeft.temporalLeftJoinNew(dfRight,Seq("id"))
+    val expected = Seq(
+      (0,4.2,None       ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,4.2,Some(97.15),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,4.2,None       ,Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-06-01 05:24:10.999")),
+      (0,4.2,Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11"),Timestamp.valueOf("2018-12-08 23:59:59.999"))
+    ).toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalLeftJoinNew_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalLeftJoinNew_rightMap") {
+    // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
+    val actual = dfLeft.temporalLeftJoinNew(df2=dfMap, keys=Seq("id"))
+    val expected = Seq(
+      (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,4.2,Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999"))
+    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalLeftJoinNew_rightMap",Seq(dfLeft,dfMap))(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalLeftJoin_dfRight") {
     val actual = dfLeft.temporalLeftJoin(dfRight,Seq("id"))
-    val rowsExpected = Seq(
+    val expected = Seq(
       (0,4.2,None       ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
       (0,4.2,Some(97.15),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
       (0,4.2,None       ,Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-06-01 05:24:10.999")),
       (0,4.2,Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11"),Timestamp.valueOf("2018-10-23 03:50:09.999")),
-      (0,4.2,Some(97.15),Timestamp.valueOf("2018-10-23 03:50:10"),Timestamp.valueOf("2018-12-08 23:59:59.999")))
-    val expected = rowsExpected.toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,4.2,Some(97.15),Timestamp.valueOf("2018-10-23 03:50:10"),Timestamp.valueOf("2018-12-08 23:59:59.999"))
+    ).toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalLeftJoin_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
@@ -210,7 +242,7 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalLeftJoin_rightMap") {
     // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.temporalLeftJoin(df2=dfMap, keys=Seq("id"))
-    val rowsExpected = Seq(
+    val expected = Seq(
       // img = {}
       (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
       // img = {A,B}
@@ -235,8 +267,8 @@ class TemporalQueryUtilTest extends FunSuite {
       // img = {D}
       (0,4.2,Some("D"),Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
       // img = {}
-      (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")))
-    val expected = rowsExpected.toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999"))
+    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalLeftJoin_rightMap",Seq(dfLeft,dfMap))(actual)(expected)
