@@ -299,6 +299,40 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
+  test("temporalLeftJoin_rightMapWithGapsAndRnkExpressions") {
+    // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
+    val argumentRight = Seq(
+      (0, "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", "A"),
+      (0, "2018-01-01 00:00:00", "2018-02-28 23:59:59.999", "B"),
+      (0, "2018-02-01 00:00:00", "2018-02-28 23:59:59.999", "C"),
+      (0, "2018-03-30 00:00:00", "2018-03-31 23:59:59.999", "D"),
+      (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X"))
+      .map(makeRowsWithTimeRange)
+      .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
+
+    val actual = dfLeft.temporalLeftJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val expected = Seq(
+      // img = {}
+      (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      // img = {A}
+      (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      // img = {B}
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      // img = null
+      (0,4.2,None,Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-29 23:59:59.999")),
+      // img = {D}
+      (0,4.2,Some("D"),Timestamp.valueOf("2018-03-30 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      // img = {}
+      (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")))
+      .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalLeftJoin_rightMapWithrnkExpressions",Seq(dfLeft,argumentRight))(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalCombine_dfRight") {
     val actual = dfRight.temporalCombine()
     val rowsExpected = Seq(
