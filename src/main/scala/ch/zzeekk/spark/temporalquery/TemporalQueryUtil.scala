@@ -57,7 +57,7 @@ object TemporalQueryUtil {
      */
     def temporalInnerJoin( df2:DataFrame, keys:Seq[String] )
                          (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalKeyJoinImpl( df1, df2, keys )
+      temporalKeyJoinImpl( df1.temporalCombine(), df2.temporalCombine(), keys )
     }
 
     /**
@@ -65,7 +65,7 @@ object TemporalQueryUtil {
      */
     def temporalInnerJoin( df2:DataFrame, keyCondition:Column )
                          (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalJoinImpl( df1, df2, keyCondition )
+      temporalJoinImpl( df1.temporalCombine(), df2.temporalCombine(), keyCondition )
     }
 
     /**
@@ -80,12 +80,14 @@ object TemporalQueryUtil {
     def temporalLeftJoinNew( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       if (rnkExpressions.nonEmpty) logger.warn("rnkExpressions not implemented yet !!!")
-      extendedUnionImpl( temporalKeyJoinImpl( df1,df2,keys) )( temporalLeftAntiJoinImpl( df1,df2,keys,additionalJoinFilterCondition) )(ss)
+      val df1Combined = df1.temporalCombine()
+      val df2Combined = df2.temporalCombine()
+      extendedUnionImpl( temporalKeyJoinImpl( df1Combined,df2Combined,keys) )( temporalLeftAntiJoinImpl( df1Combined,df2Combined,keys,additionalJoinFilterCondition) )(ss)
     }
 
     def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalKeyLeftJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition )
+      temporalKeyLeftJoinImpl( df1.temporalCombine(), df2.temporalCombine(), keys, rnkExpressions, additionalJoinFilterCondition )
     }
 
     /**
@@ -99,7 +101,7 @@ object TemporalQueryUtil {
      */
     def temporalLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true) )
                             (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalLeftAntiJoinImpl( df1, df2, joinColumns, additionalJoinFilterCondition )
+      temporalLeftAntiJoinImpl( df1.temporalCombine(), df2.temporalCombine(), joinColumns, additionalJoinFilterCondition )
     }
 
     /**
@@ -199,7 +201,7 @@ object TemporalQueryUtil {
     df_join.select(selCols:_*)
   }
   private def temporalKeyJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], joinType:String = "inner" )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-    temporalJoinImpl( df1.temporalCombine(), df2.temporalCombine(), createKeyCondition(df1, df2, keys), joinType )
+    temporalJoinImpl( df1, df2, createKeyCondition(df1, df2, keys), joinType )
   }
 
   /**
