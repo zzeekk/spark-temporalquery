@@ -79,9 +79,13 @@ object TemporalQueryUtil {
      */
     def temporalLeftJoinNew( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      if (rnkExpressions.nonEmpty) logger.warn("rnkExpressions not implemented yet !!!")
       val df1Combined = df1.temporalCombine()
-      val df2Combined = df2.temporalCombine()
+      val df2Combined = if (rnkExpressions.nonEmpty) {
+        df2
+          .temporalCleanupExtend(keys, rnkExpressions, extend = false, fillGapsWithNull = false)
+          .drop("_defined")
+          .temporalCombine()
+      } else  df2.temporalCombine()
       extendedUnionImpl( temporalKeyJoinImpl( df1Combined,df2Combined,keys) )( temporalLeftAntiJoinImpl( df1Combined,df2Combined,keys,additionalJoinFilterCondition) )(ss)
     }
 
@@ -110,9 +114,10 @@ object TemporalQueryUtil {
      * - aggExpressions: Beim Bereinigen zu erstellende Aggregationen
      * - rnkFilter: Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
      */
-    def temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Seq(), rnkFilter:Boolean = true )
+    def temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Seq()
+                               , rnkFilter:Boolean = true , extend: Boolean = true, fillGapsWithNull: Boolean = true )
                              (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalCleanupExtendImpl( df1.temporalCombine(), keys, rnkExpressions, aggExpressions, rnkFilter )
+      temporalCleanupExtendImpl( df1.temporalCombine(), keys, rnkExpressions, aggExpressions, rnkFilter, extend, fillGapsWithNull )
     }
 
     /**
@@ -229,11 +234,12 @@ object TemporalQueryUtil {
   /**
    * cleanup overlaps, fill holes and extend to min/maxDate
    */
-  private def temporalCleanupExtendImpl( df:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)], rnkFilter:Boolean )
+  private def temporalCleanupExtendImpl( df:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)]
+                                         , rnkFilter:Boolean , extend: Boolean = true, fillGapsWithNull: Boolean = true )
                                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     import ss.implicits._
 
-    val df_join = temporalUnifyRangesImpl( df, keys, extend = true, fillGapsWithNull = true)
+    val df_join = temporalUnifyRangesImpl( df, keys, extend, fillGapsWithNull)
       .withColumn("_defined", col(hc.toColName).isNotNull)
 
     // add aggregations if defined, implemented as analytical functions...£

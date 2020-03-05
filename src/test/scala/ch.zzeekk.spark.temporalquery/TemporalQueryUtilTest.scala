@@ -70,6 +70,19 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
+  test("temporalCleanupExtend_dfMap_NoExtendFillgaps") {
+    val actual = dfMap.temporalCleanupExtend(Seq("id"),Seq($"img"),extend=false,fillGapsWithNull=false)
+    val expected = Seq(
+      (0, Some("A"), Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
+      (0, Some("B"), Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999"), true),
+      (0, Some("D"), Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), true)
+    ).toDF("id","img","gueltig_ab","gueltig_bis","_defined")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCleanupExtend_dfMap_NoExtendFillgaps",dfMap)(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalCleanupExtend_dfDirtyTimeRanges") {
     val actual = dfDirtyTimeRanges.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName),$"wert"))
     val expected = Seq(
@@ -92,6 +105,25 @@ class TemporalQueryUtilTest extends FunSuite {
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfDirtyTimeRanges",dfDirtyTimeRanges.where($"id"===1))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps") {
+    val actual = dfDirtyTimeRanges.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName),$"wert"),extend=false,fillGapsWithNull=false)
+    val expected = Seq(
+      (0, Some(3.14) , Timestamp.valueOf("2019-01-01 00:00:00.124"), Timestamp.valueOf("2019-01-05 12:34:56.123"), true),
+      (0, Some(2.72) , Timestamp.valueOf("2019-01-05 12:34:56.124"), Timestamp.valueOf("2019-02-01 02:34:56.124"), true),
+      (0, Some(13.0) , Timestamp.valueOf("2019-02-01 02:34:56.125"), Timestamp.valueOf("2019-04-04 00:00:0")     , true),
+      (0, Some(18.17), Timestamp.valueOf("2020-01-01 01:00:0")     , defaultConfig.maxDate                       , true),
+      (1, Some(-1.0) , Timestamp.valueOf("2019-01-01 00:00:0.124") , Timestamp.valueOf("2019-02-02 00:00:0")     , true),
+      (1, Some(0.1)  , Timestamp.valueOf("2019-03-01 00:00:0")     , Timestamp.valueOf("2019-03-01 00:00:00.001"), true),
+      (1, Some(1.2)  , Timestamp.valueOf("2019-03-01 00:00:1.001") , Timestamp.valueOf("2019-03-01 00:00:01.002"), true),
+      (1, Some(-2.0) , Timestamp.valueOf("2019-03-03 01:00:0")     , Timestamp.valueOf("2021-12-01 02:34:56.1"), true)
+    ).toDF("id","wert","gueltig_ab","gueltig_bis","_defined")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps"
+      ,dfDirtyTimeRanges.where($"id"===1))(actual)(expected)
     assert(resultat)
   }
 
@@ -276,6 +308,22 @@ class TemporalQueryUtilTest extends FunSuite {
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalLeftJoinNew_rightMap",Seq(dfLeft,dfMap))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalLeftJoinNew_rightMapWithrnkExpressions") {
+    // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
+    val actual = dfLeft.temporalLeftJoinNew(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val expected = Seq(
+      (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("D"),Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999"))
+    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalLeftJoinNew_rightMapWithrnkExpressions",Seq(dfLeft,dfMap))(actual)(expected)
     assert(resultat)
   }
 
