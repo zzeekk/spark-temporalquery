@@ -79,13 +79,16 @@ object TemporalQueryUtil {
      */
     def temporalLeftJoinNew( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+      logger.debug("temporalLeftJoinNew: START")
       val df1Combined = df1.temporalCombine()
+      logger.debug(s"df1Combined: ${df1Combined.schema.simpleString}")
       val df2Combined = if (rnkExpressions.nonEmpty) {
         df2
           .temporalCleanupExtend(keys, rnkExpressions, extend = false, fillGapsWithNull = false)
           .drop("_defined")
           .temporalCombine()
       } else  df2.temporalCombine()
+      logger.debug(s"df2Combined: ${df2Combined.schema.simpleString}")
       extendedUnionImpl( temporalKeyJoinImpl( df1Combined,df2Combined,keys) )( temporalLeftAntiJoinImpl( df1Combined,df2Combined,keys,additionalJoinFilterCondition) )(ss)
     }
 
@@ -287,7 +290,6 @@ object TemporalQueryUtil {
       .and(additionalJoinFilterCondition)
 
     val dfAntiJoin = df1Prepared.join(df2Prepared, joinCondition, "leftanti")
-    logger.debug(s"temporalLeftAntiJoinImpl: dfAntiJoin.count() = ${dfAntiJoin.count()}")
     logger.debug(s"temporalLeftAntiJoinImpl: dfAntiJoin.schema = ${dfAntiJoin.schema.treeString}")
 
     val df1ExceptAntiJoin = df1Prepared.except(dfAntiJoin)
@@ -296,21 +298,26 @@ object TemporalQueryUtil {
       .select(resultColumnsDf1 :+ col(hc.fromColName2) :+ col(hc.toColName2) :_*)
     logger.debug(s"temporalLeftAntiJoinImpl: dfJoin.schema = ${dfJoin.schema.treeString}")
     val df2Combined = temporalCombineImpl(dfJoin.select(hc.fromColName2, hc.toColName2+:joinColumns :_*), Seq())(ss,TemporalQueryConfig(hc.minDate:Timestamp,hc.maxDate,hc.fromColName2,hc.toColName2,hc.additionalTechnicalColNames))
-    logger.debug(s"temporalLeftAntiJoinImpl: df2Combined.count() = ${df2Combined.count()}")
     logger.debug(s"temporalLeftAntiJoinImpl: df2Combined.schema = ${df2Combined.schema.treeString}")
 
     val dfComplementJoin = if (joinColumns.isEmpty) df1ExceptAntiJoin.crossJoin(df2Combined) else {
       df1ExceptAntiJoin.join(df2Combined, joinColumns, "inner")
     }
-    val dfComplement = dfComplementJoin
+    logger.debug(s"temporalLeftAntiJoinImpl: dfComplementJoin.schema = ${dfComplementJoin.schema.treeString}")
+
+    val dfComplementJoin_complementArray = dfComplementJoin
       .groupBy(resultColumnsDf1:_*)
       .agg(collect_set(struct(col(hc.fromColName2).as("_1"),col(hc.toColName2).as("_1"))).as("subtrahend"))
-      .withColumn("complements", explode(udf_temporalComplement(hc)(col(hc.fromColName), col(hc.toColName), col("subtrahend"))))
+      .withColumn("complement_array", udf_temporalComplement(hc)(col(hc.fromColName), col(hc.toColName), col("subtrahend")))
+      .cache()
+    logger.debug(s"temporalLeftAntiJoinImpl: dfComplementJoin_complementArray.schema = ${dfComplementJoin_complementArray.schema.treeString}")
+
+    val dfComplement = dfComplementJoin_complementArray
+      .withColumn("complements", explode(col("complement_array")))
       .drop("subtrahend",hc.fromColName,hc.toColName)
       .withColumn(hc.fromColName,col("complements._1"))
       .withColumn(hc.toColName,col("complements._2"))
       .select(resultColumns.head, resultColumns.tail :_*)
-    logger.debug(s"temporalLeftAntiJoinImpl: dfComplement.count() = ${dfComplement.count()}")
     logger.debug(s"temporalLeftAntiJoinImpl: dfComplement.schema = ${dfComplement.schema.treeString}")
 
     dfAntiJoin.union(dfComplement)

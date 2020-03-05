@@ -103,25 +103,22 @@ object UDF extends Serializable {
    * @return [validFrom, validTo] ∖ (⋃ subtrahends)
    */
   def temporalComplement(validFrom: Timestamp, validTo: Timestamp, subtrahends: Seq[Row])(implicit hc:TemporalQueryConfig): Seq[(Timestamp,Timestamp)] = {
-    logger.debug(s"temporalComplement: validity = [$validFrom , $validTo]")
-    val subtrahendsSorted: Seq[(Timestamp, Timestamp)] = subtrahends
+    logger.debug(s"temporalComplement: START validity = [$validFrom , $validTo]")
+    val subtrahendsSorted: List[(Timestamp, Timestamp)] = subtrahends
       .map(r => (r.getTimestamp(0),r.getTimestamp(1)))
       .sortWith({(x,y) => x._1.before(y._1)})
       .filterNot({x => validTo.before(x._1)})
       .filterNot({x => validFrom.after(x._2)})
+      .toList
     logger.debug(s"temporalComplement: subtrahendsSorted = ${subtrahendsSorted.mkString(" U ")}")
 
     def getOneComplement(minuend: (Timestamp, Timestamp), subtrahend: (Timestamp,Timestamp)):  Seq[(Timestamp,Timestamp)] = {
-      logger.debug(s"         getOneComplement: minuend = $minuend")
-      logger.debug(s"         getOneComplement: subtrahend = $subtrahend")
       List( (successorTime(subtrahend._2),minuend._2) , (minuend._1,predecessorTime(subtrahend._1)) )
         .filterNot(x => x._2.before(x._1))
     }
 
     def subtractOneSubtrahend(res: Seq[(Timestamp, Timestamp)], subtrahend: (Timestamp,Timestamp)):  Seq[(Timestamp,Timestamp)] = {
-      logger.debug(s"   subtractOneSubtrahend: res.size = ${res.size}")
-      logger.debug(s"   subtractOneSubtrahend: res = ${res.mkString(" U ")}")
-      logger.debug(s"   subtractOneSubtrahend: subtrahend = $subtrahend")
+      logger.debug(s"temporalComplement.subtractOneSubtrahend: START subtrahend = $subtrahend")
       getOneComplement(res.head, subtrahend) ++ res.tail
     }
 
