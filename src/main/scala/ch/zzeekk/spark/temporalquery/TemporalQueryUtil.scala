@@ -232,24 +232,22 @@ object TemporalQueryUtil {
   private def temporalCleanupExtendImpl( df:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)], rnkFilter:Boolean )
                                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     import ss.implicits._
-    // get ranges
-    val df_ranges = temporalRangesImpl( df, keys, extend=true )
-    val keyCondition = createKeyCondition( df, df_ranges, keys )
-    // left join back on input df
-    val df_join = df_ranges.join( df, keyCondition and $"range_von">=col(hc.fromColName) and $"range_von"<=col(hc.toColName), "left" )
+
+    val df_join = temporalUnifyRangesImpl( df, keys, extend = true, fillGapsWithNull = true)
       .withColumn("_defined", col(hc.toColName).isNotNull)
+
     // add aggregations if defined, implemented as analytical functions...£
     val df_agg = aggExpressions.foldLeft( df_join ){
-      case (df_acc, (name,expr)) => df_acc.withColumn(name, expr.over(Window.partitionBy( keys.map(df_ranges(_)):+$"range_von":_*)))
+      case (df_acc, (name,expr)) => df_acc.withColumn(name, expr.over(Window.partitionBy( keys.map(df_join(_)):+ df_join(hc.fromColName) :_*)))
     }
     // Prioritize and clean overlaps
     val df_clean = if (rnkExpressions.nonEmpty) {
-      val df_rnk = df_agg.withColumn("_rnk", row_number.over(Window.partitionBy(keys.map(df_ranges(_)) :+ $"range_von": _*).orderBy(rnkExpressions: _*)))
+      val df_rnk = df_agg.withColumn("_rnk", row_number.over(Window.partitionBy(keys.map(df_join(_)) :+ df_join(hc.fromColName) : _*).orderBy(rnkExpressions: _*)))
       if (rnkFilter) df_rnk.where($"_rnk"===1) else df_rnk
     } else df_agg
     // select final schema
-    val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++ aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq($"_rnk") else Seq()) :+
-      $"range_von".as(hc.fromColName) :+ $"range_bis".as(hc.toColName) :+ $"_defined"
+    val selCols = keys.map(df_join(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++ aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq($"_rnk") else Seq()) :+
+      df_join(hc.fromColName) :+ df_join(hc.toColName) :+ $"_defined"
     df_clean.select(selCols:_*)
   }
 
@@ -334,14 +332,15 @@ object TemporalQueryUtil {
   /**
    * Unify ranges
    */
-  private def temporalUnifyRangesImpl( df:DataFrame, keys:Seq[String] )
+  private def temporalUnifyRangesImpl( df:DataFrame, keys:Seq[String], extend: Boolean = false, fillGapsWithNull: Boolean = false )
                                      (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     // get ranges
-    val df_ranges = temporalRangesImpl( df, keys, extend=false )
+    val df_ranges = temporalRangesImpl( df, keys, extend )
     val keyCondition = createKeyCondition( df, df_ranges, keys )
     // join back on input df
-    val df_join = df_ranges.join( df, keyCondition and $"range_von">=col(hc.fromColName) and $"range_von"<=col(hc.toColName) )
+    val joinType = if (fillGapsWithNull) "left" else "inner"
+    val df_join = df_ranges.join( df, keyCondition and $"range_von".between(col(hc.fromColName),col(hc.toColName)), joinType )
     // select result
     val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_join(_)) :+
       $"range_von".as(hc.fromColName) :+ $"range_bis".as(hc.toColName)
