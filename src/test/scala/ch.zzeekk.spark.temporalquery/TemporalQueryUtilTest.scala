@@ -40,6 +40,61 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
+  test("temporalCleanupExtend_dfLeft") {
+    val actual = dfLeft.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName)))
+    val rowsExpected = Seq((0,4.2,defaultConfig.minDate,defaultConfig.maxDate))
+    val expected = Seq(
+      (0, None     , defaultConfig.minDate                   , Timestamp.valueOf("2017-12-09 23:59:59.999"), true),
+      (0, Some(4.2), Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999"), true),
+      (0, None     , Timestamp.valueOf("2018-12-09 00:00:00"), defaultConfig.maxDate, true)
+    ).toDF("id","wert_l","gueltig_ab","gueltig_bis","_defined")
+    //    val expectedWithActualColumns = expected.select(actual.columns.map(col):_*)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCleanupExtend_dfLeft",dfLeft)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalCleanupExtend_dfMap") {
+    val actual = dfMap.temporalCleanupExtend(Seq("id"),Seq($"img"))
+    val expected = Seq(
+      (0, None     , defaultConfig.minDate                   , Timestamp.valueOf("2017-12-31 23:59:59.999"), true),
+      (0, Some("A"), Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
+      (0, Some("B"), Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999"), true),
+      (0, Some("D"), Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), true),
+      (0, None     , Timestamp.valueOf("2018-04-01 00:00:00"), defaultConfig.maxDate, true)
+    ).toDF("id","img","gueltig_ab","gueltig_bis","_defined")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCleanupExtend_dfMap",dfMap)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalCleanupExtend_dfDirtyTimeRanges") {
+    val actual = dfDirtyTimeRanges.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName),$"wert"))
+    val expected = Seq(
+      (0, None       , defaultConfig.minDate                       , Timestamp.valueOf("2019-01-01 00:00:00.123"), true),
+      (0, Some(3.14) , Timestamp.valueOf("2019-01-01 00:00:00.124"), Timestamp.valueOf("2019-01-05 12:34:56.123"), true),
+      (0, Some(2.72) , Timestamp.valueOf("2019-01-05 12:34:56.124"), Timestamp.valueOf("2019-02-01 02:34:56.124"), true),
+      (0, Some(13.0) , Timestamp.valueOf("2019-02-01 02:34:56.125"), Timestamp.valueOf("2019-04-04 00:00:0")     , true),
+      (0, None       , Timestamp.valueOf("2019-04-04 00:00:00.001"), Timestamp.valueOf("2020-01-01 00:59:59.999"), true),
+      (0, Some(18.17), Timestamp.valueOf("2020-01-01 01:00:0")     , defaultConfig.maxDate                       , true),
+      (1, None       , defaultConfig.minDate                       , Timestamp.valueOf("2019-01-01 00:00:00.123"), true),
+      (1, Some(-1.0) , Timestamp.valueOf("2019-01-01 00:00:0.124") , Timestamp.valueOf("2019-02-02 00:00:0")     , true),
+      (1, None       , Timestamp.valueOf("2019-02-02 00:00:0.001") , Timestamp.valueOf("2019-02-28 23:59:59.999"), true),
+      (1, Some(0.1)  , Timestamp.valueOf("2019-03-01 00:00:0")     , Timestamp.valueOf("2019-03-01 00:00:00.001"), true),
+      (1, None       , Timestamp.valueOf("2019-03-01 00:00:00.002"), Timestamp.valueOf("2019-03-01 00:00:1"), true),
+      (1, Some(1.2)  , Timestamp.valueOf("2019-03-01 00:00:1.001") , Timestamp.valueOf("2019-03-01 00:00:01.002"), true),
+      (1, None       , Timestamp.valueOf("2019-03-01 00:00:1.003") , Timestamp.valueOf("2019-03-03 00:59:59.999"), true),
+      (1, Some(-2.0) , Timestamp.valueOf("2019-03-03 01:00:0")     , Timestamp.valueOf("2021-12-01 02:34:56.1"), true),
+      (1, None       , Timestamp.valueOf("2021-12-01 02:34:56.101"), defaultConfig.maxDate, true)
+    ).toDF("id","wert","gueltig_ab","gueltig_bis","_defined")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCleanupExtend_dfDirtyTimeRanges",dfDirtyTimeRanges.where($"id"===1))(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalExtendRange_dfLeft") {
     // argument: dfLeft from object TestUtils
     val actual = dfLeft.temporalExtendRange(Seq("id"))
@@ -244,28 +299,11 @@ class TemporalQueryUtilTest extends FunSuite {
     val expected = Seq(
       // img = {}
       (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
-      // img = {A,B}
       (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      // img = {B,C}
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-19 23:59:59.999")),
-      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-19 23:59:59.999")),
-      // img = {B,C,D}
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
-      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
-      (0,4.2,Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
-      // img = {B,C,D,X}
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
-      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
-      (0,4.2,Some("D"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
       (0,4.2,Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
-      // img = {B,C,D}
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,4.2,Some("D"),Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      // img = {D}
-      (0,4.2,Some("D"),Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
-      // img = {}
       (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999"))
     ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
@@ -283,10 +321,7 @@ class TemporalQueryUtilTest extends FunSuite {
       // img = {A}
       (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
       // img = {B}
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-19 23:59:59.999")),
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
       // img = {D}
       (0,4.2,Some("D"),Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
       // img = {}
@@ -316,9 +351,7 @@ class TemporalQueryUtilTest extends FunSuite {
       // img = {A}
       (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
       // img = {B}
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
       // img = null
       (0,4.2,None,Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-29 23:59:59.999")),
       // img = {D}

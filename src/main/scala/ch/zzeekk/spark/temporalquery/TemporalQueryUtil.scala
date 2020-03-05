@@ -112,7 +112,7 @@ object TemporalQueryUtil {
      */
     def temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Seq(), rnkFilter:Boolean = true )
                              (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalCleanupExtendImpl( df1, keys, rnkExpressions, aggExpressions, rnkFilter )
+      temporalCleanupExtendImpl( df1.temporalCombine(), keys, rnkExpressions, aggExpressions, rnkFilter )
     }
 
     /**
@@ -248,7 +248,7 @@ object TemporalQueryUtil {
     // select final schema
     val selCols = keys.map(df_join(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++ aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq($"_rnk") else Seq()) :+
       df_join(hc.fromColName) :+ df_join(hc.toColName) :+ $"_defined"
-    df_clean.select(selCols:_*)
+    temporalCombineImpl( df_clean.select(selCols:_*), Seq() )
   }
 
   /**
