@@ -41,18 +41,6 @@ object TemporalQueryUtil {
   implicit class TemporalDataFrame(df1: Dataset[Row]) {
 
     /**
-     * returns the union of df1 and df2
-     * the set and the order of the columns may differ
-     * the returned data frame will have all columns occuring in any frame,
-     * i.e. the return.columns = df.columns ++ df2.columns
-     *
-     * @param df2 : 2nd dataframe to form the union with
-     * @param ss : an open spark session
-     * @return union of the frames
-     */
-    def extendedUnion(df2: DataFrame)(implicit ss: SparkSession): DataFrame = extendedUnionImpl(df1)(df2)(ss)
-
-    /**
      * Implementiert ein inner-join von historisierten Daten über eine Liste von gleichbenannten Spalten
      */
     def temporalInnerJoin( df2:DataFrame, keys:Seq[String] )
@@ -77,21 +65,6 @@ object TemporalQueryUtil {
      *   Records aus df1 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet.
      * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
      */
-    def temporalLeftJoinNew( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
-                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      logger.debug("temporalLeftJoinNew: START")
-      val df1Combined = df1.temporalCombine()
-      logger.debug(s"df1Combined: ${df1Combined.schema.simpleString}")
-      val df2Combined = if (rnkExpressions.nonEmpty) {
-        df2
-          .temporalCleanupExtend(keys, rnkExpressions, extend = false, fillGapsWithNull = false)
-          .drop("_defined")
-          .temporalCombine()
-      } else  df2.temporalCombine()
-      logger.debug(s"df2Combined: ${df2Combined.schema.simpleString}")
-      extendedUnionImpl( temporalKeyJoinImpl( df1Combined,df2Combined,keys) )( temporalLeftAntiJoinImpl( df1Combined,df2Combined,keys,additionalJoinFilterCondition) )(ss)
-    }
-
     def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       temporalKeyLeftJoinImpl( df1.temporalCombine(), df2.temporalCombine(), keys, rnkExpressions, additionalJoinFilterCondition )
@@ -164,23 +137,6 @@ object TemporalQueryUtil {
   }
 
   // helpers
-
-  private def extendedUnionImpl(df1: DataFrame)(df2: DataFrame)(implicit ss: SparkSession): DataFrame = {
-    // returns the union of df1 and df2
-    // the set and the order of the columns may differ
-    // the returned data frame will have all columns occuring in any frame
-
-    // We need to identify two columns by their name only, because some columns have changed their type over the time
-    val cols1 = new StructType(df1.schema.filterNot(f=>df2.schema.fieldNames.contains(f.name)).toArray)
-    val cols2 = new StructType(df2.schema.filterNot(f=>df1.schema.fieldNames.contains(f.name)).toArray)
-
-    val df1_extended = df1.crossJoin(ss.createDataFrame(rows=java.util.Arrays.asList(Row.fromSeq(Seq.fill(cols2.size)(null)))
-      ,schema=cols2))
-    val df2_extended = df2.crossJoin(ss.createDataFrame(rows=java.util.Arrays.asList(Row.fromSeq(Seq.fill(cols1.size)(null)))
-      ,schema=cols1))
-
-    df1_extended.unionByName(df2_extended)
-  }
 
   private def createKeyCondition( df1:DataFrame, df2:DataFrame, keys:Seq[String] ) : Column = {
     keys.foldLeft(lit(true)){ case (cond,key) => cond and df1(key)===df2(key) }
