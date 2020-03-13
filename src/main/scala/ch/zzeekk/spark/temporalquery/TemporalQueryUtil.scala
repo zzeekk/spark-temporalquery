@@ -70,13 +70,8 @@ object TemporalQueryUtil extends LazyLogging {
     }
 
     /**
-     * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-     * - rnkExpressions: Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
-     *   wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt. Dies entspricht also ein join
-     *   mit der Einschränkung, dass kein Muliplikation der Records in df1 stattfinden kann.
-     *   Soll df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
-     *   Records aus df1 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet.
-     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * Implementiert ein left-anti-join von historisierten Daten über eine Liste von gleichbenannten Spalten
+     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-anti-join
      */
     def temporalLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true) )
                             (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
