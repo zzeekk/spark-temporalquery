@@ -1,27 +1,43 @@
 package ch.zzeekk.spark.temporalquery
 
 import java.sql.Timestamp
-
 import org.apache.spark.sql.functions.col
+import org.scalatest.FunSuite
+
 import TemporalQueryUtil._
 import TestUtils._
-import org.scalatest.FunSuite
 
 class TemporalQueryUtilTest extends FunSuite {
   import ss.implicits._
 
-  test("plusMillisecond") {
-    val argument = Timestamp.valueOf("2019-09-01 14:00:00")
-    val actual = plusMillisecond(argument)
-    val expected = Timestamp.valueOf("2019-09-01 14:00:00.001")
-    assert(actual==expected)
+  test("roundDiscreteTime_dfLeft") {
+    val actual = dfLeft.temporalRoundDiscreteTime(defaultConfig)
+    val expected = dfLeft
+
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("roundDiscreteTime",Seq(dfRight))(actual)(expected)
+    assert(resultat)
   }
 
-  test("minusMillisecond") {
-    val argument = Timestamp.valueOf("2019-09-01 14:00:00")
-    val actual = minusMillisecond(argument)
-    val expected = Timestamp.valueOf("2019-09-01 13:59:59.999")
-    assert(actual==expected)
+  test("roundDiscreteTime_dfDirtyTimeRanges") {
+    val actual = dfDirtyTimeRanges.temporalRoundDiscreteTime(defaultConfig)
+    val zeilen_expected: Seq[(Int, String, String, Double)] = Seq(
+      (0,"2019-01-01 00:00:00.124","2019-01-05 12:34:56.123", 3.14),
+      (0,"2019-01-05 12:34:56.124","2019-02-01 02:34:56.123", 2.72),
+      (0,"2019-02-01 01:00:0"     ,"2019-02-01 02:34:56.124", 2.72),
+      (0,"2019-02-01 02:34:56.125","2019-03-03 00:00:0"     ,13.0 ),
+      (0,"2019-03-03 00:00:0"     ,"2019-04-04 00:00:0"     ,13.0 ),
+      (0,"2020-01-01 01:00:0"     ,"9999-12-31 00:00:0"     ,18.17),
+      (1,"2019-03-01 00:00:0"     ,"2019-03-01 00:00:0"     , 0.1 ), // duration extended to 1 millisecond
+      (1,"2019-03-01 00:00:0.001" ,"2019-03-01 00:00:0.001" , 0.1 ), // duration extended to 1 millisecond
+      (1,"2019-03-01 00:00:1.001" ,"2019-03-01 00:00:01.002", 1.2 ), // duration extended to 2 milliseconds
+      (1,"2019-01-01 00:00:0.124" ,"2019-02-02 00:00:0"     ,-1.0 ),
+      (1,"2019-03-03 01:00:0"     ,"2021-12-01 02:34:56.1"  ,-2.0 ))
+    val expected = zeilen_expected.map(makeRowsWithTimeRange[Int, Double]).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
+
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("roundDiscreteTime",Seq(dfDirtyTimeRanges))(actual)(expected)
+    assert(resultat)
   }
 
   test("temporalExtendRange_dfLeft") {
@@ -38,7 +54,6 @@ class TemporalQueryUtilTest extends FunSuite {
   }
 
   test("temporalExtendRange_dfRight_id") {
-    // argument: dfRight from object TestUtils
     val actual = dfRight.temporalExtendRange(Seq("id"))
     val rowsExpected = Seq(
       (0,Some(97.15) ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-01-31 23:59:59.999")),
@@ -157,17 +172,51 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
+  test("temporalLeftJoin_rightMapWithGapsAndRnkExpressions") {
+    // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
+    val argumentRight = Seq(
+      (0, "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", "A"),
+      (0, "2018-01-01 00:00:00", "2018-02-28 23:59:59.999", "B"),
+      (0, "2018-02-01 00:00:00", "2018-02-28 23:59:59.999", "C"),
+      (0, "2018-03-30 00:00:00", "2018-03-31 23:59:59.999", "D"),
+      (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X"))
+      .map(makeRowsWithTimeRange)
+      .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
+
+    val actual = dfLeft.temporalLeftJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val expected = Seq(
+      // img = {}
+      (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      // img = {A}
+      (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      // img = {B}
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      // img = null
+      (0,4.2,None,Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-29 23:59:59.999")),
+      // img = {D}
+      (0,4.2,Some("D"),Timestamp.valueOf("2018-03-30 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      // img = {}
+      (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")))
+      .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalLeftJoin_rightMapWithrnkExpressions",Seq(dfLeft,argumentRight))(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalCombine_dfRight") {
     val actual = dfRight.temporalCombine()
     val rowsExpected = Seq(
-      (0,Timestamp.valueOf("2018-01-01 00:00:00.0"),Timestamp.valueOf("2018-01-31 23:59:59.999"),Some(97.15) ),
-      (0,Timestamp.valueOf("2018-06-01 05:24:11.0"),Timestamp.valueOf("9999-12-31 23:59:59.999"),Some(97.15) ),
-      (1,Timestamp.valueOf("2018-01-01 00:00:00.0"),Timestamp.valueOf("2018-12-31 23:59:59.999"),None        ),
-      (1,Timestamp.valueOf("2019-01-01 00:00:00.0"),Timestamp.valueOf("2019-12-31 23:59:59.999"),Some(2019.0)),
-      (1,Timestamp.valueOf("2020-01-01 00:00:00.0"),Timestamp.valueOf("2020-12-31 23:59:59.999"),Some(2020.0)),
-      (1,Timestamp.valueOf("2021-01-01 00:00:00.0"),Timestamp.valueOf("2099-12-31 23:59:59.999"),None        )
+      (0,"2018-01-01 00:00:00.0","2018-01-31 23:59:59.999",Some(97.15) ),
+      (0,"2018-06-01 05:24:11.0","9999-12-31 00:00:0"     ,Some(97.15) ),
+      (1,"2018-01-01 00:00:00.0","2018-12-31 23:59:59.999",None        ),
+      (1,"2019-01-01 00:00:00.0","2019-12-31 23:59:59.999",Some(2019.0)),
+      (1,"2020-01-01 00:00:00.0","2020-12-31 23:59:59.999",Some(2020.0)),
+      (1,"2021-01-01 00:00:00.0","2099-12-31 23:59:59.999",None        )
     )
-    val expected = rowsExpected.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
+    val expected = rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalCombine_dfRight",dfRight)(actual)(expected)
@@ -177,19 +226,38 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCombine_dfMapToCombine") {
     val actual = dfMapToCombine.temporalCombine()
     val rowsExpected = Seq(
-      (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), Some("A")),
-      (0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-02-03 23:59:59.999"), Some("B")),
-      (0, Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2020-04-30 23:59:59.999"), None),
-      (0, Timestamp.valueOf("2020-06-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), None),
-      (1, Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2020-04-30 23:59:59.999"), Some("one")),
-      (1, Timestamp.valueOf("2020-06-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), Some("one")),
-      (0, Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), Some("D")),
-      (0, Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"), Some("X"))
+      (0,"2018-01-01 00:00:00","2018-12-31 23:59:59.999", Some("A")),
+      (0,"2018-01-01 00:00:00","2018-02-03 23:59:59.999", Some("B")),
+      (0,"2018-02-01 00:00:00","2020-04-30 23:59:59.999", None),
+      (0,"2020-06-01 00:00:00","2020-12-31 23:59:59.999", None),
+      (1,"2018-02-01 00:00:00","2020-04-30 23:59:59.999", Some("one")),
+      (1,"2020-06-01 00:00:00","2020-12-31 23:59:59.999", Some("one")),
+      (0,"2018-02-20 00:00:00","2018-03-31 23:59:59.999", Some("D")),
+      (0,"2018-02-25 14:15:16.123","2018-02-25 14:15:16.123", Some("X"))
     )
-    val expected = rowsExpected.toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
+    val expected = rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
     val resultat = dfEqual(actual)(expected)
 
-    if (!resultat) printFailedTestResult("temporalCombine_dfRight",dfMapToCombine)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalCombine_dfMapToCombine",dfMapToCombine)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalCombine_dirtyTimeRanges") {
+    val actual = dfDirtyTimeRanges.temporalCombine()
+    val rowsExpected = Seq(
+      (0,"2019-01-01 00:00:00.124","2019-01-05 12:34:56.123", 3.14),
+      (0,"2019-01-05 12:34:56.124","2019-02-01 02:34:56.124", 2.72),
+      (0,"2019-02-01 02:34:56.125","2019-04-04 00:00:0"     ,13.0 ),
+      (0,"2020-01-01 01:00:0"     ,"9999-12-31 00:00:0"     ,18.17),
+      (1,"2019-03-01 00:00:0"     ,"2019-03-01 00:00:0.001" , 0.1 ), // duration extended to 2 milliseconds
+      (1,"2019-03-01 00:00:1.001" ,"2019-03-01 00:00:01.002", 1.2 ), // duration extended to 2 milliseconds
+      (1,"2019-01-01 00:00:00.124","2019-02-02 00:00:00"    ,-1.0 ),
+      (1,"2019-03-03 01:00:0"     ,"2021-12-01 02:34:56.1"  ,-2.0 )
+    )
+    val expected = rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCombine_dirtyTimeRanges",dfMapToCombine)(actual)(expected)
     assert(resultat)
   }
 

@@ -1,22 +1,23 @@
 package ch.zzeekk.spark.temporalquery
 
 import java.sql.Timestamp
-
 import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.{UserDefinedFunction, Window, WindowSpec}
 import org.apache.spark.sql.functions._
 
+import TemporalHelpers._
+
 /**
-* Copyright (c) 2017 Zacharias Kull under MIT Licence
-*
-* Usage:
-*
-* import ch.zzeekk.spark-temporalquery.TemporalQueryUtil._ // this imports temporalquery* implicit functions on DataFrame
-* implicit val tqc = TemporalQueryConfig() // configure options for temporalquery operations
-* implicit val sss = ss // make SparkSession implicitly available
-*
-* val df_joined = df1.temporalJoin(df2)
-*/
+ * Copyright (c) 2017 Zacharias Kull under MIT Licence
+ *
+ * Usage:
+ *
+ * import ch.zzeekk.spark-temporalquery.TemporalQueryUtil._ // this imports temporalquery* implicit functions on DataFrame
+ * implicit val tqc = TemporalQueryConfig() // configure options for temporalquery operations
+ * implicit val sss = ss // make SparkSession implicitly available
+ *
+ * val df_joined = df1.temporalJoin(df2)
+ */
 object TemporalQueryUtil {
   val logger: org.slf4j.Logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
@@ -24,10 +25,10 @@ object TemporalQueryUtil {
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
   case class TemporalQueryConfig ( minDate:Timestamp = Timestamp.valueOf("0000-01-01 00:00:00")
-                                 , maxDate:Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
-                                 , fromColName:String    = "gueltig_ab"
-                                 , toColName:String      = "gueltig_bis"
-                                 , additionalTechnicalColNames:Seq[String] = Seq()) {
+                                   , maxDate:Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
+                                   , fromColName:String    = "gueltig_ab"
+                                   , toColName:String      = "gueltig_bis"
+                                   , additionalTechnicalColNames:Seq[String] = Seq()) {
     val fromColName2:String = fromColName+"2"
     val toColName2:String = toColName+"2"
     val technicalColNames:Seq[String] = Seq( fromColName, toColName ) ++ additionalTechnicalColNames
@@ -79,7 +80,10 @@ object TemporalQueryUtil {
     }
 
     /**
-     * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung gibt
+     * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung gibt.
+     * Zuerst wird der Dataframe mittels [[temporalRoundDiscreteTime]] etwas bereinigt, siehe Beschreibung dort
+     *
+     * @return temporal dataframe with combined validities
      */
     def temporalCombine( keys:Seq[String] = Seq() , ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
       if(keys.nonEmpty) logger.warn("Parameter keys is superfluous and therefore ignored. Please refrain from using it!")
@@ -99,21 +103,35 @@ object TemporalQueryUtil {
     def temporalExtendRange( keys:Seq[String]=Seq(), extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
       temporalExtendRangeImpl( df1, keys, extendMin, extendMax )
     }
+
+    /**
+     * Sets the discreteness of the time scale to milliseconds.
+     * Hereby the validity intervals may be shortened on the lower bound and extended on the upper bound.
+     * To the lower bound ceiling is applied whereas to the upper bound flooring.
+     * If the dataframe has a discreteness of millisecond or coarser,
+     * then the only two changes are:
+     * If a timestamp lies outside of [minDate , maxDate] it will be replaced by minDate, maxDate respectively.
+     * Rows for which the validity ends before it starts, i.e. with toCol.before(fromCol), are removed.
+     *
+     * @return temporal dataframe with a discreteness of milliseconds
+     */
+    def temporalRoundDiscreteTime(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(hc))
+
   }
 
   // helpers
-  def plusMillisecond(tstmp: Timestamp)(implicit hc:TemporalQueryConfig) : Timestamp = {
-    if (tstmp==null) tstmp
-    else if (tstmp.before(hc.maxDate)) Timestamp.from(tstmp.toInstant.plusMillis(1))
-    else tstmp
-  }
-  def minusMillisecond(tstmp: Timestamp)(implicit hc:TemporalQueryConfig) : Timestamp = {
-    if (tstmp==null) tstmp
-    else if (tstmp.before(hc.maxDate)) Timestamp.from(tstmp.toInstant.minusMillis(1))
-    else tstmp
-  }
+
   private def createKeyCondition( df1:DataFrame, df2:DataFrame, keys:Seq[String] ) : Column = {
     keys.foldLeft(lit(true)){ case (cond,key) => cond and df1(key)===df2(key) }
+  }
+
+  private def shrinkValidityImpl(df: DataFrame)(udfFloorOrPred: UserDefinedFunction)(implicit hc:TemporalQueryConfig): DataFrame= {
+    val spalten: Seq[String] = df.columns
+    df.withColumn(hc.fromColName,udf_ceilTimestamp(hc)(col({hc.fromColName})))
+      .withColumn(hc.toColName,udfFloorOrPred(col({hc.toColName})))
+      .where(s"${hc.fromColName} <= ${hc.toColName}")
+      // return columns in same order as provided
+      .select(spalten.map(col):_*)
   }
 
   /**
@@ -137,11 +155,9 @@ object TemporalQueryUtil {
    * build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
    */
   private def temporalRangesImpl( df:DataFrame, keys:Seq[String], extend:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-    val udf_plusMillisecond = udf(plusMillisecond _)
-    val udf_minusMillisecond = udf(minusMillisecond _)
     val keyCols = keys.map(col)
     // get start/end-points for every key
-    val df_points = df.select( keyCols :+ col(hc.fromColName).as("_dt"):_*).union( df.select( keyCols :+ udf_plusMillisecond(col(hc.toColName)).as("_dt"):_* ))
+    val df_points = df.select( keyCols :+ col(hc.fromColName).as("_dt"):_*).union( df.select( keyCols :+ udf_plusMillisecond(hc)(col(hc.toColName)).as("_dt"):_* ))
     // if desired, extend every key with min/maxDate-points
     val df_pointsExt = if (extend) {
       df_points
@@ -152,7 +168,7 @@ object TemporalQueryUtil {
     // build ranges
     df_pointsExt
       .withColumnRenamed("_dt", "range_von")
-      .withColumn( "range_bis", udf_minusMillisecond(lead(col("range_von"),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col("range_von")))))
+      .withColumn( "range_bis", udf_minusMillisecond(hc)(lead(col("range_von"),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col("range_von")))))
       .where(col("range_bis").isNotNull)
   }
 
@@ -160,7 +176,7 @@ object TemporalQueryUtil {
    * cleanup overlaps, fill holes and extend to min/maxDate
    */
   private def temporalCleanupExtendImpl( df:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)], rnkFilter:Boolean )
-                           (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+                                       (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     import ss.implicits._
     // get ranges
     val df_ranges = temporalRangesImpl( df, keys, extend=true )
@@ -187,7 +203,7 @@ object TemporalQueryUtil {
    * left outer join
    */
   private def temporalKeyLeftJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column )
-                         (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+                                     (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     // extend df2
     val df2_extended = temporalCleanupExtendImpl( df2, keys, rnkExpressions, Seq(), rnkFilter=true )
@@ -201,12 +217,12 @@ object TemporalQueryUtil {
   private def temporalCombineImpl( df:DataFrame, ignoreColNames:Seq[String]  )
                                  (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
-    val udf_plusMillisecond = udf(plusMillisecond _)
     val dfColumns = df.columns
     val compairCols: Array[String] = dfColumns.diff( ignoreColNames ++ hc.technicalColNames )
     val fenestra: WindowSpec = Window.partitionBy(compairCols.map(col):_*).orderBy(col(hc.fromColName))
 
-    df.withColumn("_consecutive", coalesce(udf_plusMillisecond(lag(col(hc.toColName),1).over(fenestra))===col(hc.fromColName),lit(false)))
+    df.temporalRoundDiscreteTime(hc)
+      .withColumn("_consecutive", coalesce(udf_predecessorTime(hc)(col(hc.fromColName)) <= lag(col(hc.toColName),1).over(fenestra),lit(false)))
       .withColumn("_nb", sum(when($"_consecutive",lit(0)).otherwise(lit(1))).over(fenestra))
       .groupBy( compairCols.map(col):+$"_nb":_*)
       .agg( min(col(hc.fromColName)).as(hc.fromColName) , max(col(hc.toColName)).as(hc.toColName))
@@ -218,7 +234,7 @@ object TemporalQueryUtil {
    * Unify ranges
    */
   private def temporalUnifyRangesImpl( df:DataFrame, keys:Seq[String] )
-                         (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+                                     (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     // get ranges
     val df_ranges = temporalRangesImpl( df, keys, extend=false )
