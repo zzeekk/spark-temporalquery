@@ -2,11 +2,12 @@ package ch.zzeekk.spark.temporalquery
 
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
 import java.sql.Timestamp
-import org.apache.spark.sql._
-import org.apache.spark.sql.functions.{lit,when}
 
-object TestUtils {
-  implicit val logger: org.slf4j.Logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+import com.typesafe.scalalogging.LazyLogging
+import org.apache.spark.sql._
+import org.apache.spark.sql.functions.{lit, when}
+
+object TestUtils extends LazyLogging {
   implicit val ss: SparkSession = SparkSession.builder.master("local").appName("TemporalQueryUtilTest").getOrCreate()
   ss.conf.set("spark.sql.shuffle.partitions", 1)
 
@@ -57,7 +58,7 @@ object TestUtils {
 
   def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame)(expected: DataFrame): Unit = printFailedTestResult(testName, Seq(argument))(actual)(expected)
 
-  def testArgumentExpectedMapWithComment[K,V](experiendum: K=>V)(argExpMapComm: Map[(String,K),V]): Unit = {
+  def testArgumentExpectedMapWithComment[K,V](experiendum: K=>V, argExpMapComm: Map[(String,K),V]): Unit = {
     def logFailure(argument: K, actual:V, expected: V, comment: String): Unit = {
       logger.error("Test case failed !")
       logger.error(s"   argument = $argument")
@@ -78,10 +79,10 @@ object TestUtils {
     assert(results.forall(p=>p))
   }
 
-  def testArgumentExpectedMap[K,V](experiendum: K=>V)(argExpMap: Map[K,V]): Unit = {
+  def testArgumentExpectedMap[K,V](experiendum: K=>V, argExpMap: Map[K,V]): Unit = {
     def addEmptyComment(x : (K,V)): ((String,K),V) = x match {case (k,v) => (("",k),v)}
     val argExpMapWithReason: Map[(String,K),V] = argExpMap.map(addEmptyComment)
-    testArgumentExpectedMapWithComment(experiendum)(argExpMapWithReason)
+    testArgumentExpectedMapWithComment(experiendum, argExpMapWithReason)
   }
 
   // some beautiful nasty data frames for testing

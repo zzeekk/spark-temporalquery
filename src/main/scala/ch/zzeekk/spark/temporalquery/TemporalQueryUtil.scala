@@ -2,11 +2,11 @@ package ch.zzeekk.spark.temporalquery
 
 import java.sql.Timestamp
 
-import ch.zzeekk.spark.temporalquery.UDF._
 import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.{UserDefinedFunction, Window, WindowSpec}
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.StructType
+
+import TemporalHelpers._
 
 /**
  * Copyright (c) 2017 Zacharias Kull under MIT Licence
@@ -98,7 +98,7 @@ object TemporalQueryUtil {
 
     /**
      * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung gibt.
-     * Zuerst wird der Dataframe mittels [[roundDiscreteTime]] etwas bereinigt, siehe Beschreibung dort
+     * Zuerst wird der Dataframe mittels [[temporalRoundDiscreteTime]] etwas bereinigt, siehe Beschreibung dort
      *
      * @return temporal dataframe with combined validities
      */
@@ -132,7 +132,7 @@ object TemporalQueryUtil {
      *
      * @return temporal dataframe with a discreteness of milliseconds
      */
-    def roundDiscreteTime(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(hc))(hc)
+    def temporalRoundDiscreteTime(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(hc))
 
   }
 
@@ -289,7 +289,7 @@ object TemporalQueryUtil {
     val compairCols: Array[String] = dfColumns.diff( ignoreColNames ++ hc.technicalColNames )
     val fenestra: WindowSpec = Window.partitionBy(compairCols.map(col):_*).orderBy(col(hc.fromColName))
 
-    df.roundDiscreteTime(hc)
+    df.temporalRoundDiscreteTime(hc)
       .withColumn("_consecutive", coalesce(udf_predecessorTime(hc)(col(hc.fromColName)) <= lag(col(hc.toColName),1).over(fenestra),lit(false)))
       .withColumn("_nb", sum(when($"_consecutive",lit(0)).otherwise(lit(1))).over(fenestra))
       .groupBy( compairCols.map(col):+$"_nb":_*)

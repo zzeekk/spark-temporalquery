@@ -10,17 +10,17 @@ import TestUtils._
 class TemporalQueryUtilTest extends FunSuite {
   import ss.implicits._
 
-  test("roundDiscreteTime_dfLeft") {
-    val actual = dfLeft.roundDiscreteTime(defaultConfig)
+  test("temporalRoundDiscreteTime_dfLeft") {
+    val actual = dfLeft.temporalRoundDiscreteTime(defaultConfig)
     val expected = dfLeft
 
     val resultat = dfEqual(actual)(expected)
-    if (!resultat) printFailedTestResult("roundDiscreteTime",Seq(dfRight))(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalRoundDiscreteTime",Seq(dfRight))(actual)(expected)
     assert(resultat)
   }
 
-  test("roundDiscreteTime_dfDirtyTimeRanges") {
-    val actual = dfDirtyTimeRanges.roundDiscreteTime(defaultConfig)
+  test("temporalRoundDiscreteTime_dfDirtyTimeRanges") {
+    val actual = dfDirtyTimeRanges.temporalRoundDiscreteTime(defaultConfig)
     val zeilen_expected: Seq[(Int, String, String, Double)] = Seq(
       (0,"2019-01-01 00:00:00.124","2019-01-05 12:34:56.123", 3.14),
       (0,"2019-01-05 12:34:56.124","2019-02-01 02:34:56.123", 2.72),
@@ -36,7 +36,7 @@ class TemporalQueryUtilTest extends FunSuite {
     val expected = zeilen_expected.map(makeRowsWithTimeRange[Int, Double]).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
 
     val resultat = dfEqual(actual)(expected)
-    if (!resultat) printFailedTestResult("roundDiscreteTime",Seq(dfDirtyTimeRanges))(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalRoundDiscreteTime",Seq(dfDirtyTimeRanges))(actual)(expected)
     assert(resultat)
   }
 
