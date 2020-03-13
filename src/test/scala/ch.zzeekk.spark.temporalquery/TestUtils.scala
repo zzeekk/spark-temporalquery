@@ -1,11 +1,11 @@
 package ch.zzeekk.spark.temporalquery
 
-import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
-import java.sql.Timestamp
-
 import com.typesafe.scalalogging.LazyLogging
+import java.sql.Timestamp
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{lit, when}
+
+import TemporalQueryUtil.TemporalQueryConfig
 
 object TestUtils extends LazyLogging {
   implicit val ss: SparkSession = SparkSession.builder.master("local").appName("TemporalQueryUtilTest").getOrCreate()

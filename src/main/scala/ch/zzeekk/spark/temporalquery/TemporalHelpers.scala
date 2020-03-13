@@ -1,5 +1,6 @@
 package ch.zzeekk.spark.temporalquery
 
+import com.typesafe.scalalogging.LazyLogging
 import java.sql.Timestamp
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
@@ -7,11 +8,9 @@ import org.apache.spark.sql.Row
 
 import TemporalQueryUtil.TemporalQueryConfig
 
-object TemporalHelpers extends Serializable {
+object TemporalHelpers extends Serializable with LazyLogging {
   // "extends Serializable" needed to avoid
   // org.apache.spark.SparkException: Task not serializable
-
-  val logger: org.slf4j.Logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
   /**
    * rounds down timestamp tempus to the nearest millisecond
