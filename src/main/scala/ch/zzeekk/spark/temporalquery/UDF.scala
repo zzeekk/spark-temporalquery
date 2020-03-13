@@ -23,6 +23,8 @@ object UDF extends Serializable {
     else if (!tempus.after(hc.minDate)) hc.minDate
     else Timestamp.from(tempus.toInstant.plusMillis(numMillis))
   }
+  def udf_plusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(1) _)
+  def udf_minusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(-1) _)
 
   /**
     * rounds down timestamp tempus to the nearest millisecond
@@ -34,10 +36,11 @@ object UDF extends Serializable {
     // return hc.maxDate in case input tempus is after or equal hc.maxDate
     if (tempus.before(hc.maxDate)) {
       // to start with: resultat = truncate tempus to SECONDS
+
       val resultat: Timestamp = new Timestamp(1000 * (tempus.getTime / 1000)) // mutable and will be mutated
       resultat.setNanos(1000000 * (tempus.getNanos / 1000000))
       resultat
-    }  else hc.maxDate
+    } else hc.maxDate
   }
   def udf_floorTimestamp(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(floorTimestamp _)
 

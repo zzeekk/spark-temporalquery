@@ -115,7 +115,7 @@ object TemporalQueryUtil {
      *
      * @return temporal dataframe with a discreteness of milliseconds
      */
-    def roundDiscreteTime(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(hc))(hc)
+    def roundDiscreteTime(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(hc))
 
   }
 
@@ -155,11 +155,9 @@ object TemporalQueryUtil {
    * build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
    */
   private def temporalRangesImpl( df:DataFrame, keys:Seq[String], extend:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-    val udf_plusMillisecond = udf(addMillisecond(1) _)
-    val udf_minusMillisecond = udf(addMillisecond(-1) _)
     val keyCols = keys.map(col)
     // get start/end-points for every key
-    val df_points = df.select( keyCols :+ col(hc.fromColName).as("_dt"):_*).union( df.select( keyCols :+ udf_plusMillisecond(col(hc.toColName)).as("_dt"):_* ))
+    val df_points = df.select( keyCols :+ col(hc.fromColName).as("_dt"):_*).union( df.select( keyCols :+ udf_plusMillisecond(hc)(col(hc.toColName)).as("_dt"):_* ))
     // if desired, extend every key with min/maxDate-points
     val df_pointsExt = if (extend) {
       df_points
@@ -170,7 +168,7 @@ object TemporalQueryUtil {
     // build ranges
     df_pointsExt
       .withColumnRenamed("_dt", "range_von")
-      .withColumn( "range_bis", udf_minusMillisecond(lead(col("range_von"),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col("range_von")))))
+      .withColumn( "range_bis", udf_minusMillisecond(hc)(lead(col("range_von"),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col("range_von")))))
       .where(col("range_bis").isNotNull)
   }
 
