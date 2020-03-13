@@ -6,13 +6,12 @@ import org.scalatest.FunSuite
 
 import TemporalQueryUtil._
 import TestUtils._
-import UDF._
 
 class TemporalQueryUtilTest extends FunSuite {
   import ss.implicits._
 
   test("roundDiscreteTime_dfLeft") {
-    val actual = dfLeft.roundDiscreteTime(defaultConfig)
+    val actual = dfLeft.temporalRoundDiscreteTime(defaultConfig)
     val expected = dfLeft
 
     val resultat = dfEqual(actual)(expected)
@@ -21,7 +20,7 @@ class TemporalQueryUtilTest extends FunSuite {
   }
 
   test("roundDiscreteTime_dfDirtyTimeRanges") {
-    val actual = dfDirtyTimeRanges.roundDiscreteTime(defaultConfig)
+    val actual = dfDirtyTimeRanges.temporalRoundDiscreteTime(defaultConfig)
     val zeilen_expected: Seq[(Int, String, String, Double)] = Seq(
       (0,"2019-01-01 00:00:00.124","2019-01-05 12:34:56.123", 3.14),
       (0,"2019-01-05 12:34:56.124","2019-02-01 02:34:56.123", 2.72),

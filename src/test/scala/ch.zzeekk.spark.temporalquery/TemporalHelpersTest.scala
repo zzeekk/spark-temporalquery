@@ -1,12 +1,11 @@
 package ch.zzeekk.spark.temporalquery
 
 import java.sql.Timestamp
-
-import TemporalQueryUtil._
+import org.scalatest.FunSuite
 import TestUtils._
-import UDF._
+import TemporalHelpers._
 
-class UDFTest extends org.scalatest.FunSuite {
+class TemporalHelpersTest extends FunSuite {
 
 
   test("addMillisecond") {
@@ -18,7 +17,7 @@ class UDFTest extends org.scalatest.FunSuite {
       ( 0,Timestamp.valueOf("2019-03-03 00:00:0"))            -> Timestamp.valueOf("2019-03-03 00:00:0"),
       ( 0,Timestamp.valueOf("2019-03-03 00:00:0"))            -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
-    testArgumentExpectedMap[(Int,Timestamp), Timestamp](x=>addMillisecond(x._1)(x._2))(argExpMap)
+    testArgumentExpectedMap[(Int,Timestamp), Timestamp](x=>addMillisecond(x._1)(x._2), argExpMap)
   }
 
   test("udf_floorTimestamp") {
@@ -26,7 +25,7 @@ class UDFTest extends org.scalatest.FunSuite {
       ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
       ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](floorTimestamp)(argExpMap)
+    testArgumentExpectedMapWithComment[Timestamp, Timestamp](floorTimestamp, argExpMap)
   }
 
   test("udf_ceilTimestamp") {
@@ -34,7 +33,7 @@ class UDFTest extends org.scalatest.FunSuite {
       ("round up to next millisecond"           ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
       ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](ceilTimestamp)(argExpMap)
+    testArgumentExpectedMapWithComment[Timestamp, Timestamp](ceilTimestamp, argExpMap)
   }
 
   test("udf_predecessorTime") {
@@ -42,7 +41,7 @@ class UDFTest extends org.scalatest.FunSuite {
       ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
       ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59.999")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](predecessorTime)(argExpMap)
+    testArgumentExpectedMapWithComment[Timestamp, Timestamp](predecessorTime, argExpMap)
   }
 
 }

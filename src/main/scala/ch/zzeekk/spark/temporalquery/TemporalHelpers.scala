@@ -6,7 +6,7 @@ import org.apache.spark.sql.functions.udf
 
 import TemporalQueryUtil.TemporalQueryConfig
 
-object UDF extends Serializable {
+object TemporalHelpers extends Serializable {
   // "extends Serializable" needed to avoid
   // org.apache.spark.SparkException: Task not serializable
 

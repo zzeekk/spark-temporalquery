@@ -55,7 +55,7 @@ object TestUtils extends LazyLogging {
 
   def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame)(expected: DataFrame): Unit = printFailedTestResult(testName, Seq(argument))(actual)(expected)
 
-  def testArgumentExpectedMapWithComment[K,V](experiendum: K=>V)(argExpMapComm: Map[(String,K),V]): Unit = {
+  def testArgumentExpectedMapWithComment[K,V](experiendum: K=>V, argExpMapComm: Map[(String,K),V]): Unit = {
     def logFailure(argument: K, actual:V, expected: V, comment: String): Unit = {
       logger.error("Test case failed !")
       logger.error(s"   argument = $argument")
@@ -76,10 +76,10 @@ object TestUtils extends LazyLogging {
     assert(results.forall(p=>p))
   }
 
-  def testArgumentExpectedMap[K,V](experiendum: K=>V)(argExpMap: Map[K,V]): Unit = {
+  def testArgumentExpectedMap[K,V](experiendum: K=>V, argExpMap: Map[K,V]): Unit = {
     def addEmptyComment(x : (K,V)): ((String,K),V) = x match {case (k,v) => (("",k),v)}
     val argExpMapWithReason: Map[(String,K),V] = argExpMap.map(addEmptyComment)
-    testArgumentExpectedMapWithComment(experiendum)(argExpMapWithReason)
+    testArgumentExpectedMapWithComment(experiendum, argExpMapWithReason)
   }
 
   // some beautiful nasty data frames for testing
