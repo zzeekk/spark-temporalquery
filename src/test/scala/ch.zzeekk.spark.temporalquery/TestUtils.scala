@@ -1,19 +1,19 @@
 package ch.zzeekk.spark.temporalquery
 
-import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
-import java.sql.Timestamp
-
 import com.typesafe.scalalogging.LazyLogging
+import java.sql.Timestamp
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{lit, when}
 
-object TestUtils extends LazyLogging {
-  implicit val ss: SparkSession = SparkSession.builder.master("local").appName("TemporalQueryUtilTest").getOrCreate()
-  ss.conf.set("spark.sql.shuffle.partitions", 1)
+import TemporalQueryUtil.TemporalQueryConfig
 
-  import ss.implicits._
+object TestUtils extends LazyLogging {
+  implicit val session: SparkSession = SparkSession.builder.master("local").appName("TemporalQueryUtilTest").getOrCreate()
+  import session.implicits._
+  session.conf.set("spark.sql.shuffle.partitions", 1)
 
   implicit val defaultConfig: TemporalQueryConfig = TemporalQueryConfig()
+  val finisTemporisString: String = defaultConfig.maxDate.toString
 
   def symmetricDifference(df1: DataFrame)(df2: DataFrame): DataFrame = {
     // attention, "except" works on Dataset and not on DataFrame. We need to check that schema is equal.
@@ -43,9 +43,12 @@ object TestUtils extends LazyLogging {
     println("   Arguments ")
     arguments.foreach(printDf)
     println("   Actual ")
+    println(s"  actual.count() =  ${actual.count()}")
     printDf(actual)
     println("   Expected ")
+    println(s"  expected.count() =  ${expected.count()}")
     printDf(expected)
+    println(s"  schemata equal =  ${actual.schema == expected.schema}")
     println("   symmetric Difference ")
     symmetricDifference(actual)(expected)
       .withColumn("_df", when($"_in_first_df","actual").otherwise("expected"))
@@ -98,10 +101,10 @@ object TestUtils extends LazyLogging {
     // gap in history
     (0, "2018-06-01 05:24:11", "2018-10-23 03:50:09.999", Some(97.15)),
     (0, "2018-10-23 03:50:10", "2019-12-31 23:59:59.999", Some(97.15)),
-    (0, "2020-01-01 00:00:00", "9999-12-31 23:59:59.999", Some(97.15)),
+    (0, "2020-01-01 00:00:00", finisTemporisString      , Some(97.15)),
     (1, "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
-    (1, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019)),
-    (1, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020)),
+    (1, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
+    (1, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
     (1, "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None))
   val dfRight: DataFrame = rowsRight.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_r")
   /*
@@ -154,12 +157,20 @@ object TestUtils extends LazyLogging {
     (0,"2019-03-03 00:00:0"           ,"2019-04-04 00:00:0"           ,13.0 ),
     (0,"2019-09-05 02:34:56.1231"     ,"2019-09-05 02:34:56.1239"     ,42.0 ), // duration less than a millisecond without touching bounds of millisecond intervall
     (0,"2020-01-01 01:00:0"           ,"9999-12-31 23:59:59.999999999",18.17),
+    // id = 1
     (1,"2019-01-01 00:00:0.123456789" ,"2019-02-02 00:00:0"           ,-1.0 ),
     (1,"2019-03-01 00:00:0"           ,"2019-03-01 00:00:00.0001"     , 0.1 ), // duration less than a millisecond
-    (1,"2019-03-01 00:00:0.0009"      ,"2019-03-01 00:00:00.001"      , 0.1 ), // duration less than a millisecond
+    (1,"2019-03-01 00:00:0.0009"      ,"2019-03-01 00:00:00.001"      , 0.1 ), // duration less than a millisecond, overlaps with previous record
     (1,"2019-03-01 00:00:1.0009"      ,"2019-03-01 00:00:01.0021"     , 1.2 ), // duration less than a millisecond
     (1,"2019-03-01 00:00:0.0001"      ,"2019-03-01 00:00:00.0009"     , 0.8 ), // duration less than a millisecond
     (1,"2019-03-03 01:00:0"           ,"2021-12-01 02:34:56.1"        ,-2.0 ))
   val dfDirtyTimeRanges: DataFrame = rowsDirtyTimeRanges.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
+
+  val rowsDocumentation: Seq[(Int, String, String, Double)] = Seq(
+    (1,"2019-01-05 12:34:56.123456789","2019-02-01 02:34:56.1235", 2.72),
+    (1,"2019-02-01 01:00:00.0"        ,"2019-02-01 02:34:56.1245", 2.72), // overlaps with previous record
+    (1,"2019-02-01 02:34:56.125"      ,"2019-02-01 02:34:56.1245", 2.72), // ends before it starts
+    (1,"2019-01-01 00:00:0"           ,"2019-12-31 23:59:59.999" ,42.0 ))
+  val dfDocumentation: DataFrame = rowsDocumentation.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
 
 }
