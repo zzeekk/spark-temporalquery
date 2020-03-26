@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery
 
 import java.sql.Timestamp
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col,lit}
 import org.scalatest.FunSuite
 
 import TemporalQueryUtil._
@@ -42,7 +42,6 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalCleanupExtend_dfLeft") {
     val actual = dfLeft.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName)))
-    val rowsExpected = Seq((0,4.2,defaultConfig.minDate,defaultConfig.maxDate))
     val expected = Seq(
       (0, None     , defaultConfig.minDate                   , Timestamp.valueOf("2017-12-09 23:59:59.999"), true),
       (0, Some(4.2), Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999"), true),
@@ -52,6 +51,103 @@ class TemporalQueryUtilTest extends FunSuite {
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfLeft",dfLeft)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalCleanupExtend_dfRight_noExtend_nofillGaps") {
+    val actual = dfRight.temporalCleanupExtend(
+      keys=Seq("id"),
+      rnkExpressions=Seq(col(defaultConfig.fromColName)),
+      extend = false,
+      fillGapsWithNull = false
+    )
+    val expected = Seq(
+      (0, Some(97.15) , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
+      (0, Some(97.15) , Timestamp.valueOf("2018-06-01 05:24:11"), defaultConfig.maxDate, true),
+      (1, None        , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), true),
+      (1, Some(2019.0), Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), true),
+      (1, Some(2020.0), Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), true),
+      (1, None        , Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"), true)
+    ).toDF("id","wert_r","gueltig_ab","gueltig_bis","_defined")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCleanupExtend_dfRight_noExtend_nofillGaps",dfRight)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalCleanupExtend_dfRight_fillGaps_noExtend") {
+    val actual = dfRight.temporalCleanupExtend(
+      keys=Seq("id"),
+      rnkExpressions=Seq(col(defaultConfig.fromColName)),
+      extend = false
+    )
+    val expected = Seq(
+      (0, Some(97.15) , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
+      (0, None        , Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999"), true),
+      (0, Some(97.15) , Timestamp.valueOf("2018-06-01 05:24:11"), defaultConfig.maxDate, true),
+      (1, None        , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), true),
+      (1, Some(2019.0), Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), true),
+      (1, Some(2020.0), Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), true),
+      (1, None        , Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"), true)
+    ).toDF("id","wert_r","gueltig_ab","gueltig_bis","_defined")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCleanupExtend_dfRight_fillGaps_noExtend",dfRight)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalCleanupExtend_dfRight_extend_nofillGaps") {
+    val actual = dfRight.temporalCleanupExtend(
+      keys=Seq("id"),
+      rnkExpressions=Seq(col(defaultConfig.fromColName)),
+      fillGapsWithNull = false
+    )
+    /*
+    Das wäre das gewünschte Resultat, wenn die Historie mit Nullwerten auf [minDate , maxDate] würde.
+    Wegen fillGapsWithNull = false, hat extend = true keinen Effekt.
+
+       val expected = Seq(
+          (0, None        , defaultConfig.minDate                   , Timestamp.valueOf("2017-12-31 23:59:59.999"), true),
+          (0, Some(97.15) , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
+          (0, Some(97.15) , Timestamp.valueOf("2018-06-01 05:24:11"), defaultConfig.maxDate, true),
+          (1, None        , defaultConfig.minDate                   , Timestamp.valueOf("2018-12-31 23:59:59.999"), true),
+          (1, Some(2019.0), Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), true),
+          (1, Some(2020.0), Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), true),
+          (1, None        , Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"), true)
+        ).toDF("id","wert_r","gueltig_ab","gueltig_bis","_defined")
+
+        */
+    val expected = Seq(
+      (0, Some(97.15) , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
+      (0, Some(97.15) , Timestamp.valueOf("2018-06-01 05:24:11"), defaultConfig.maxDate, true),
+      (1, None        , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), true),
+      (1, Some(2019.0), Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), true),
+      (1, Some(2020.0), Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), true),
+      (1, None        , Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"), true)
+    ).toDF("id","wert_r","gueltig_ab","gueltig_bis","_defined")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCleanupExtend_dfRight_extend_nofillGaps",dfRight)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalCleanupExtend_dfRight_extend_fillGaps") {
+    val actual = dfRight.temporalCleanupExtend(
+      keys=Seq("id"),
+      rnkExpressions=Seq(col(defaultConfig.fromColName)))
+    val expected = Seq(
+      (0, None        , defaultConfig.minDate                   , Timestamp.valueOf("2017-12-31 23:59:59.999"), true),
+      (0, Some(97.15) , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
+      (0, None        , Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999"), true),
+      (0, Some(97.15) , Timestamp.valueOf("2018-06-01 05:24:11"), defaultConfig.maxDate, true),
+      (1, None        , defaultConfig.minDate                   , Timestamp.valueOf("2018-12-31 23:59:59.999"), true),
+      (1, Some(2019.0), Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), true),
+      (1, Some(2020.0), Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), true),
+      (1, None        , Timestamp.valueOf("2021-01-01 00:00:00"), defaultConfig.maxDate                       , true)
+    ).toDF("id","wert_r","gueltig_ab","gueltig_bis","_defined")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCleanupExtend_dfRight_extend_fillGaps",dfRight)(actual)(expected)
     assert(resultat)
   }
 
@@ -430,7 +526,7 @@ class TemporalQueryUtilTest extends FunSuite {
     val expected = rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
     val resultat = dfEqual(actual)(expected)
 
-    if (!resultat) printFailedTestResult("temporalCombine_documentation",dfMapToCombine)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalCombine_documentation",dfDocumentation)(actual)(expected)
     assert(resultat)
   }
 

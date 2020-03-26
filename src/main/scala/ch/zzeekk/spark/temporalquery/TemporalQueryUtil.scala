@@ -83,7 +83,12 @@ object TemporalQueryUtil extends LazyLogging {
      * - rnkExpressions: Priorität zum Bereinigen
      * - aggExpressions: Beim Bereinigen zu erstellende Aggregationen
      * - rnkFilter: Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
+     * - extend: Wenn true und fillGapsWithNull=true, dann werden für jeden key Zeilen mit Null-werten hinzugefügt,
+     *           sodass die ganze Zeitachse [minDate , maxDate] von allen keys abgedeckt wird
+     * - fillGapsWithNull: Wenn true, dann werden Lücken in der Historie mit Nullzeilen geschlossen.
+     *   ! fillGapsWithNull muss auf true gesetzt werden, damit extend=true etwas bewirkt !
      */
+    // TODO: entkoppele Parameter extend und fillGapsWithNull
     def temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Seq()
                                , rnkFilter:Boolean = true , extend: Boolean = true, fillGapsWithNull: Boolean = true )
                              (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
