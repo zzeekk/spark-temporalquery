@@ -20,10 +20,7 @@ object TemporalHelpers extends Serializable with LazyLogging {
    * @return rounded down timestamp
    */
   def addMillisecond(numMillis: Int)(tempus: Timestamp)(implicit hc:TemporalQueryConfig) : Timestamp = {
-    if (tempus == null) {
-      logger.debug(s"addMillisecond: tempus=$tempus")
-      null
-    }
+    if (tempus == null) null
     else if (!tempus.before(hc.maxDate)) hc.maxDate
     else if (!tempus.after(hc.minDate)) hc.minDate
     else Timestamp.from(tempus.toInstant.plusMillis(numMillis))
@@ -39,10 +36,7 @@ object TemporalHelpers extends Serializable with LazyLogging {
    */
   def floorTimestamp(tempus: Timestamp)(implicit hc:TemporalQueryConfig): Timestamp = {
     // return hc.maxDate in case input tempus is after or equal hc.maxDate
-    if (tempus == null) {
-      logger.debug(s"floorTimestamp: tempus=$tempus")
-      null
-    }
+    if (tempus == null) null
     else if (tempus.before(hc.maxDate)) {
       // to start with: resultat = truncate tempus to SECONDS
 
@@ -68,10 +62,7 @@ object TemporalHelpers extends Serializable with LazyLogging {
    * @return truncated timestamp
    */
   def predecessorTime(tempus: Timestamp)(implicit hc:TemporalQueryConfig): Timestamp = {
-    if (tempus == null) {
-      logger.debug(s"predecessorTime: tempus=$tempus")
-      null
-    }
+    if (tempus == null) null
     else {
       val resultat: Timestamp = floorTimestamp(tempus)(hc)
       if (resultat.equals(tempus)) addMillisecond(-1)(resultat) else resultat
@@ -85,10 +76,7 @@ object TemporalHelpers extends Serializable with LazyLogging {
    * @return truncated timestamp
    */
   def successorTime(tempus: Timestamp)(implicit hc:TemporalQueryConfig): Timestamp = {
-    if (tempus == null) {
-      logger.debug(s"successorTime: tempus=$tempus")
-      null
-    }
+    if (tempus == null) null
     else {
       val resultat: Timestamp = ceilTimestamp(tempus)(hc)
       if (resultat.equals(tempus)) addMillisecond(1)(resultat) else resultat

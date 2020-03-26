@@ -44,7 +44,7 @@ object TemporalQueryUtil extends LazyLogging {
      */
     def temporalInnerJoin( df2:DataFrame, keys:Seq[String] )
                          (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalKeyJoinImpl( df1.temporalCombine(), df2.temporalCombine(), keys )
+      temporalKeyJoinImpl( df1, df2, keys )
     }
 
     /**
@@ -52,7 +52,7 @@ object TemporalQueryUtil extends LazyLogging {
      */
     def temporalInnerJoin( df2:DataFrame, keyCondition:Column )
                          (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalJoinImpl( df1.temporalCombine(), df2.temporalCombine(), keyCondition )
+      temporalJoinImpl( df1, df2, keyCondition )
     }
 
     /**
@@ -66,7 +66,7 @@ object TemporalQueryUtil extends LazyLogging {
      */
     def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalKeyLeftJoinImpl( df1.temporalCombine(), df2.temporalCombine(), keys, rnkExpressions, additionalJoinFilterCondition )
+      temporalKeyLeftJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition )
     }
 
     /**
@@ -75,7 +75,7 @@ object TemporalQueryUtil extends LazyLogging {
      */
     def temporalLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true) )
                             (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalLeftAntiJoinImpl( df1.temporalCombine(), df2.temporalCombine(), joinColumns, additionalJoinFilterCondition )
+      temporalLeftAntiJoinImpl( df1, df2, joinColumns, additionalJoinFilterCondition )
     }
 
     /**
@@ -87,7 +87,7 @@ object TemporalQueryUtil extends LazyLogging {
     def temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Seq()
                                , rnkFilter:Boolean = true , extend: Boolean = true, fillGapsWithNull: Boolean = true )
                              (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalCleanupExtendImpl( df1.temporalCombine(), keys, rnkExpressions, aggExpressions, rnkFilter, extend, fillGapsWithNull )
+      temporalCleanupExtendImpl( df1, keys, rnkExpressions, aggExpressions, rnkFilter, extend, fillGapsWithNull )
     }
 
     /**
@@ -228,10 +228,10 @@ object TemporalQueryUtil extends LazyLogging {
   private def temporalLeftAntiJoinImpl( df1:DataFrame, df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column )
                                       (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     logger.debug(s"temporalLeftAntiJoinImpl START: joinColumns = ${joinColumns.mkString(", ")}")
-    val df1Prepared = df1.temporalCombine()
+    val df1Prepared = df1
     val resultColumns: Array[String] = df1Prepared.columns
     val resultColumnsDf1: Array[Column] = df1Prepared.columns.map(df1Prepared(_))
-    val df2Prepared = df2.temporalCombine()
+    val df2Prepared = df2
       .withColumnRenamed(hc.fromColName,hc.fromColName2).withColumnRenamed(hc.toColName,hc.toColName2)
 
     val joinCondition: Column = createKeyCondition(df1Prepared, df2Prepared, joinColumns)
