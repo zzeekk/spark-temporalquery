@@ -173,4 +173,16 @@ object TestUtils extends LazyLogging {
     (1,"2019-01-01 00:00:0"           ,"2019-12-31 23:59:59.999" ,42.0 ))
   val dfDocumentation: DataFrame = rowsDocumentation.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
 
+  val rowsContinuousTime: Seq[(Int, String, String, Double)] = Seq(
+    (0,"2019-01-01 00:00:00.123456789","2019-01-05 12:34:56.123456789", 3.14),
+    (0,"2019-01-05 12:34:56.123456789","2019-02-01 02:34:56.1235"     , 2.72),
+    (0,"2019-02-01 02:34:56.1235"     ,"2019-02-01 02:34:56.1245"     ,42.0 ),
+    (0,"2019-02-01 02:34:56.1245"     ,"2019-03-03 00:00:0"           ,13.0 ),
+    (0,"2019-03-03 00:00:0"           ,"2019-04-04 00:00:0"           ,12.0 ),
+    (0,"2019-09-05 02:34:56.1231"     ,"2019-09-05 02:34:56.1239"     ,42.0 ),
+    (0,"2020-01-01 01:00:0"           ,"9999-12-31 23:59:59.999999999",18.17),
+    (1,"2019-01-01 00:00:0.123456789" ,"2019-02-02 00:00:00"          ,-1.0 ),
+    (1,"2019-03-03 01:00:0"           ,"2021-12-01 02:34:56.1"        ,-2.0 ))
+  val dfContinuousTime: DataFrame = rowsContinuousTime.map(makeRowsWithTimeRange[Int, Double]).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
+
 }
