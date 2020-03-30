@@ -133,6 +133,13 @@ object TemporalQueryUtil extends LazyLogging {
      */
     def temporalRoundDiscreteTime(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(hc))
 
+    /**
+     * Transforms [[DataFrame]] with continuous time, half open time intervals [fromColName , toColName [, to discrete time ([fromColName , toColName])
+     * @return [[DataFrame]] with discrete time axis
+     */
+    def temporalContinuous2discrete(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_predecessorTime)
+
+
   }
 
   // helpers
