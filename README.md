@@ -69,6 +69,6 @@ You can then use the following additional functions on Dataset/DataFrame
 - `temporalExtendRange( keys:Seq[String], extendMin:Boolean=true, extendMax:Boolean=true )`
   Extend temporal range to min/maxDate according to TemporalQueryConfig
 - `temporalContinuous2discrete`
-  sets the discreteness of the time scale to milliseconds
-- `temporalRoundDiscreteTime`
   transforms a data frame with continuous time to a frame with discrete time
+- `temporalRoundDiscreteTime`
+  sets the discreteness of the time scale to milliseconds
