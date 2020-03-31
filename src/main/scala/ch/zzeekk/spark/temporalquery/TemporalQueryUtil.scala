@@ -37,7 +37,7 @@ object TemporalQueryUtil extends LazyLogging {
   /**
    * Pimp-my-library pattern für's DataFrame
    */
-  implicit class TemporalDataFrame(df1: Dataset[Row]) {
+  implicit class TemporalDataFrame(df1: DataFrame) {
 
     /**
      * Implementiert ein inner-join von historisierten Daten über eine Liste von gleichbenannten Spalten
@@ -264,7 +264,7 @@ object TemporalQueryUtil extends LazyLogging {
    * left outer join
    */
   private def temporalKeyOuterJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column, joinType:String = "full" )
-                                     (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+                                     (implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
     import ss.implicits._
     // extend df2
     val df1_extended = if (joinType=="full" || joinType=="right") temporalCleanupExtendImpl( df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Seq(), rnkFilter=true ) else df1
@@ -277,7 +277,7 @@ object TemporalQueryUtil extends LazyLogging {
    * left outer join
    */
   private def temporalLeftAntiJoinImpl( df1:DataFrame, df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column )
-                                      (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+                                      (implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
     logger.debug(s"temporalLeftAntiJoinImpl START: joinColumns = ${joinColumns.mkString(", ")}")
     val df1Prepared = df1
     val resultColumns: Array[String] = df1Prepared.columns
@@ -328,7 +328,7 @@ object TemporalQueryUtil extends LazyLogging {
    * Combine consecutive records with same data values
    */
   private def temporalCombineImpl( df:DataFrame, ignoreColNames:Seq[String]  )
-                                 (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+                                 (implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
     import ss.implicits._
     val dfColumns = df.columns
     val compairCols: Array[String] = dfColumns.diff( ignoreColNames ++ hc.technicalColNames )
