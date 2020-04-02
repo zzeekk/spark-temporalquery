@@ -5,12 +5,12 @@ Implicit functions for querying temporal data with Apache Spark/Scala.
 
 - add maven dependency to project
   repo: https://dl.bintray.com/zach/zzeekk-release
-  artifact: ch.zzeekk, spark-temporalquery, 0.9.5.1
+  artifact: ch.zzeekk, spark-temporalquery, 0.9.5.3
 
 - initialize
 ```
 // this imports temporalquery* implicit functions on DataFrame
-import ch.zzeekk.spark-temporalquery.TemporalQueryUtil._
+import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
 // configure options for temporalquery operations
 implicit val tqc = TemporalQueryConfig( fromColName="valid_from", toColName="valid_to")
 // make SparkSession implicitly available
