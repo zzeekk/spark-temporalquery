@@ -235,6 +235,7 @@ object TemporalQueryUtil extends LazyLogging {
                                          , rnkFilter:Boolean , extend: Boolean = true, fillGapsWithNull: Boolean = true )
                                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     import ss.implicits._
+    if(extend && !fillGapsWithNull) logger.warn("temporalCleanupExtendImpl: extend=true has no effect if fillGapsWithNull=false!")
 
     val df_join = temporalUnifyRangesImpl( df, keys, extend, fillGapsWithNull)
       .withColumn("_defined", col(hc.toColName).isNotNull)
