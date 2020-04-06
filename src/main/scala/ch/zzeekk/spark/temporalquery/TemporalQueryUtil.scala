@@ -192,12 +192,8 @@ object TemporalQueryUtil extends LazyLogging {
    */
   private def temporalJoinImpl( df1:DataFrame, df2:DataFrame, keyCondition:Column, joinType:String = "inner" )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     // history join
-    df1.orderBy("id",hc.fromColName).show(false)
-
     val df2ren = df2.withColumnRenamed(hc.fromColName,hc.fromColName2).withColumnRenamed(hc.toColName,hc.toColName2)
-    df2ren.orderBy("id",hc.fromColName2).show(false)
     val df_join = df1.join( df2ren, keyCondition and col(hc.fromColName)<=col(hc.toColName2) and col(hc.toColName)>=col(hc.fromColName2), joinType)
-    df_join.show(false)
     // select final schema
     val dfCommonColNames = df1.columns.intersect(df2.columns).diff(hc.technicalColNames)
     val commonCols: Array[Column] = dfCommonColNames.map(colName => coalesce(df1(colName),df2(colName)).as(colName))
