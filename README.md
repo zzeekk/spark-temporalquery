@@ -65,10 +65,13 @@ You can then use the following additional functions on Dataset/DataFrame
 - `temporalLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true))`
   Left Anti Join of two temporal datasets using a list of key-columns named the same as condition (using-join). "Anti left join" means that the result contains all periods from DataFrame 1 which do not occur in DataFrame2 for the given joinColumns.
   - additionalJoinFilterCondition: you can provide additional non-equi-join conditions which will be combined with the conditions generated from the list of keys.
-- `temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)], rnkFilter:Boolean = true )`
+  - `temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)], rnkFilter:Boolean = true, extend: Boolean = true, fillGapsWithNull: Boolean = true )`
   Solve temporal overlaps by a prioritizing Records according to rnkExpressions and extend the temporal range of each key to be defined over the whole timeline. The resulting DataFrame has an additional column `_defined` which is false for extended ranges.
   - aggExpressions: Aggregates to be calculated on overlapping records (e.g. count)
   - rnkFilter: Flag if overlapping records should be tagged or filtered (default=filtered=true)
+  - extend: If true and fillGapsWithNull=true, every key is extended with additional records with null values, so that for every key the whole timeline [minDate , maxDate] is covered (default=extend=true)
+  - fillGapsWithNull: If true, gaps in history are filled with records with null values for every key (default=fillGapsWithNull=true)
+  - Note: extend=true needs fillGapsWithNull=true in order to work
 - `temporalCombine( keys:Seq[String] = Seq(), ignoreColNames:Seq[String] = Seq() )`
   Combines successive records if there are no changes on the non-technical attributes.
   **The parameter `keys` is superfluous. Please refrain from using it!**
