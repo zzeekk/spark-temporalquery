@@ -200,7 +200,7 @@ object TemporalQueryUtil extends LazyLogging {
     val timeColumns: Array[Column] = Array(greatest(col(hc.fromColName), col(hc.fromColName2)).as(hc.fromColName),least(col(hc.toColName), col(hc.toColName2)).as(hc.toColName))
     val selCols: Array[Column] = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
 
-    df_join.select(selCols:_*)//.where(commonCols.foldLeft(lit(true)){ case (cond,key) => cond and key.isNotNull })
+    df_join.select(selCols:_*)
   }
   private def temporalKeyJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], joinType:String = "inner" )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     temporalJoinImpl( df1, df2, createKeyCondition(df1, df2, keys), joinType )
