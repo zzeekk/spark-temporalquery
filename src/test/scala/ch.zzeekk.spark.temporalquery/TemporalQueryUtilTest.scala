@@ -395,6 +395,106 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
+  test("temporalFullJoin_dfRight") {
+    val actual = dfLeft.temporalFullJoin(dfRight,Seq("id"))
+    val expected = Seq(
+      // id = 0
+      (0,None     ,None       ,defaultConfig.minDate                   ,Timestamp.valueOf("2017-12-09 23:59:59.999")),
+      (0,Some(4.2),None       ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,Some(4.2),Some(97.15),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,Some(4.2),None       ,Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-06-01 05:24:10.999")),
+      (0,Some(4.2),Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11"),Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,None     ,Some(97.15),Timestamp.valueOf("2018-12-09 00:00:00"),defaultConfig.maxDate),
+      // id = 1
+      (1,None,None        ,defaultConfig.minDate                   ,Timestamp.valueOf("2018-12-31 23:59:59.999")),
+      (1,None,Some(2019.0),Timestamp.valueOf("2019-01-01 00:00:00"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (1,None,Some(2020.0),Timestamp.valueOf("2020-01-01 00:00:00"),Timestamp.valueOf("2020-12-31 23:59:59.999")),
+      (1,None,None        ,Timestamp.valueOf("2021-01-01 00:00:00"),defaultConfig.maxDate)
+    ).toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalFullJoin_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalFullJoin_rightMap") {
+    // Testing temporalFullJoin where the right dataFrame is not unique for join attributes
+    val actual = dfLeft.temporalFullJoin(df2=dfMap, keys=Seq("id"))
+    val expected = Seq(
+      // img = {}
+      (0,None     ,None     ,defaultConfig.minDate                   ,Timestamp.valueOf("2017-12-09 23:59:59.999")),
+      (0,Some(4.2),None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,Some(4.2),Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,Some(4.2),Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,Some(4.2),Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,Some(4.2),Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,Some(4.2),None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,None     ,None     ,Timestamp.valueOf("2018-12-09 00:00:00"),defaultConfig.maxDate)
+    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalFullJoin_rightMap",Seq(dfLeft,dfMap))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalFullJoin_rightMapWithrnkExpressions") {
+    // Testing temporalFullJoin where the right dataFrame is not unique for join attributes
+    val actual = dfLeft.temporalFullJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val expected = Seq(
+      // img = {}
+      (Some(0),None     ,None     ,defaultConfig.minDate                   ,Timestamp.valueOf("2017-12-09 23:59:59.999")),
+      (Some(0),Some(4.2),None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      // img = {A}
+      (Some(0),Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      // img = {B}
+      (Some(0),Some(4.2),Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      // img = {D}
+      (Some(0),Some(4.2),Some("D"),Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      // img = {}
+      (Some(0),Some(4.2),None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (Some(0),None     ,None     ,Timestamp.valueOf("2018-12-09 00:00:00"),defaultConfig.maxDate)
+    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalFullJoin_rightMapWithrnkExpressions",Seq(dfLeft,dfMap))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalFullJoin_rightMapWithGapsAndRnkExpressions") {
+    // Testing temporalFullJoin where the right dataFrame is not unique for join attributes
+    val argumentRight = Seq(
+      (0, "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", "A"),
+      (0, "2018-01-01 00:00:00", "2018-02-28 23:59:59.999", "B"),
+      (0, "2018-02-01 00:00:00", "2018-02-28 23:59:59.999", "C"),
+      (0, "2018-03-30 00:00:00", "2018-03-31 23:59:59.999", "D"),
+      (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X"))
+      .map(makeRowsWithTimeRange)
+      .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
+
+    val actual = dfLeft.temporalFullJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val expected = Seq(
+      // img = {}
+      (Some(0),None     ,None     ,defaultConfig.minDate                   ,Timestamp.valueOf("2017-12-09 23:59:59.999")),
+      (Some(0),Some(4.2),None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      // img = {A}
+      (Some(0),Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      // img = {B}
+      (Some(0),Some(4.2),Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      // img = null
+      (Some(0),Some(4.2),None,Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-29 23:59:59.999")),
+      // img = {D}
+      (Some(0),Some(4.2),Some("D"),Timestamp.valueOf("2018-03-30 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      // img = {}
+      (Some(0),Some(4.2),None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (Some(0),None     ,None     ,Timestamp.valueOf("2018-12-09 00:00:00"),defaultConfig.maxDate)
+    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalFullJoin_rightMapWithGapsAndRnkExpressions",Seq(dfLeft,argumentRight))(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalLeftJoin_dfRight") {
     val actual = dfLeft.temporalLeftJoin(dfRight,Seq("id"))
     val expected = Seq(
@@ -477,7 +577,91 @@ class TemporalQueryUtilTest extends FunSuite {
       .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
 
-    if (!resultat) printFailedTestResult("temporalLeftJoin_rightMapWithrnkExpressions",Seq(dfLeft,argumentRight))(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalLeftJoin_rightMapWithGapsAndRnkExpressions",Seq(dfLeft,argumentRight))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalRightJoin_dfRight") {
+    val actual = dfLeft.temporalRightJoin(dfRight,Seq("id"))
+    val expected = Seq(
+      // id = 0
+      (0,Some(4.2),Some(97.15),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,Some(4.2),Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11"),Timestamp.valueOf("2018-10-23 03:50:09.999")),
+      (0,Some(4.2),Some(97.15),Timestamp.valueOf("2018-10-23 03:50:10"),Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,None     ,Some(97.15),Timestamp.valueOf("2018-12-09 00:00:00"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (0,None     ,Some(97.15),Timestamp.valueOf("2020-01-01 00:00:00"),defaultConfig.maxDate),
+      // id = 1
+      (1,None,None        ,Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-12-31 23:59:59.999")),
+      (1,None,Some(2019.0),Timestamp.valueOf("2019-01-01 00:00:00"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (1,None,Some(2020.0),Timestamp.valueOf("2020-01-01 00:00:00"),Timestamp.valueOf("2020-12-31 23:59:59.999")),
+      (1,None,None        ,Timestamp.valueOf("2021-01-01 00:00:00"),Timestamp.valueOf("2099-12-31 23:59:59.999"))
+    ).toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalRightJoin_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalRightJoin_rightMap") {
+    // Testing temporalRightJoin where the right dataFrame is not unique for join attributes
+    val actual = dfLeft.temporalRightJoin(df2=dfMap, keys=Seq("id"))
+    val expected = Seq(
+      // img = {}
+      (0,Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,Some(4.2),Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,Some(4.2),Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,Some(4.2),Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,Some(4.2),Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123"))
+    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalRightJoin_rightMap",Seq(dfLeft,dfMap))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalRightJoin_rightMapWithrnkExpressions") {
+    // Testing temporalRightJoin where the right dataFrame is not unique for join attributes
+    // but in a right join rnkExpressions are applied to left data frame
+    val actual = dfLeft.temporalRightJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val expected = Seq(
+      // img = {}
+      (0,Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,Some(4.2),Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,Some(4.2),Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,Some(4.2),Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,Some(4.2),Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123"))
+    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalRightJoin_rightMapWithrnkExpressions",Seq(dfLeft,dfMap))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalRightJoin_rightMapWithGapsAndRnkExpressions") {
+    // Testing temporalRightJoin where the right dataFrame is not unique for join attributes
+    // but in a right join rnkExpressions are applied to left data frame
+    // and gaps are of the left frame only are filled
+    val argumentRight = Seq(
+      (0, "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", "A"),
+      (0, "2018-01-01 00:00:00", "2018-02-28 23:59:59.999", "B"),
+      (0, "2018-02-01 00:00:00", "2018-02-28 23:59:59.999", "C"),
+      (0, "2018-03-30 00:00:00", "2018-03-31 23:59:59.999", "D"),
+      (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X"))
+      .map(makeRowsWithTimeRange)
+      .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
+
+    val actual = dfLeft.temporalRightJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val expected = Seq(
+      // img = {}
+      (0,Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,Some(4.2),Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,Some(4.2),Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,Some(4.2),Some("D"),Timestamp.valueOf("2018-03-30 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,Some(4.2),Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123"))
+    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalRightJoin_rightMapWithGapsAndRnkExpressions",Seq(dfLeft,argumentRight))(actual)(expected)
     assert(resultat)
   }
 

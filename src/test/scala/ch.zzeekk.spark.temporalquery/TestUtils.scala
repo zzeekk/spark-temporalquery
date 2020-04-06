@@ -49,6 +49,10 @@ object TestUtils extends LazyLogging {
     println(s"  expected.count() =  ${expected.count()}")
     printDf(expected)
     println(s"  schemata equal =  ${actual.schema == expected.schema}")
+    if (actual.schema != expected.schema) {
+      println(s"actual.schema:${actual.schema.treeString}")
+      println(s"expected.schema:${expected.schema.treeString}")
+    }
     println("   symmetric Difference ")
     symmetricDifference(actual)(expected)
       .withColumn("_df", when($"_in_first_df","actual").otherwise("expected"))

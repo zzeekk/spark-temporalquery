@@ -37,7 +37,7 @@ object TemporalQueryUtil extends LazyLogging {
   /**
    * Pimp-my-library pattern für's DataFrame
    */
-  implicit class TemporalDataFrame(df1: Dataset[Row]) {
+  implicit class TemporalDataFrame(df1: DataFrame) {
 
     /**
      * Implementiert ein inner-join von historisierten Daten über eine Liste von gleichbenannten Spalten
@@ -56,6 +56,18 @@ object TemporalQueryUtil extends LazyLogging {
     }
 
     /**
+     * Implementiert ein full-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
+     * - rnkExpressions: Für den Fall, dass df1 oder df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     *   wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt. Dies entspricht also ein join
+     *   mit der Einschränkung, dass kein Muliplikation der Records im anderen frame stattfinden kann.
+     *   Soll df1 oder df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
+     *   Records aus df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet.
+     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     */
+    def temporalFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
+                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = temporalKeyOuterJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full" )
+
+    /**
      * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
      * - rnkExpressions: Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
      *   wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt. Dies entspricht also ein join
@@ -66,7 +78,21 @@ object TemporalQueryUtil extends LazyLogging {
      */
     def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalKeyLeftJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition )
+      temporalKeyOuterJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "left" )
+    }
+
+    /**
+     * Implementiert ein righ-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
+     * - rnkExpressions: Für den Fall, dass df1 oder df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     *   wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt. Dies entspricht also ein join
+     *   mit der Einschränkung, dass kein Muliplikation der Records im anderen frame stattfinden kann.
+     *   Soll df1 oder df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
+     *   Records aus df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet.
+     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     */
+    def temporalRightJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
+                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+      temporalKeyOuterJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right" )
     }
 
     /**
@@ -139,7 +165,6 @@ object TemporalQueryUtil extends LazyLogging {
      */
     def temporalContinuous2discrete(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_predecessorTime)
 
-
   }
 
   // helpers
@@ -159,15 +184,22 @@ object TemporalQueryUtil extends LazyLogging {
 
   /**
    * join two temporalquery dataframes
+   *
+   * Nota bene:
+   * Columns which occur in both data frames df1 and df2 will occur only once in the result frame with df1 precedence over df2 using coalesce.
    */
   private def temporalJoinImpl( df1:DataFrame, df2:DataFrame, keyCondition:Column, joinType:String = "inner" )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
     // history join
     val df2ren = df2.withColumnRenamed(hc.fromColName,hc.fromColName2).withColumnRenamed(hc.toColName,hc.toColName2)
     val df_join = df1.join( df2ren, keyCondition and col(hc.fromColName)<=col(hc.toColName2) and col(hc.toColName)>=col(hc.fromColName2), joinType)
     // select final schema
-    val df1Cols = df1.columns.diff(hc.technicalColNames)
-    val df2Cols = df2.columns.diff(df1Cols ++ hc.technicalColNames)
-    val selCols: Array[Column] = df1Cols.map(df1(_)) ++ df2Cols.map(df2(_)) :+ greatest(col(hc.fromColName), col(hc.fromColName2)).as(hc.fromColName) :+ least(col(hc.toColName), col(hc.toColName2)).as(hc.toColName)
+    val dfCommonColNames = df1.columns.intersect(df2.columns).diff(hc.technicalColNames)
+    val commonCols: Array[Column] = dfCommonColNames.map(colName => coalesce(df1(colName),df2(colName)).as(colName))
+    val colsDf1: Array[Column] = df1.columns.diff(dfCommonColNames ++ hc.technicalColNames).map(df1(_))
+    val colsDf2: Array[Column] = df2.columns.diff(dfCommonColNames ++ hc.technicalColNames).map(df2(_))
+    val timeColumns: Array[Column] = Array(greatest(col(hc.fromColName), col(hc.fromColName2)).as(hc.fromColName),least(col(hc.toColName), col(hc.toColName2)).as(hc.toColName))
+    val selCols: Array[Column] = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
+
     df_join.select(selCols:_*)
   }
   private def temporalKeyJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], joinType:String = "inner" )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
@@ -223,22 +255,23 @@ object TemporalQueryUtil extends LazyLogging {
   }
 
   /**
-   * left outer join
+   * outer join
    */
-  private def temporalKeyLeftJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column )
-                                     (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+  private def temporalKeyOuterJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column, joinType:String)
+                                     (implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
     import ss.implicits._
     // extend df2
-    val df2_extended = temporalCleanupExtendImpl( df2, keys, rnkExpressions, Seq(), rnkFilter=true )
-    // left join df1 & df2
-    temporalJoinImpl( df1, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, "left" ).drop($"_defined")
+    val df1_extended = if (joinType=="full" || joinType=="right") temporalCleanupExtendImpl( df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Seq(), rnkFilter=true ) else df1
+    val df2_extended = if (joinType=="full" || joinType=="left") temporalCleanupExtendImpl( df2, keys, rnkExpressions.intersect(df2.columns.map(col)), Seq(), rnkFilter=true ) else df2
+    // join df1 & df2
+    temporalJoinImpl( df1_extended, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, joinType ).drop($"_defined")
   }
 
   /**
    * left outer join
    */
   private def temporalLeftAntiJoinImpl( df1:DataFrame, df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column )
-                                      (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+                                      (implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
     logger.debug(s"temporalLeftAntiJoinImpl START: joinColumns = ${joinColumns.mkString(", ")}")
     val df1Prepared = df1
     val resultColumns: Array[String] = df1Prepared.columns
@@ -289,7 +322,7 @@ object TemporalQueryUtil extends LazyLogging {
    * Combine consecutive records with same data values
    */
   private def temporalCombineImpl( df:DataFrame, ignoreColNames:Seq[String]  )
-                                 (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
+                                 (implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
     import ss.implicits._
     val dfColumns = df.columns
     val compairCols: Array[String] = dfColumns.diff( ignoreColNames ++ hc.technicalColNames )
