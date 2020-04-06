@@ -65,9 +65,7 @@ object TemporalQueryUtil extends LazyLogging {
      * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
      */
     def temporalFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
-                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-      temporalKeyOuterJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition )
-    }
+                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = temporalKeyOuterJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full" )
 
     /**
      * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
@@ -257,9 +255,9 @@ object TemporalQueryUtil extends LazyLogging {
   }
 
   /**
-   * left outer join
+   * outer join
    */
-  private def temporalKeyOuterJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column, joinType:String = "full" )
+  private def temporalKeyOuterJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column, joinType:String)
                                      (implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
     import ss.implicits._
     // extend df2
