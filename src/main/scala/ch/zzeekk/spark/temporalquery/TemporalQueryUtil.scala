@@ -1,12 +1,11 @@
 package ch.zzeekk.spark.temporalquery
 
-import com.typesafe.scalalogging.LazyLogging
 import java.sql.Timestamp
+
+import ch.zzeekk.spark.temporalquery.TemporalHelpers._
 import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.{UserDefinedFunction, Window, WindowSpec}
 import org.apache.spark.sql.functions._
-
-import TemporalHelpers._
 
 /**
  * Copyright (c) 2017 Zacharias Kull under MIT Licence
@@ -19,7 +18,7 @@ import TemporalHelpers._
  *
  * val df_joined = df1.temporalJoin(df2)
  */
-object TemporalQueryUtil extends LazyLogging {
+object TemporalQueryUtil extends Logging {
 
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
