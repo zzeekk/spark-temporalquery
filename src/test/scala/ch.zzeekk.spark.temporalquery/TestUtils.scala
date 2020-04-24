@@ -1,13 +1,12 @@
 package ch.zzeekk.spark.temporalquery
 
-import com.typesafe.scalalogging.LazyLogging
 import java.sql.Timestamp
+
+import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{lit, when}
 
-import TemporalQueryUtil.TemporalQueryConfig
-
-object TestUtils extends LazyLogging {
+object TestUtils extends Logging {
   implicit val session: SparkSession = SparkSession.builder.master("local").appName("TemporalQueryUtilTest").getOrCreate()
   import session.implicits._
   session.conf.set("spark.sql.shuffle.partitions", 1)

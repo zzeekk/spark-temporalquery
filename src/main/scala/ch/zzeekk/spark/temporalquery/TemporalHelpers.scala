@@ -1,6 +1,5 @@
 package ch.zzeekk.spark.temporalquery
 
-import com.typesafe.scalalogging.LazyLogging
 import java.sql.Timestamp
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
@@ -8,7 +7,7 @@ import org.apache.spark.sql.Row
 
 import TemporalQueryUtil.TemporalQueryConfig
 
-object TemporalHelpers extends Serializable with LazyLogging {
+object TemporalHelpers extends Serializable with Logging {
   // "extends Serializable" needed to avoid
   // org.apache.spark.SparkException: Task not serializable
 

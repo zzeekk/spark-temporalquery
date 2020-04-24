@@ -50,15 +50,22 @@ jobs:
       run: |
         mkdir -p ~/.m2
         echo "<settings><servers><server><id>bintray-zach-zzeekk-release</id><username>zach</username><password>${BINTRAY_API_KEY}</password></server></servers></settings>" > ~/.m2/settings.xml
-        mvn clean deploy -f pom.xml
+        mvn -Pscala-2.11 -DskipTests clean deploy -f pom.xml
     - name: Maven Deploy to Bintray for Scala 2.12
       env:
         BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
       run: |
         mkdir -p ~/.m2
         echo "<settings><servers><server><id>bintray-zach-zzeekk-release</id><username>zach</username><password>${BINTRAY_API_KEY}</password></server></servers></settings>" > ~/.m2/settings.xml
-        mvn -P scala-2.12 clean deploy -f pom.xml
-        
+        mvn -Pscala-2.12 -DskipTests clean deploy -f pom.xml
+    - name: Maven Deploy to Bintray for Scala 2.10
+      env:
+        BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
+      run: |
+        mkdir -p ~/.m2
+        echo "<settings><servers><server><id>bintray-zach-zzeekk-release</id><username>zach</username><password>${BINTRAY_API_KEY}</password></server></servers></settings>" > ~/.m2/settings.xml
+        mvn  -Pscala-2.10 -DskipTests clean deploy -f pom.xml
+
     - name: Git Commit and Tag Release
       run: |
         git config --local user.email "action@github.com"

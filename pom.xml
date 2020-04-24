@@ -7,7 +7,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.zzeekk</groupId>
 	<artifactId>spark-temporalquery_${scala.minor.version}</artifactId>
-	<version>0.9.6-SNAPSHOT</version>
+	<version>0.9.7-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<profiles>
@@ -16,6 +16,7 @@
 			<properties>
 				<scala.minor.version>2.12</scala.minor.version>
 				<scala.version>${scala.minor.version}.10</scala.version>
+				<spark.version>2.4.4</spark.version>
 			</properties>
 		</profile>
 		<profile>
@@ -24,6 +25,17 @@
 			<properties>
 				<scala.minor.version>2.11</scala.minor.version>
 				<scala.version>${scala.minor.version}.12</scala.version>
+				<spark.version>2.4.4</spark.version>
+			</properties>
+		</profile>
+		<profile>
+			<id>scala-2.10</id>
+			<activation><activeByDefault>true</activeByDefault></activation>
+			<properties>
+				<scala.minor.version>2.10</scala.minor.version>
+				<scala.version>${scala.minor.version}.7</scala.version>
+				<!-- scala 2.10 support removed from spark with version 2.3 -->
+				<spark.version>2.2.3</spark.version>
 			</properties>
 		</profile>
 	</profiles>
@@ -37,13 +49,8 @@
 		<dependency>
 			<groupId>org.apache.spark</groupId>
 			<artifactId>spark-sql_${scala.minor.version}</artifactId>
-			<version>2.4.4</version>
+			<version>${spark.version}</version>
 			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.typesafe.scala-logging</groupId>
-			<artifactId>scala-logging_${scala.minor.version}</artifactId>
-			<version>3.9.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.scalatest</groupId>
