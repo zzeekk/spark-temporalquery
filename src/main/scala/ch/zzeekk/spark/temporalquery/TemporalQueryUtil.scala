@@ -236,22 +236,35 @@ object TemporalQueryUtil extends Logging {
     import ss.implicits._
     if(extend && !fillGapsWithNull) logger.warn("temporalCleanupExtendImpl: extend=true has no effect if fillGapsWithNull=false!")
 
+    println(s"rnkExpressions = $rnkExpressions")
     val df_join = temporalUnifyRangesImpl( df, keys, extend, fillGapsWithNull)
       .withColumn("_defined", col(hc.toColName).isNotNull)
+    println(s"df_join: ${df_join.schema.simpleString}")
+    df_join.show(false)
+
+    val fenestra: WindowSpec = Window.partitionBy( keys.map(df_join(_)):+ df_join(hc.fromColName) :_*)
 
     // add aggregations if defined, implemented as analytical functions...£
     val df_agg = aggExpressions.foldLeft( df_join ){
-      case (df_acc, (name,expr)) => df_acc.withColumn(name, expr.over(Window.partitionBy( keys.map(df_join(_)):+ df_join(hc.fromColName) :_*)))
+      case (df_acc, (name,expr)) => df_acc.withColumn(name, expr.over(fenestra))
     }
+    println(s"df_agg: ${df_agg.schema.simpleString}")
+    df_agg.show(false)
     // Prioritize and clean overlaps
     val df_clean = if (rnkExpressions.nonEmpty) {
-      val df_rnk = df_agg.withColumn("_rnk", row_number.over(Window.partitionBy(keys.map(df_join(_)) :+ df_join(hc.fromColName) : _*).orderBy(rnkExpressions: _*)))
+      val df_rnk = df_agg.withColumn("_rnk", row_number.over(fenestra.orderBy(rnkExpressions: _*)))
+      println(s"df_rnk: ${df_rnk.schema.simpleString}")
+      df_rnk.show(false)
       if (rnkFilter) df_rnk.where($"_rnk"===1) else df_rnk
     } else df_agg
     // select final schema
-    val selCols = keys.map(df_join(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++ aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq($"_rnk") else Seq()) :+
+    val selCols: Seq[Column] = keys.map(df_join(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++ aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq($"_rnk") else Seq()) :+
       df_join(hc.fromColName) :+ df_join(hc.toColName) :+ $"_defined"
-    temporalCombineImpl( df_clean.select(selCols:_*), Seq() )
+
+    val df_cleanSelectedCols = df_clean.select(selCols:_*)
+    println(s"df_cleanSelectedCols: ${df_cleanSelectedCols.schema.simpleString}")
+    df_cleanSelectedCols.show(false)
+    temporalCombineImpl( df_cleanSelectedCols , Seq() )
   }
 
   /**

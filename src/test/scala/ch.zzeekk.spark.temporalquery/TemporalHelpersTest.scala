@@ -3,6 +3,7 @@ package ch.zzeekk.spark.temporalquery
 import java.sql.Timestamp
 import org.apache.spark.sql.Row
 import org.scalatest.FunSuite
+
 import TestUtils._
 import TemporalHelpers._
 
