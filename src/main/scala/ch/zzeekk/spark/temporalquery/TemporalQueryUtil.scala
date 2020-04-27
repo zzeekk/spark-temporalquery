@@ -23,7 +23,7 @@ object TemporalQueryUtil extends Logging {
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
-  case class TemporalQueryConfig ( minDate:Timestamp = Timestamp.valueOf("0000-01-01 00:00:00")
+  case class TemporalQueryConfig ( minDate:Timestamp = Timestamp.valueOf("0001-01-01 00:00:00")
                                    , maxDate:Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
                                    , fromColName:String    = "gueltig_ab"
                                    , toColName:String      = "gueltig_bis"
