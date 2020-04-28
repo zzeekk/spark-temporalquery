@@ -38,7 +38,11 @@ object TemporalHelpers extends Serializable with Logging {
    * @param subtrahend: the beginning of the time interval
    * @return number of milliseconds
    */
-  def durationInMillis(minuend: Timestamp, subtrahend: Timestamp): Long = 1 + minuend.getTime - subtrahend.getTime
+  def durationInMillis(minuend: Timestamp, subtrahend: Timestamp): Long = {
+    require(!(minuend==null || subtrahend==null),
+      s"Null values not supported: minuend=$minuend subtrahend=$subtrahend")
+    1 + minuend.getTime - subtrahend.getTime
+  }
   def udf_durationInMillis: UserDefinedFunction = udf(durationInMillis _)
 
   /**
