@@ -29,6 +29,22 @@ class TemporalHelpersTest extends FunSuite {
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](ceilTimestamp, argExpMap)
   }
 
+  test("udf_durationInMillis") {
+    val argExpMap = Map[(String, (String, String)), Long](
+      ("Januar 2019: 31 Tage", ("2019-01-31 23:59:59.999", "2019-01-01 00:00:0")) -> 31 * millisProTag,
+      ("Winterzeit überzogen 2019", ("2019-03-31 02:59:59.999", "2019-03-31 02:00:0")) -> millisProStunde,
+      ("Winter->Sommerzeit 2019", ("2019-03-31 03:00:00.0", "2019-03-31 02:00:0")) -> 1L,
+      ("März 2019: 31d - 1Stunde", ("2019-03-31 23:59:59.999", "2019-03-01 00:00:0")) -> (31 * millisProTag - millisProStunde),
+      ("Sommer -> Winterzeit 2019", ("2019-10-27 02:00:00.0", "2019-10-27 1:59:59.999")) -> (2L + millisProStunde),
+      ("Sommer -> Winterzeit 2019", ("2019-10-27 01:59:59.999", "2019-10-27 1:00:00.0")) -> millisProStunde,
+      ("Sommer -> Winterzeit 2019", ("2019-10-27 02:00:00.0", "2019-10-27 1:00:00.0")) -> (1L + 2 * millisProStunde),
+      ("Okt 2019: 31d + 1Stunde", ("2019-10-31 23:59:59.999", "2019-10-01 00:00:0")) -> (31 * millisProTag + millisProStunde),
+      ("Jahr 2019: 365 Tage", ("2019-12-31 23:59:59.999", "2019-01-01 00:00:0")) -> 365 * millisProTag,
+      ("Schaltjahr 2020: 366 Tage", ("2020-12-31 23:59:59.999", "2020-01-01 00:00:0")) -> 366 * millisProTag,
+      ("just a moment", ("2020-03-17 10:00:0", "2020-03-17 10:00:0")) -> 1L)
+    testArgumentExpectedMapWithComment[(String, String), Long](x => durationInMillis(Timestamp.valueOf(x._1), Timestamp.valueOf(x._2)),argExpMap)
+  }
+
   test("udf_floorTimestamp") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),

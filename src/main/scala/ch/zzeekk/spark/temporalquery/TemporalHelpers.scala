@@ -11,6 +11,9 @@ object TemporalHelpers extends Serializable with Logging {
   // "extends Serializable" needed to avoid
   // org.apache.spark.SparkException: Task not serializable
 
+  val millisProStunde: Long = 1000L * 3600
+  val millisProTag: Long = 24 * millisProStunde
+
   /**
    * rounds down timestamp tempus to the nearest millisecond
    * if tempus is not before hc.maxDate then return hc.maxDate
@@ -26,6 +29,17 @@ object TemporalHelpers extends Serializable with Logging {
   }
   def udf_plusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(1) _)
   def udf_minusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(-1) _)
+
+  /**
+   * returns the length of the time interval [subtrahend ; minuend] in milliseconds
+   * considering switch from winter to daylight saving time in March and Octobre
+   *
+   * @param minuend: the end of the time interval
+   * @param subtrahend: the beginning of the time interval
+   * @return number of milliseconds
+   */
+  def durationInMillis(minuend: Timestamp, subtrahend: Timestamp): Long = 1 + minuend.getTime - subtrahend.getTime
+  def udf_durationInMillis: UserDefinedFunction = udf(durationInMillis _)
 
   /**
    * rounds down timestamp tempus to the nearest millisecond

@@ -4,6 +4,7 @@ import java.sql.Timestamp
 import org.apache.spark.sql.functions.{col,lit}
 import org.scalatest.FunSuite
 
+import TemporalHelpers._
 import TemporalQueryUtil._
 import TestUtils._
 
@@ -258,13 +259,36 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
+  test("temporalCleanupExtend_validityDuration") {
+    val argument = Seq(
+      (1, "A", "2020-07-01 00:00:00", "2020-07-03 23:59:59.999"),
+      (1, "A", "2020-07-05 00:00:00", "2020-07-07 23:59:59.999"),
+      (1, "B", "2020-07-01 00:00:00", "2020-07-02 23:59:59.999"),
+      (1, "B", "2020-07-04 00:00:00", "2020-07-07 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int, String])
+      .toDF("id", "val", defaultConfig.fromColName, defaultConfig.toColName)
+    // we want the record with the longest validity period, i.e. maximal toColName-fromColName
+    val actual = argument.temporalCleanupExtend(Seq("id"), Seq(udf_durationInMillis(col(defaultConfig.toColName),col(defaultConfig.fromColName)).desc))
+    val expected = Seq(
+      (1, None     , initiumTemporisString, "2020-06-30 23:59:59.999"),
+      (1, Some("A"), "2020-07-01 00:00:00", "2020-07-03 23:59:59.999"),
+      (1, Some("B"), "2020-07-04 00:00:00", "2020-07-07 23:59:59.999"),
+      (1, None     , "2020-07-08 00:00:00", finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Int, Option[String]])
+      .toDF("id", "val", defaultConfig.fromColName, defaultConfig.toColName)
+      .withColumn("_defined", lit(true))
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalCleanupExtend_validityDuration", argument)(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalCleanupExtend_rankExprFromColOnly") {
     val argument = Seq(
       (1, "S", initiumTemporisString, finisTemporisString),
       (1, "X", "2020-07-01 00:00:00", finisTemporisString)
     ).map(makeRowsWithTimeRangeEnd[Int, String])
       .toDF("id", "val", defaultConfig.fromColName, defaultConfig.toColName)
-    val actual = argument.temporalCleanupExtend(Seq("id"), Seq(col(defaultConfig.fromColName)))(session, defaultConfig)
+    val actual = argument.temporalCleanupExtend(Seq("id"), Seq(col(defaultConfig.fromColName)))
     val expected = Seq(
       (1, "S", initiumTemporisString, finisTemporisString)
     ).map(makeRowsWithTimeRangeEnd[Int, String])
