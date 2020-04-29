@@ -31,6 +31,7 @@ object TemporalQueryUtil extends Logging {
     val fromColName2:String = fromColName+"2"
     val toColName2:String = toColName+"2"
     val technicalColNames:Seq[String] = Seq( fromColName, toColName ) ++ additionalTechnicalColNames
+    def config2 = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
   /**
@@ -239,8 +240,9 @@ object TemporalQueryUtil extends Logging {
     require(!(df.columns.contains(hc.fromColName2) || df.columns.contains(hc.toColName2)),
       s"Your dataframe df must not contain coulmns named ${hc.fromColName2} or ${hc.toColName2}!\ndf.columns = ${df.columns}")
 
+    // use 2nd pair of from/to column names so that original pair can still be used in rnk- & aggExpressions
     val df2 = df.withColumn(hc.fromColName2,col(hc.fromColName)).withColumn(hc.toColName2,col(hc.toColName))
-    val hc2 = TemporalQueryConfig(hc.minDate, hc.maxDate, hc.fromColName2, hc.toColName2,hc.additionalTechnicalColNames)
+    val hc2 = hc.config2
     val fenestra: WindowSpec = Window.partitionBy( keys.map(col):+ col(hc2.fromColName) :_*)
 
     val df_join = temporalUnifyRangesImpl( df2, keys, extend, fillGapsWithNull)(ss, hc2)
