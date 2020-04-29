@@ -30,7 +30,6 @@
 		</profile>
 		<profile>
 			<id>scala-2.10</id>
-			<activation><activeByDefault>true</activeByDefault></activation>
 			<properties>
 				<scala.minor.version>2.10</scala.minor.version>
 				<scala.version>${scala.minor.version}.7</scala.version>
