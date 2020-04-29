@@ -11,8 +11,8 @@ object TemporalHelpers extends Serializable with Logging {
   // "extends Serializable" needed to avoid
   // org.apache.spark.SparkException: Task not serializable
 
-  val millisProStunde: Long = 1000L * 3600
-  val millisProTag: Long = 24 * millisProStunde
+  val millisPerHour: Long = 1000L * 3600
+  val millisPerDay: Long = 24 * millisPerHour
 
   /**
    * rounds down timestamp tempus to the nearest millisecond
