@@ -61,13 +61,14 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCleanupExtend_dfLeft") {
     val actual = dfLeft.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName)))
     val expected = Seq(
-      (0, None     , defaultConfig.minDate                   , Timestamp.valueOf("2017-12-09 23:59:59.999"), true),
-      (0, Some(4.2), Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999"), true),
-      (0, None     , Timestamp.valueOf("2018-12-09 00:00:00"), defaultConfig.maxDate, true)
-    ).toDF("id","wert_l","gueltig_ab","gueltig_bis","_defined")
-    //    val expectedWithActualColumns = expected.select(actual.columns.map(col):_*)
-    val resultat = dfEqual(actual)(expected)
+      (0, None     , initiumTemporisString, "2017-12-09 23:59:59.999"),
+      (0, Some(4.2), "2017-12-10 00:00:00", "2018-12-08 23:59:59.999"),
+      (0, None     , "2018-12-09 00:00:00", finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double]])
+      .toDF("id","wert_l",defaultConfig.fromColName,defaultConfig.toColName)
+      .withColumn("_defined",lit(true))
 
+    val resultat = dfEqual(actual)(expected)
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfLeft",dfLeft)(actual)(expected)
     assert(resultat)
   }
@@ -80,13 +81,15 @@ class TemporalQueryUtilTest extends FunSuite {
       fillGapsWithNull = false
     )
     val expected = Seq(
-      (0, Some(97.15) , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
-      (0, Some(97.15) , Timestamp.valueOf("2018-06-01 05:24:11"), defaultConfig.maxDate, true),
-      (1, None        , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), true),
-      (1, Some(2019.0), Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), true),
-      (1, Some(2020.0), Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), true),
-      (1, None        , Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"), true)
-    ).toDF("id","wert_r","gueltig_ab","gueltig_bis","_defined")
+      (0, Some(97.15) , "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+      (0, Some(97.15) , "2018-06-01 05:24:11", finisTemporisString),
+      (1, None        , "2018-01-01 00:00:00", "2018-12-31 23:59:59.999"),
+      (1, Some(2019.0), "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
+      (1, Some(2020.0), "2020-01-01 00:00:00", "2020-12-31 23:59:59.999"),
+      (1, None        , "2021-01-01 00:00:00", "2099-12-31 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double]])
+      .toDF("id","wert_r",defaultConfig.fromColName,defaultConfig.toColName)
+      .withColumn("_defined",lit(true))
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfRight_noExtend_nofillGaps",dfRight)(actual)(expected)
@@ -100,16 +103,17 @@ class TemporalQueryUtilTest extends FunSuite {
       extend = false
     )
     val expected = Seq(
-      (0, Some(97.15) , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
-      (0, None        , Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999"), true),
-      (0, Some(97.15) , Timestamp.valueOf("2018-06-01 05:24:11"), defaultConfig.maxDate, true),
-      (1, None        , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), true),
-      (1, Some(2019.0), Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), true),
-      (1, Some(2020.0), Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), true),
-      (1, None        , Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"), true)
-    ).toDF("id","wert_r","gueltig_ab","gueltig_bis","_defined")
+      (0, Some(97.15) , "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+      (0, None        , "2018-02-01 00:00:00", "2018-06-01 05:24:10.999"),
+      (0, Some(97.15) , "2018-06-01 05:24:11", finisTemporisString),
+      (1, None        , "2018-01-01 00:00:00", "2018-12-31 23:59:59.999"),
+      (1, Some(2019.0), "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
+      (1, Some(2020.0), "2020-01-01 00:00:00", "2020-12-31 23:59:59.999"),
+      (1, None        , "2021-01-01 00:00:00", "2099-12-31 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double]])
+      .toDF("id","wert_r",defaultConfig.fromColName,defaultConfig.toColName)
+      .withColumn("_defined",lit(true))
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfRight_fillGaps_noExtend",dfRight)(actual)(expected)
     assert(resultat)
   }
@@ -120,29 +124,16 @@ class TemporalQueryUtilTest extends FunSuite {
       rnkExpressions=Seq(col(defaultConfig.fromColName)),
       fillGapsWithNull = false
     )
-    /*
-    Das wäre das gewünschte Resultat, wenn die Historie mit Nullwerten auf [minDate , maxDate] würde.
-    Wegen fillGapsWithNull = false, hat extend = true keinen Effekt.
-
-       val expected = Seq(
-          (0, None        , defaultConfig.minDate                   , Timestamp.valueOf("2017-12-31 23:59:59.999"), true),
-          (0, Some(97.15) , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
-          (0, Some(97.15) , Timestamp.valueOf("2018-06-01 05:24:11"), defaultConfig.maxDate, true),
-          (1, None        , defaultConfig.minDate                   , Timestamp.valueOf("2018-12-31 23:59:59.999"), true),
-          (1, Some(2019.0), Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), true),
-          (1, Some(2020.0), Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), true),
-          (1, None        , Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"), true)
-        ).toDF("id","wert_r","gueltig_ab","gueltig_bis","_defined")
-
-        */
     val expected = Seq(
-      (0, Some(97.15) , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
-      (0, Some(97.15) , Timestamp.valueOf("2018-06-01 05:24:11"), defaultConfig.maxDate, true),
-      (1, None        , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), true),
-      (1, Some(2019.0), Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), true),
-      (1, Some(2020.0), Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), true),
-      (1, None        , Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"), true)
-    ).toDF("id","wert_r","gueltig_ab","gueltig_bis","_defined")
+      (0, Some(97.15) , "2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0, Some(97.15) , "2018-06-01 05:24:11",finisTemporisString),
+      (1, None        , "2018-01-01 00:00:00","2018-12-31 23:59:59.999"),
+      (1, Some(2019.0), "2019-01-01 00:00:00","2019-12-31 23:59:59.999"),
+      (1, Some(2020.0), "2020-01-01 00:00:00","2020-12-31 23:59:59.999"),
+      (1, None        , "2021-01-01 00:00:00","2099-12-31 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double]])
+      .toDF("id","wert_r",defaultConfig.fromColName,defaultConfig.toColName)
+      .withColumn("_defined",lit(true))
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfRight_extend_nofillGaps",dfRight)(actual)(expected)
@@ -154,15 +145,17 @@ class TemporalQueryUtilTest extends FunSuite {
       keys=Seq("id"),
       rnkExpressions=Seq(col(defaultConfig.fromColName)))
     val expected = Seq(
-      (0, None        , defaultConfig.minDate                   , Timestamp.valueOf("2017-12-31 23:59:59.999"), true),
-      (0, Some(97.15) , Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
-      (0, None        , Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999"), true),
-      (0, Some(97.15) , Timestamp.valueOf("2018-06-01 05:24:11"), defaultConfig.maxDate, true),
-      (1, None        , defaultConfig.minDate                   , Timestamp.valueOf("2018-12-31 23:59:59.999"), true),
-      (1, Some(2019.0), Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999"), true),
-      (1, Some(2020.0), Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"), true),
-      (1, None        , Timestamp.valueOf("2021-01-01 00:00:00"), defaultConfig.maxDate                       , true)
-    ).toDF("id","wert_r","gueltig_ab","gueltig_bis","_defined")
+      (0, None        , initiumTemporisString , "2017-12-31 23:59:59.999"),
+      (0, Some(97.15) , "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+      (0, None        , "2018-02-01 00:00:00", "2018-06-01 05:24:10.999"),
+      (0, Some(97.15) , "2018-06-01 05:24:11",finisTemporisString),
+      (1, None        , initiumTemporisString, "2018-12-31 23:59:59.999"),
+      (1, Some(2019.0), "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
+      (1, Some(2020.0), "2020-01-01 00:00:00", "2020-12-31 23:59:59.999"),
+      (1, None        , "2021-01-01 00:00:00",finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double]])
+      .toDF("id","wert_r",defaultConfig.fromColName,defaultConfig.toColName)
+      .withColumn("_defined",lit(true))
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfRight_extend_fillGaps",dfRight)(actual)(expected)
@@ -172,14 +165,15 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCleanupExtend_dfMap") {
     val actual = dfMap.temporalCleanupExtend(Seq("id"),Seq($"img"))
     val expected = Seq(
-      (0, None     , defaultConfig.minDate                   , Timestamp.valueOf("2017-12-31 23:59:59.999"), true),
-      (0, Some("A"), Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
-      (0, Some("B"), Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999"), true),
-      (0, Some("D"), Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), true),
-      (0, None     , Timestamp.valueOf("2018-04-01 00:00:00"), defaultConfig.maxDate, true)
-    ).toDF("id","img","gueltig_ab","gueltig_bis","_defined")
+      (0, None     , initiumTemporisString, "2017-12-31 23:59:59.999"),
+      (0, Some("A"), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+      (0, Some("B"), "2018-02-01 00:00:00", "2018-02-28 23:59:59.999"),
+      (0, Some("D"), "2018-03-01 00:00:00", "2018-03-31 23:59:59.999"),
+      (0, None     , "2018-04-01 00:00:00", finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[String]])
+      .toDF("id","img",defaultConfig.fromColName,defaultConfig.toColName)
+      .withColumn("_defined",lit(true))
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfMap",dfMap)(actual)(expected)
     assert(resultat)
   }
@@ -187,12 +181,13 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCleanupExtend_dfMap_NoExtendFillgaps") {
     val actual = dfMap.temporalCleanupExtend(Seq("id"),Seq($"img"),extend=false,fillGapsWithNull=false)
     val expected = Seq(
-      (0, Some("A"), Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"), true),
-      (0, Some("B"), Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999"), true),
-      (0, Some("D"), Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"), true)
-    ).toDF("id","img","gueltig_ab","gueltig_bis","_defined")
+      (0, Some("A"), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+      (0, Some("B"), "2018-02-01 00:00:00", "2018-02-28 23:59:59.999"),
+      (0, Some("D"), "2018-03-01 00:00:00", "2018-03-31 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[String]])
+      .toDF("id","img",defaultConfig.fromColName,defaultConfig.toColName)
+      .withColumn("_defined",lit(true))
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfMap_NoExtendFillgaps",dfMap)(actual)(expected)
     assert(resultat)
   }
@@ -200,22 +195,24 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCleanupExtend_dfDirtyTimeRanges") {
     val actual = dfDirtyTimeRanges.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName),$"wert"))
     val expected = Seq(
-      (0, None       , defaultConfig.minDate                       , Timestamp.valueOf("2019-01-01 00:00:00.123"), true),
-      (0, Some(3.14) , Timestamp.valueOf("2019-01-01 00:00:00.124"), Timestamp.valueOf("2019-01-05 12:34:56.123"), true),
-      (0, Some(2.72) , Timestamp.valueOf("2019-01-05 12:34:56.124"), Timestamp.valueOf("2019-02-01 02:34:56.124"), true),
-      (0, Some(13.0) , Timestamp.valueOf("2019-02-01 02:34:56.125"), Timestamp.valueOf("2019-04-04 00:00:0")     , true),
-      (0, None       , Timestamp.valueOf("2019-04-04 00:00:00.001"), Timestamp.valueOf("2020-01-01 00:59:59.999"), true),
-      (0, Some(18.17), Timestamp.valueOf("2020-01-01 01:00:0")     , defaultConfig.maxDate                       , true),
-      (1, None       , defaultConfig.minDate                       , Timestamp.valueOf("2019-01-01 00:00:00.123"), true),
-      (1, Some(-1.0) , Timestamp.valueOf("2019-01-01 00:00:0.124") , Timestamp.valueOf("2019-02-02 00:00:0")     , true),
-      (1, None       , Timestamp.valueOf("2019-02-02 00:00:0.001") , Timestamp.valueOf("2019-02-28 23:59:59.999"), true),
-      (1, Some(0.1)  , Timestamp.valueOf("2019-03-01 00:00:0")     , Timestamp.valueOf("2019-03-01 00:00:00.001"), true),
-      (1, None       , Timestamp.valueOf("2019-03-01 00:00:00.002"), Timestamp.valueOf("2019-03-01 00:00:1"), true),
-      (1, Some(1.2)  , Timestamp.valueOf("2019-03-01 00:00:1.001") , Timestamp.valueOf("2019-03-01 00:00:01.002"), true),
-      (1, None       , Timestamp.valueOf("2019-03-01 00:00:1.003") , Timestamp.valueOf("2019-03-03 00:59:59.999"), true),
-      (1, Some(-2.0) , Timestamp.valueOf("2019-03-03 01:00:0")     , Timestamp.valueOf("2021-12-01 02:34:56.1"), true),
-      (1, None       , Timestamp.valueOf("2021-12-01 02:34:56.101"), defaultConfig.maxDate, true)
-    ).toDF("id","wert","gueltig_ab","gueltig_bis","_defined")
+      (0, None       , initiumTemporisString    , "2019-01-01 00:00:00.123"),
+      (0, Some(3.14) , "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123"),
+      (0, Some(2.72) , "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.124"),
+      (0, Some(13.0) , "2019-02-01 02:34:56.125", "2019-04-04 00:00:0"),
+      (0, None       , "2019-04-04 00:00:00.001", "2020-01-01 00:59:59.999"),
+      (0, Some(18.17), "2020-01-01 01:00:0"     , finisTemporisString),
+      (1, None       , initiumTemporisString    , "2019-01-01 00:00:00.123"),
+      (1, Some(-1.0) , "2019-01-01 00:00:0.124" , "2019-02-02 00:00:0"),
+      (1, None       , "2019-02-02 00:00:0.001" , "2019-02-28 23:59:59.999"),
+      (1, Some(0.1)  , "2019-03-01 00:00:0"     , "2019-03-01 00:00:00.001"),
+      (1, None       , "2019-03-01 00:00:00.002", "2019-03-01 00:00:1"),
+      (1, Some(1.2)  , "2019-03-01 00:00:1.001" , "2019-03-01 00:00:01.002"),
+      (1, None       , "2019-03-01 00:00:1.003" , "2019-03-03 00:59:59.999"),
+      (1, Some(-2.0) , "2019-03-03 01:00:0"     , "2021-12-01 02:34:56.1"),
+      (1, None       , "2021-12-01 02:34:56.101", finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double]])
+      .toDF("id","wert",defaultConfig.fromColName,defaultConfig.toColName)
+      .withColumn("_defined",lit(true))
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfDirtyTimeRanges",dfDirtyTimeRanges.where($"id"===1))(actual)(expected)
@@ -225,15 +222,17 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps") {
     val actual = dfDirtyTimeRanges.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName),$"wert"),extend=false,fillGapsWithNull=false)
     val expected = Seq(
-      (0, Some(3.14) , Timestamp.valueOf("2019-01-01 00:00:00.124"), Timestamp.valueOf("2019-01-05 12:34:56.123"), true),
-      (0, Some(2.72) , Timestamp.valueOf("2019-01-05 12:34:56.124"), Timestamp.valueOf("2019-02-01 02:34:56.124"), true),
-      (0, Some(13.0) , Timestamp.valueOf("2019-02-01 02:34:56.125"), Timestamp.valueOf("2019-04-04 00:00:0")     , true),
-      (0, Some(18.17), Timestamp.valueOf("2020-01-01 01:00:0")     , defaultConfig.maxDate                       , true),
-      (1, Some(-1.0) , Timestamp.valueOf("2019-01-01 00:00:0.124") , Timestamp.valueOf("2019-02-02 00:00:0")     , true),
-      (1, Some(0.1)  , Timestamp.valueOf("2019-03-01 00:00:0")     , Timestamp.valueOf("2019-03-01 00:00:00.001"), true),
-      (1, Some(1.2)  , Timestamp.valueOf("2019-03-01 00:00:1.001") , Timestamp.valueOf("2019-03-01 00:00:01.002"), true),
-      (1, Some(-2.0) , Timestamp.valueOf("2019-03-03 01:00:0")     , Timestamp.valueOf("2021-12-01 02:34:56.1"), true)
-    ).toDF("id","wert","gueltig_ab","gueltig_bis","_defined")
+      (0, Some(3.14) , "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123"),
+      (0, Some(2.72) , "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.124"),
+      (0, Some(13.0) , "2019-02-01 02:34:56.125", "2019-04-04 00:00:0"),
+      (0, Some(18.17), "2020-01-01 01:00:0"     , finisTemporisString),
+      (1, Some(-1.0) , "2019-01-01 00:00:0.124" , "2019-02-02 00:00:0"),
+      (1, Some(0.1)  , "2019-03-01 00:00:0"     , "2019-03-01 00:00:00.001"),
+      (1, Some(1.2)  , "2019-03-01 00:00:1.001" , "2019-03-01 00:00:01.002"),
+      (1, Some(-2.0) , "2019-03-03 01:00:0"     , "2021-12-01 02:34:56.1")
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double]])
+      .toDF("id","wert",defaultConfig.fromColName,defaultConfig.toColName)
+      .withColumn("_defined",lit(true))
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps"
@@ -255,20 +254,19 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalExtendRange_dfRight_id") {
     val actual = dfRight.temporalExtendRange(Seq("id"))
-    val rowsExpected = Seq(
-      (0,Some(97.15) ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(97.15) ,Timestamp.valueOf("2018-06-01 05:24:11.0"),Timestamp.valueOf("2018-10-23 03:50:09.999")),
-      (0,Some(97.15) ,Timestamp.valueOf("2018-10-23 03:50:10")  ,Timestamp.valueOf("2019-12-31 23:59:59.999")),
-      (0,Some(97.15) ,Timestamp.valueOf("2020-01-01 00:00:00")  ,defaultConfig.maxDate),
-      (1,None        ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-12-31 23:59:59.999")),
-      (1,Some(2019.0),Timestamp.valueOf("2019-01-01 00:00:00.0"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
-      (1,Some(2020.0),Timestamp.valueOf("2020-01-01 00:00:00.0"),Timestamp.valueOf("2020-12-31 23:59:59.999")),
-      (1,None        ,Timestamp.valueOf("2021-01-01 00:00:00.0"),defaultConfig.maxDate)
-    )
-    val expected = rowsExpected.toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+    val expected = Seq(
+      (0,Some(97.15) ,initiumTemporisString  ,"2018-01-31 23:59:59.999"),
+      (0,Some(97.15) ,"2018-06-01 05:24:11.0","2018-10-23 03:50:09.999"),
+      (0,Some(97.15) ,"2018-10-23 03:50:10"  ,"2019-12-31 23:59:59.999"),
+      (0,Some(97.15) ,"2020-01-01 00:00:00"  ,finisTemporisString),
+      (1,None        ,initiumTemporisString  ,"2018-12-31 23:59:59.999"),
+      (1,Some(2019.0),"2019-01-01 00:00:00.0","2019-12-31 23:59:59.999"),
+      (1,Some(2020.0),"2020-01-01 00:00:00.0","2020-12-31 23:59:59.999"),
+      (1,None        ,"2021-01-01 00:00:00.0",finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double]])
+      .toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val expectedWithActualColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual)(expectedWithActualColumns)
-
     if (!resultat) printFailedTestResult("temporalExtendRange_dfRight_id",dfRight)(actual)(expectedWithActualColumns)
     assert(resultat)
   }
@@ -276,31 +274,30 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalExtendRange_dfRight") {
     // argument: dfRight from object TestUtils
     val actual = dfRight.temporalExtendRange()
-    val rowsExpected = Seq(
-      (0,Some(97.15) ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(97.15) ,Timestamp.valueOf("2018-06-01 05:24:11.0"),Timestamp.valueOf("2018-10-23 03:50:09.999")),
-      (0,Some(97.15) ,Timestamp.valueOf("2018-10-23 03:50:10")  ,Timestamp.valueOf("2019-12-31 23:59:59.999")),
-      (0,Some(97.15) ,Timestamp.valueOf("2020-01-01 00:00:00")  ,defaultConfig.maxDate),
-      (1,None        ,defaultConfig.minDate                     ,Timestamp.valueOf("2018-12-31 23:59:59.999")),
-      (1,Some(2019.0),Timestamp.valueOf("2019-01-01 00:00:00.0"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
-      (1,Some(2020.0),Timestamp.valueOf("2020-01-01 00:00:00.0"),Timestamp.valueOf("2020-12-31 23:59:59.999")),
-      (1,None        ,Timestamp.valueOf("2021-01-01 00:00:00.0"),Timestamp.valueOf("2099-12-31 23:59:59.999"))
-    )
-    val expected = rowsExpected.toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+    val expected = Seq(
+      (0,Some(97.15) ,initiumTemporisString  ,"2018-01-31 23:59:59.999"),
+      (0,Some(97.15) ,"2018-06-01 05:24:11.0","2018-10-23 03:50:09.999"),
+      (0,Some(97.15) ,"2018-10-23 03:50:10"  ,"2019-12-31 23:59:59.999"),
+      (0,Some(97.15) ,"2020-01-01 00:00:00"  ,finisTemporisString),
+      (1,None        ,initiumTemporisString  ,"2018-12-31 23:59:59.999"),
+      (1,Some(2019.0),"2019-01-01 00:00:00.0","2019-12-31 23:59:59.999"),
+      (1,Some(2020.0),"2020-01-01 00:00:00.0","2020-12-31 23:59:59.999"),
+      (1,None        ,"2021-01-01 00:00:00.0","2099-12-31 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double]])
+      .toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val expectedWithActualColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual)(expectedWithActualColumns)
-
     if (!resultat) printFailedTestResult("temporalExtendRange_dfRight",dfRight)(actual)(expectedWithActualColumns)
     assert(resultat)
   }
 
   test("temporalLeftAntiJoin_dfRight") {
     val actual = dfLeft.temporalLeftAntiJoin(dfRight,Seq("id"))
-    val rowsExpected = Seq(
+    val expected = Seq(
       (0, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
       (0, "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", 4.2)
-    )
-    val expected = rowsExpected.toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_l")
+    ).map(makeRowsWithTimeRange)
+      .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_l")
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalLeftAntiJoin_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
@@ -309,11 +306,11 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalLeftAntiJoin_dfMap") {
     val actual = dfLeft.temporalLeftAntiJoin(dfMap,Seq("id"))
-    val rowsExpected = Seq(
+    val expected = Seq(
       (0, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
       (0, "2018-04-01 00:00:00", "2018-12-08 23:59:59.999", 4.2)
-    )
-    val expected = rowsExpected.toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_l")
+    ).map(makeRowsWithTimeRange)
+      .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_l")
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalLeftAntiJoin_dfMap",Seq(dfLeft,dfMap))(actual)(expected)
@@ -399,20 +396,20 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalFullJoin(dfRight,Seq("id"))
     val expected = Seq(
       // id = 0
-      (0,None     ,None       ,defaultConfig.minDate                   ,Timestamp.valueOf("2017-12-09 23:59:59.999")),
-      (0,Some(4.2),None       ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
-      (0,Some(4.2),Some(97.15),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(4.2),None       ,Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-06-01 05:24:10.999")),
-      (0,Some(4.2),Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11"),Timestamp.valueOf("2018-12-08 23:59:59.999")),
-      (0,None     ,Some(97.15),Timestamp.valueOf("2018-12-09 00:00:00"),defaultConfig.maxDate),
+      (0,None     ,None       ,initiumTemporisString,"2017-12-09 23:59:59.999"),
+      (0,Some(4.2),None       ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
+      (0,Some(4.2),Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,Some(4.2),None       ,"2018-02-01 00:00:00","2018-06-01 05:24:10.999"),
+      (0,Some(4.2),Some(97.15),"2018-06-01 05:24:11","2018-12-08 23:59:59.999"),
+      (0,None     ,Some(97.15),"2018-12-09 00:00:00",finisTemporisString),
       // id = 1
-      (1,None,None        ,defaultConfig.minDate                   ,Timestamp.valueOf("2018-12-31 23:59:59.999")),
-      (1,None,Some(2019.0),Timestamp.valueOf("2019-01-01 00:00:00"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
-      (1,None,Some(2020.0),Timestamp.valueOf("2020-01-01 00:00:00"),Timestamp.valueOf("2020-12-31 23:59:59.999")),
-      (1,None,None        ,Timestamp.valueOf("2021-01-01 00:00:00"),defaultConfig.maxDate)
-    ).toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+      (1,None,None        ,initiumTemporisString  ,"2018-12-31 23:59:59.999"),
+      (1,None,Some(2019.0),"2019-01-01 00:00:00","2019-12-31 23:59:59.999"),
+      (1,None,Some(2020.0),"2020-01-01 00:00:00","2020-12-31 23:59:59.999"),
+      (1,None,None        ,"2021-01-01 00:00:00",finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double],Option[Double]])
+      .toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalFullJoin_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
     assert(resultat)
   }
@@ -422,18 +419,18 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalFullJoin(df2=dfMap, keys=Seq("id"))
     val expected = Seq(
       // img = {}
-      (0,None     ,None     ,defaultConfig.minDate                   ,Timestamp.valueOf("2017-12-09 23:59:59.999")),
-      (0,Some(4.2),None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
-      (0,Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(4.2),Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,Some(4.2),Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,Some(4.2),Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
-      (0,Some(4.2),Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
-      (0,Some(4.2),None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")),
-      (0,None     ,None     ,Timestamp.valueOf("2018-12-09 00:00:00"),defaultConfig.maxDate)
-    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,None     ,None     ,initiumTemporisString  ,"2017-12-09 23:59:59.999"),
+      (0,Some(4.2),None     ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
+      (0,Some(4.2),Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,Some(4.2),Some("B"),"2018-01-01 00:00:00","2018-02-28 23:59:59.999"),
+      (0,Some(4.2),Some("C"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
+      (0,Some(4.2),Some("D"),"2018-02-20 00:00:00","2018-03-31 23:59:59.999"),
+      (0,Some(4.2),Some("X"),"2018-02-25 14:15:16.123","2018-02-25 14:15:16.123"),
+      (0,Some(4.2),None     ,"2018-04-01 00:00:00","2018-12-08 23:59:59.999"),
+      (0,None     ,None     ,"2018-12-09 00:00:00",finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double],Option[String]])
+      .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalFullJoin_rightMap",Seq(dfLeft,dfMap))(actual)(expected)
     assert(resultat)
   }
@@ -443,20 +440,20 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalFullJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
     val expected = Seq(
       // img = {}
-      (Some(0),None     ,None     ,defaultConfig.minDate                   ,Timestamp.valueOf("2017-12-09 23:59:59.999")),
-      (Some(0),Some(4.2),None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (Some(0),None     ,None     ,initiumTemporisString  ,"2017-12-09 23:59:59.999"),
+      (Some(0),Some(4.2),None     ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
       // img = {A}
-      (Some(0),Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (Some(0),Some(4.2),Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
       // img = {B}
-      (Some(0),Some(4.2),Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (Some(0),Some(4.2),Some("B"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
       // img = {D}
-      (Some(0),Some(4.2),Some("D"),Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (Some(0),Some(4.2),Some("D"),"2018-03-01 00:00:00","2018-03-31 23:59:59.999"),
       // img = {}
-      (Some(0),Some(4.2),None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")),
-      (Some(0),None     ,None     ,Timestamp.valueOf("2018-12-09 00:00:00"),defaultConfig.maxDate)
-    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (Some(0),Some(4.2),None     ,"2018-04-01 00:00:00","2018-12-08 23:59:59.999"),
+      (Some(0),None     ,None     ,"2018-12-09 00:00:00",finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Option[Int],Option[Double],Option[String]])
+      .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalFullJoin_rightMapWithrnkExpressions",Seq(dfLeft,dfMap))(actual)(expected)
     assert(resultat)
   }
@@ -471,26 +468,25 @@ class TemporalQueryUtilTest extends FunSuite {
       (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X"))
       .map(makeRowsWithTimeRange)
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
-
     val actual = dfLeft.temporalFullJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
     val expected = Seq(
       // img = {}
-      (Some(0),None     ,None     ,defaultConfig.minDate                   ,Timestamp.valueOf("2017-12-09 23:59:59.999")),
-      (Some(0),Some(4.2),None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (Some(0),None     ,None     ,initiumTemporisString  ,"2017-12-09 23:59:59.999"),
+      (Some(0),Some(4.2),None     ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
       // img = {A}
-      (Some(0),Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (Some(0),Some(4.2),Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
       // img = {B}
-      (Some(0),Some(4.2),Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (Some(0),Some(4.2),Some("B"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
       // img = null
-      (Some(0),Some(4.2),None,Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-29 23:59:59.999")),
+      (Some(0),Some(4.2),None,"2018-03-01 00:00:00","2018-03-29 23:59:59.999"),
       // img = {D}
-      (Some(0),Some(4.2),Some("D"),Timestamp.valueOf("2018-03-30 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (Some(0),Some(4.2),Some("D"),"2018-03-30 00:00:00","2018-03-31 23:59:59.999"),
       // img = {}
-      (Some(0),Some(4.2),None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")),
-      (Some(0),None     ,None     ,Timestamp.valueOf("2018-12-09 00:00:00"),defaultConfig.maxDate)
-    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (Some(0),Some(4.2),None     ,"2018-04-01 00:00:00","2018-12-08 23:59:59.999"),
+      (Some(0),None     ,None     ,"2018-12-09 00:00:00",finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Option[Int],Option[Double],Option[String]])
+      .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalFullJoin_rightMapWithGapsAndRnkExpressions",Seq(dfLeft,argumentRight))(actual)(expected)
     assert(resultat)
   }
@@ -498,13 +494,13 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalLeftJoin_dfRight") {
     val actual = dfLeft.temporalLeftJoin(dfRight,Seq("id"))
     val expected = Seq(
-      (0,4.2,None       ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
-      (0,4.2,Some(97.15),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,4.2,None       ,Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-06-01 05:24:10.999")),
-      (0,4.2,Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11"),Timestamp.valueOf("2018-12-08 23:59:59.999"))
-    ).toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,4.2,None       ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
+      (0,4.2,Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,4.2,None       ,"2018-02-01 00:00:00","2018-06-01 05:24:10.999"),
+      (0,4.2,Some(97.15),"2018-06-01 05:24:11","2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double,Option[Double]])
+      .toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalLeftJoin_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
     assert(resultat)
   }
@@ -514,16 +510,16 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalLeftJoin(df2=dfMap, keys=Seq("id"))
     val expected = Seq(
       // img = {}
-      (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
-      (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,4.2,Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,4.2,Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
-      (0,4.2,Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
-      (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999"))
-    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,4.2,None     ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
+      (0,4.2,Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,4.2,Some("B"),"2018-01-01 00:00:00","2018-02-28 23:59:59.999"),
+      (0,4.2,Some("C"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
+      (0,4.2,Some("D"),"2018-02-20 00:00:00","2018-03-31 23:59:59.999"),
+      (0,4.2,Some("X"),"2018-02-25 14:15:16.123","2018-02-25 14:15:16.123"),
+      (0,4.2,None     ,"2018-04-01 00:00:00","2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double,Option[String]])
+      .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalLeftJoin_rightMap",Seq(dfLeft,dfMap))(actual)(expected)
     assert(resultat)
   }
@@ -531,18 +527,19 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalLeftJoin_rightMapWithrnkExpressions") {
     // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.temporalLeftJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
-    val rowsExpected = Seq(
+    val expected =   Seq(
       // img = {}
-      (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,4.2,None     ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
       // img = {A}
-      (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,4.2,Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
       // img = {B}
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("B"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
       // img = {D}
-      (0,4.2,Some("D"),Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,4.2,Some("D"),"2018-03-01 00:00:00","2018-03-31 23:59:59.999"),
       // img = {}
-      (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")))
-    val expected = rowsExpected.toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,4.2,None     ,"2018-04-01 00:00:00","2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double,Option[String]])
+      .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalLeftJoin_rightMapWithrnkExpressions",Seq(dfLeft,dfMap))(actual)(expected)
@@ -559,24 +556,23 @@ class TemporalQueryUtilTest extends FunSuite {
       (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X"))
       .map(makeRowsWithTimeRange)
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
-
     val actual = dfLeft.temporalLeftJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
     val expected = Seq(
       // img = {}
-      (0,4.2,None     ,Timestamp.valueOf("2017-12-10 00:00:00"),Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,4.2,None     ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
       // img = {A}
-      (0,4.2,Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,4.2,Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
       // img = {B}
-      (0,4.2,Some("B"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,4.2,Some("B"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
       // img = null
-      (0,4.2,None,Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-29 23:59:59.999")),
+      (0,4.2,None,"2018-03-01 00:00:00","2018-03-29 23:59:59.999"),
       // img = {D}
-      (0,4.2,Some("D"),Timestamp.valueOf("2018-03-30 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,4.2,Some("D"),"2018-03-30 00:00:00","2018-03-31 23:59:59.999"),
       // img = {}
-      (0,4.2,None     ,Timestamp.valueOf("2018-04-01 00:00:00"),Timestamp.valueOf("2018-12-08 23:59:59.999")))
+      (0,4.2,None     ,"2018-04-01 00:00:00","2018-12-08 23:59:59.999"))
+      .map(makeRowsWithTimeRangeEnd[Int,Double,Option[String]])
       .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalLeftJoin_rightMapWithGapsAndRnkExpressions",Seq(dfLeft,argumentRight))(actual)(expected)
     assert(resultat)
   }
@@ -585,19 +581,19 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalRightJoin(dfRight,Seq("id"))
     val expected = Seq(
       // id = 0
-      (0,Some(4.2),Some(97.15),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(4.2),Some(97.15),Timestamp.valueOf("2018-06-01 05:24:11"),Timestamp.valueOf("2018-10-23 03:50:09.999")),
-      (0,Some(4.2),Some(97.15),Timestamp.valueOf("2018-10-23 03:50:10"),Timestamp.valueOf("2018-12-08 23:59:59.999")),
-      (0,None     ,Some(97.15),Timestamp.valueOf("2018-12-09 00:00:00"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
-      (0,None     ,Some(97.15),Timestamp.valueOf("2020-01-01 00:00:00"),defaultConfig.maxDate),
+      (0,Some(4.2),Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,Some(4.2),Some(97.15),"2018-06-01 05:24:11","2018-10-23 03:50:09.999"),
+      (0,Some(4.2),Some(97.15),"2018-10-23 03:50:10","2018-12-08 23:59:59.999"),
+      (0,None     ,Some(97.15),"2018-12-09 00:00:00","2019-12-31 23:59:59.999"),
+      (0,None     ,Some(97.15),"2020-01-01 00:00:00",finisTemporisString),
       // id = 1
-      (1,None,None        ,Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-12-31 23:59:59.999")),
-      (1,None,Some(2019.0),Timestamp.valueOf("2019-01-01 00:00:00"),Timestamp.valueOf("2019-12-31 23:59:59.999")),
-      (1,None,Some(2020.0),Timestamp.valueOf("2020-01-01 00:00:00"),Timestamp.valueOf("2020-12-31 23:59:59.999")),
-      (1,None,None        ,Timestamp.valueOf("2021-01-01 00:00:00"),Timestamp.valueOf("2099-12-31 23:59:59.999"))
-    ).toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+      (1,None,None        ,"2018-01-01 00:00:00","2018-12-31 23:59:59.999"),
+      (1,None,Some(2019.0),"2019-01-01 00:00:00","2019-12-31 23:59:59.999"),
+      (1,None,Some(2020.0),"2020-01-01 00:00:00","2020-12-31 23:59:59.999"),
+      (1,None,None        ,"2021-01-01 00:00:00","2099-12-31 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double],Option[Double]])
+      .toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalRightJoin_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
     assert(resultat)
   }
@@ -607,14 +603,14 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalRightJoin(df2=dfMap, keys=Seq("id"))
     val expected = Seq(
       // img = {}
-      (0,Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(4.2),Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,Some(4.2),Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,Some(4.2),Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
-      (0,Some(4.2),Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123"))
-    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,Some(4.2),Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,Some(4.2),Some("B"),"2018-01-01 00:00:00","2018-02-28 23:59:59.999"),
+      (0,Some(4.2),Some("C"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
+      (0,Some(4.2),Some("D"),"2018-02-20 00:00:00","2018-03-31 23:59:59.999"),
+      (0,Some(4.2),Some("X"),"2018-02-25 14:15:16.123","2018-02-25 14:15:16.123")
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double],Option[String]])
+      .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-
     if (!resultat) printFailedTestResult("temporalRightJoin_rightMap",Seq(dfLeft,dfMap))(actual)(expected)
     assert(resultat)
   }
@@ -625,12 +621,13 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalRightJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
     val expected = Seq(
       // img = {}
-      (0,Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(4.2),Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,Some(4.2),Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,Some(4.2),Some("D"),Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
-      (0,Some(4.2),Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123"))
-    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,Some(4.2),Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,Some(4.2),Some("B"),"2018-01-01 00:00:00","2018-02-28 23:59:59.999"),
+      (0,Some(4.2),Some("C"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
+      (0,Some(4.2),Some("D"),"2018-02-20 00:00:00","2018-03-31 23:59:59.999"),
+      (0,Some(4.2),Some("X"),"2018-02-25 14:15:16.123","2018-02-25 14:15:16.123")
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double],Option[String]])
+      .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalRightJoin_rightMapWithrnkExpressions",Seq(dfLeft,dfMap))(actual)(expected)
@@ -653,12 +650,13 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalRightJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
     val expected = Seq(
       // img = {}
-      (0,Some(4.2),Some("A"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,Some(4.2),Some("B"),Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,Some(4.2),Some("C"),Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,Some(4.2),Some("D"),Timestamp.valueOf("2018-03-30 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")),
-      (0,Some(4.2),Some("X"),Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123"))
-    ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,Some(4.2),Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,Some(4.2),Some("B"),"2018-01-01 00:00:00","2018-02-28 23:59:59.999"),
+      (0,Some(4.2),Some("C"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
+      (0,Some(4.2),Some("D"),"2018-03-30 00:00:00","2018-03-31 23:59:59.999"),
+      (0,Some(4.2),Some("X"),"2018-02-25 14:15:16.123","2018-02-25 14:15:16.123")
+    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double],Option[String]])
+      .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalRightJoin_rightMapWithGapsAndRnkExpressions",Seq(dfLeft,argumentRight))(actual)(expected)
@@ -743,13 +741,14 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalUnifyRanges2") {
     val actual = dfMsOverlap.temporalUnifyRanges(Seq("id"))
-    val rowsExpected = Seq(
+    val expected = Seq(
       // img = {A,B}
-      (0,"A",Timestamp.valueOf("2019-01-01 00:00:00"),Timestamp.valueOf("2019-01-01 9:59:59.999")),
-      (0,"A",Timestamp.valueOf("2019-01-01 10:00:00"),Timestamp.valueOf("2019-01-01 10:00:00")),
-      (0,"B",Timestamp.valueOf("2019-01-01 10:00:00"),Timestamp.valueOf("2019-01-01 10:00:00")),
-      (0,"B",Timestamp.valueOf("2019-01-01 10:00:00.001"),Timestamp.valueOf("2019-01-01 23:59:59.999")))
-    val expected = rowsExpected.toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,"A","2019-01-01 00:00:00","2019-01-01 9:59:59.999"),
+      (0,"A","2019-01-01 10:00:00","2019-01-01 10:00:00"),
+      (0,"B","2019-01-01 10:00:00","2019-01-01 10:00:00"),
+      (0,"B","2019-01-01 10:00:00.001","2019-01-01 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,String])
+      .toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
     if (!resultat) printFailedTestResult("temporalUnifyRanges2",dfMsOverlap)(actual)(expected)
     assert(resultat)
@@ -757,33 +756,33 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalUnifyRanges3") {
     val actual = dfMap.temporalUnifyRanges(Seq("id"))
-    val rowsExpected = Seq(
+    val expected = Seq(
       // img = {A,B}
-      (0,"A",Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
-      (0,"B",Timestamp.valueOf("2018-01-01 00:00:00"),Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,"A","2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,"B","2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
       // img = {B,C}
-      (0,"B",Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-19 23:59:59.999")),
-      (0,"C",Timestamp.valueOf("2018-02-01 00:00:00"),Timestamp.valueOf("2018-02-19 23:59:59.999")),
+      (0,"B","2018-02-01 00:00:00","2018-02-19 23:59:59.999"),
+      (0,"C","2018-02-01 00:00:00","2018-02-19 23:59:59.999"),
       // img = {B,C,D}
-      (0,"B",Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
-      (0,"C",Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
-      (0,"D",Timestamp.valueOf("2018-02-20 00:00:00"),Timestamp.valueOf("2018-02-25 14:15:16.122")),
+      (0,"B","2018-02-20 00:00:00","2018-02-25 14:15:16.122"),
+      (0,"C","2018-02-20 00:00:00","2018-02-25 14:15:16.122"),
+      (0,"D","2018-02-20 00:00:00","2018-02-25 14:15:16.122"),
       // img = {B,C,D,X}
-      (0,"B",Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
-      (0,"C",Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
-      (0,"D",Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
-      (0,"X",Timestamp.valueOf("2018-02-25 14:15:16.123"),Timestamp.valueOf("2018-02-25 14:15:16.123")),
+      (0,"B","2018-02-25 14:15:16.123","2018-02-25 14:15:16.123"),
+      (0,"C","2018-02-25 14:15:16.123","2018-02-25 14:15:16.123"),
+      (0,"D","2018-02-25 14:15:16.123","2018-02-25 14:15:16.123"),
+      (0,"X","2018-02-25 14:15:16.123","2018-02-25 14:15:16.123"),
       // img = {B,C,D}
-      (0,"B",Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,"C",Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
-      (0,"D",Timestamp.valueOf("2018-02-25 14:15:16.124"),Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,"B","2018-02-25 14:15:16.124","2018-02-28 23:59:59.999"),
+      (0,"C","2018-02-25 14:15:16.124","2018-02-28 23:59:59.999"),
+      (0,"D","2018-02-25 14:15:16.124","2018-02-28 23:59:59.999"),
       // img = {D}
-      (0,"D",Timestamp.valueOf("2018-03-01 00:00:00"),Timestamp.valueOf("2018-03-31 23:59:59.999")))
-    val expected = rowsExpected.toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
+      (0,"D","2018-03-01 00:00:00","2018-03-31 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,String])
+      .toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalUnifyRanges3",dfMap)(actual)(expected)
     assert(resultat)
   }
-
 }
