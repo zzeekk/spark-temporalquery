@@ -195,7 +195,6 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalCleanupExtend_dfMsOverlap") {
     val actual = dfMsOverlap.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName)))
-    actual.printSchema()
     val expected = Seq(
       (0, None     , initiumTemporisString    , "2018-12-31 23:59:59.999"),
       (0, Some("A"), "2019-01-01 00:00:00"    , "2019-01-01 10:00:00"),
@@ -204,7 +203,6 @@ class TemporalQueryUtilTest extends FunSuite {
     ).map(makeRowsWithTimeRangeEnd[Int,Option[String]])
       .toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
       .withColumn("_defined",lit(true))
-    expected.printSchema()
 
     val resultat = dfEqual(actual)(expected)
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfMap",dfMap)(actual)(expected)

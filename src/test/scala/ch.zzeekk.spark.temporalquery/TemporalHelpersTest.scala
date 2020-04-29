@@ -2,11 +2,11 @@ package ch.zzeekk.spark.temporalquery
 
 import java.sql.Timestamp
 import java.util.Calendar
+
+import ch.zzeekk.spark.temporalquery.TemporalHelpers._
+import ch.zzeekk.spark.temporalquery.TestUtils._
 import org.apache.spark.sql.Row
 import org.scalatest.FunSuite
-
-import TestUtils._
-import TemporalHelpers._
 
 class TemporalHelpersTest extends FunSuite {
 

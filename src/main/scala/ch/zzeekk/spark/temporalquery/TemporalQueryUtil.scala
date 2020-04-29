@@ -238,7 +238,7 @@ object TemporalQueryUtil extends Logging {
     if(extend && !fillGapsWithNull) logger.warn("temporalCleanupExtendImpl: extend=true has no effect if fillGapsWithNull=false!")
 
     require(!(df.columns.contains(hc.fromColName2) || df.columns.contains(hc.toColName2)),
-      s"Your dataframe df must not contain coulmns named ${hc.fromColName2} or ${hc.toColName2}!\ndf.columns = ${df.columns}")
+      s"Your dataframe df must not contain columns named ${hc.fromColName2} or ${hc.toColName2}!\ndf.columns = ${df.columns}")
 
     // use 2nd pair of from/to column names so that original pair can still be used in rnk- & aggExpressions
     val df2 = df.withColumn(hc.fromColName2,col(hc.fromColName)).withColumn(hc.toColName2,col(hc.toColName))
