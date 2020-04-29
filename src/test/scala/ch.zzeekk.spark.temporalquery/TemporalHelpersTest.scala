@@ -31,12 +31,12 @@ class TemporalHelpersTest extends FunSuite {
   }
 
   test("udf_durationInMillis") {
-    val dstOffset = Calendar.getInstance().get(Calendar.DST_OFFSET)
+    val dstOffset: Long = Calendar.getInstance().get(Calendar.DST_OFFSET)
     val argExpMap = Map[(String, (String, String)), Long](
       ("january 2019: 31 Tage", ("2019-01-31 23:59:59.999", "2019-01-01 00:00:0")) -> 31 * millisProTag,
       ("Winterzeit überzogen 2019", ("2019-03-31 02:59:59.999", "2019-03-31 02:00:0")) -> millisProStunde,
-      ("Winter->Sommerzeit 2019", ("2019-03-31 03:00:0", "2019-03-31 02:00:0")) -> 1L,
-      ("März 2019: 31d - 1Stunde", ("2019-03-31 23:59:59.999", "2019-03-01 00:00:0")) -> (31 * millisProTag - millisProStunde),
+      ("Winter->Sommerzeit 2019", ("2019-03-31 03:00:0", "2019-03-31 02:00:0")) -> (1L + millisProStunde - dstOffset),
+      ("März 2019: 31d - 1Stunde", ("2019-03-31 23:59:59.999", "2019-03-01 00:00:0")) -> (31 * millisProTag - dstOffset),
       ("Sommer -> Winterzeit 2019", ("2019-10-27 02:00:0", "2019-10-27 1:59:59.999")) -> (2L + dstOffset),
       ("Sommer -> Winterzeit 2019", ("2019-10-27 01:59:59.999", "2019-10-27 1:00:0")) -> millisProStunde,
       ("Sommer -> Winterzeit 2019", ("2019-10-27 02:00:0", "2019-10-27 1:00:0")) -> (1L + millisProStunde + dstOffset),
