@@ -1,8 +1,7 @@
 package ch.zzeekk.spark.temporalquery
 
-import java.sql.Timestamp
-
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
+import java.sql.Timestamp
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{lit, when}
 
@@ -12,6 +11,7 @@ object TestUtils extends Logging {
   session.conf.set("spark.sql.shuffle.partitions", 1)
 
   implicit val defaultConfig: TemporalQueryConfig = TemporalQueryConfig()
+  val initiumTemporisString: String = defaultConfig.minDate.toString
   val finisTemporisString: String = defaultConfig.maxDate.toString
 
   def symmetricDifference(df1: DataFrame)(df2: DataFrame): DataFrame = {
@@ -53,10 +53,9 @@ object TestUtils extends Logging {
       println(s"expected.schema:${expected.schema.treeString}")
     }
     println("   symmetric Difference ")
-    symmetricDifference(actual)(expected)
+    printDf(symmetricDifference(actual)(expected)
       .withColumn("_df", when($"_in_first_df","actual").otherwise("expected"))
-      .drop($"_in_first_df")
-      .show(false)
+      .drop($"_in_first_df"))
   }
 
   def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame)(expected: DataFrame): Unit = printFailedTestResult(testName, Seq(argument))(actual)(expected)
@@ -91,11 +90,9 @@ object TestUtils extends Logging {
   // some beautiful nasty data frames for testing
 
   def makeRowsWithTimeRange[A,B](zeile: (A, String, String, B)): (A, Timestamp, Timestamp, B) = (zeile._1,Timestamp.valueOf(zeile._2),Timestamp.valueOf(zeile._3),zeile._4)
-/*  def makeDfFromTimeRangeRows(idColName: String, valueColName: String)(zeilen: Seq[(Int, String, String, B)]): DataFrame = zeilen.map(makeRowsWithTimeRange[Int, B]).toDF(idColName, defaultConfig.fromColName, defaultConfig.toColName,valueColName)
-  def makeDfFromTimeRangeRows(idColName: String, valueColName: String)(zeilen: Seq[(Int, String, String, Double)]): DataFrame = zeilen.map(makeRowsWithTimeRange[Int, Double]).toDF(idColName, defaultConfig.fromColName, defaultConfig.toColName,valueColName)
-  def makeDfFromTimeRangeRowsString(idColName: String, valueColName: String)(zeilen: Seq[(Int, String, String, String)]): DataFrame = zeilen.map(makeRowsWithTimeRange[Int, String]).toDF(idColName, defaultConfig.fromColName, defaultConfig.toColName,valueColName)
-  def makeDfFromTimeRangeRowsNullable(idColName: String, valueColName: String)(zeilen: Seq[(Int, String, String, Option[Double])]): DataFrame = zeilen.map(makeRowsWithTimeRange[Int, Option[Double]]).toDF(idColName, defaultConfig.fromColName, defaultConfig.toColName,valueColName)
-*/
+  def makeRowsWithTimeRangeEnd[A,B](zeile: (A, B, String, String)): (A, B, Timestamp, Timestamp) = (zeile._1,zeile._2,Timestamp.valueOf(zeile._3),Timestamp.valueOf(zeile._4))
+  def makeRowsWithTimeRangeEnd[A,B,C](zeile: (A, B, C, String, String)): (A, B, C, Timestamp, Timestamp) = (zeile._1,zeile._2,zeile._3,Timestamp.valueOf(zeile._4),Timestamp.valueOf(zeile._5))
+
   val rowsLeft: Seq[(Int, String, String, Double)] = Seq((0, "2017-12-10 00:00:00", "2018-12-08 23:59:59.999", 4.2))
   val dfLeft: DataFrame = rowsLeft.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_l")
 
