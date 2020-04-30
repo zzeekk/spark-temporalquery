@@ -7,7 +7,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.zzeekk</groupId>
 	<artifactId>spark-temporalquery_${scala.minor.version}</artifactId>
-	<version>0.9.8</version>
+	<version>0.9.9-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<profiles>
@@ -161,7 +161,7 @@
 		<repository>
 			<id>bintray-zach-zzeekk-release</id>
 			<name>zach-zzeekk-release</name>
-			<url>https://api.bintray.com/maven/zach/zzeekk-release/spark-temporalquery/;publish=1</url>
+			<url>https://api.bintray.com/maven/zach/zzeekk-release/spark-temporalquery_${scala.minor.version}/;publish=1</url>
 		</repository>
 	</distributionManagement>
 
