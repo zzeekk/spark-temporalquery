@@ -23,15 +23,26 @@ object TemporalQueryUtil extends Logging {
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
-  case class TemporalQueryConfig ( minDate:Timestamp = Timestamp.valueOf("0001-01-01 00:00:00")
-                                   , maxDate:Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
-                                   , fromColName:String    = "gueltig_ab"
-                                   , toColName:String      = "gueltig_bis"
-                                   , additionalTechnicalColNames:Seq[String] = Seq()) {
-    val fromColName2:String = fromColName+"2"
-    val toColName2:String = toColName+"2"
-    val technicalColNames:Seq[String] = Seq( fromColName, toColName ) ++ additionalTechnicalColNames
-    def config2 = this.copy(fromColName = fromColName2, toColName = toColName2)
+  case class TemporalQueryConfig ( minDate: Timestamp = Timestamp.valueOf("0001-01-01 00:00:00")
+                                   , maxDate: Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
+                                   , fromColName: String    = "gueltig_ab"
+                                   , toColName: String      = "gueltig_bis"
+                                   , additionalTechnicalColNames: Seq[String] = Seq()) {
+    // 2nd pair of from/to column names
+    val fromColName2: String = fromColName+"2"
+    val toColName2: String = toColName+"2"
+    // technical column names to be excluded in some operations
+    val technicalColNames: Seq[String] = Seq( fromColName, toColName ) ++ additionalTechnicalColNames
+    // helper column names
+    val definedColName: String = "_defined"
+    // prepared column objects (not serializable)
+    @transient lazy val fromCol: Column = col(fromColName)
+    @transient lazy val toCol: Column = col(toColName)
+    @transient lazy val fromCol2: Column = col(fromColName2)
+    @transient lazy val toCol2: Column = col(toColName2)
+    @transient lazy val definedCol: Column = col(definedColName)
+    // configuration with 2nd pair of from/to column names used as main pair
+    def config2: TemporalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
   /**
@@ -43,7 +54,7 @@ object TemporalQueryUtil extends Logging {
      * Implementiert ein inner-join von historisierten Daten über eine Liste von gleichbenannten Spalten
      */
     def temporalInnerJoin( df2:DataFrame, keys:Seq[String] )
-                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+                         (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
       temporalKeyJoinImpl( df1, df2, keys )
     }
 
@@ -51,7 +62,7 @@ object TemporalQueryUtil extends Logging {
      * Implementiert ein inner-join von historisierten Daten über eine ausformulierte Join-Bedingung
      */
     def temporalInnerJoin( df2:DataFrame, keyCondition:Column )
-                         (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+                         (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
       temporalJoinImpl( df1, df2, keyCondition )
     }
 
@@ -65,7 +76,7 @@ object TemporalQueryUtil extends Logging {
      * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
      */
     def temporalFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
-                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = temporalKeyOuterJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full" )
+                        (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = temporalKeyOuterJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full" )
 
     /**
      * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
@@ -77,7 +88,7 @@ object TemporalQueryUtil extends Logging {
      * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
      */
     def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
-                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+                        (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
       temporalKeyOuterJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "left" )
     }
 
@@ -91,7 +102,7 @@ object TemporalQueryUtil extends Logging {
      * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
      */
     def temporalRightJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
-                        (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+                        (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
       temporalKeyOuterJoinImpl( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right" )
     }
 
@@ -100,7 +111,7 @@ object TemporalQueryUtil extends Logging {
      * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-anti-join
      */
     def temporalLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true) )
-                            (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+                            (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
       temporalLeftAntiJoinImpl( df1, df2, joinColumns, additionalJoinFilterCondition )
     }
 
@@ -117,7 +128,7 @@ object TemporalQueryUtil extends Logging {
     // TODO: entkoppele Parameter extend und fillGapsWithNull
     def temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Seq()
                                , rnkFilter:Boolean = true , extend: Boolean = true, fillGapsWithNull: Boolean = true )
-                             (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+                             (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
       temporalCleanupExtendImpl( df1, keys, rnkExpressions, aggExpressions, rnkFilter, extend, fillGapsWithNull )
     }
 
@@ -127,7 +138,7 @@ object TemporalQueryUtil extends Logging {
      *
      * @return temporal dataframe with combined validities
      */
-    def temporalCombine( keys:Seq[String] = Seq() , ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+    def temporalCombine( keys:Seq[String] = Seq() , ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
       if(keys.nonEmpty) logger.warn("Parameter keys is superfluous and therefore ignored. Please refrain from using it!")
       temporalCombineImpl( df1, ignoreColNames )
     }
@@ -135,14 +146,14 @@ object TemporalQueryUtil extends Logging {
     /**
      * Schneidet bei Überlappungen die Records in Stücke, so dass beim Start der Überlappung alle gültigen Records aufgeteilt werden
      */
-    def temporalUnifyRanges( keys:Seq[String] )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+    def temporalUnifyRanges( keys:Seq[String] )(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
       temporalUnifyRangesImpl( df1, keys )
     }
 
     /**
      * Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
      */
-    def temporalExtendRange( keys:Seq[String]=Seq(), extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
+    def temporalExtendRange( keys:Seq[String]=Seq(), extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, tc:TemporalQueryConfig): DataFrame = {
       temporalExtendRangeImpl( df1, keys, extendMin, extendMax )
     }
 
@@ -157,13 +168,13 @@ object TemporalQueryUtil extends Logging {
      *
      * @return temporal dataframe with a discreteness of milliseconds
      */
-    def temporalRoundDiscreteTime(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(hc))
+    def temporalRoundDiscreteTime(implicit tc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(tc))
 
     /**
      * Transforms [[DataFrame]] with continuous time, half open time intervals [fromColName , toColName [, to discrete time ([fromColName , toColName])
      * @return [[DataFrame]] with discrete time axis
      */
-    def temporalContinuous2discrete(implicit hc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_predecessorTime)
+    def temporalContinuous2discrete(implicit tc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_predecessorTime)
 
   }
 
@@ -173,11 +184,11 @@ object TemporalQueryUtil extends Logging {
     keys.foldLeft(lit(true)){ case (cond,key) => cond and df1(key)===df2(key) }
   }
 
-  private def shrinkValidityImpl(df: DataFrame)(udfFloorOrPred: UserDefinedFunction)(implicit hc:TemporalQueryConfig): DataFrame= {
+  private def shrinkValidityImpl(df: DataFrame)(udfFloorOrPred: UserDefinedFunction)(implicit tc:TemporalQueryConfig): DataFrame= {
     val spalten: Seq[String] = df.columns
-    df.withColumn(hc.fromColName,udf_ceilTimestamp(hc)(col({hc.fromColName})))
-      .withColumn(hc.toColName,udfFloorOrPred(col({hc.toColName})))
-      .where(s"${hc.fromColName} <= ${hc.toColName}")
+    df.withColumn(tc.fromColName,udf_ceilTimestamp(tc)(tc.fromCol))
+      .withColumn(tc.toColName,udfFloorOrPred(tc.toCol))
+      .where(tc.fromCol <= tc.toCol)
       // return columns in same order as provided
       .select(spalten.map(col):_*)
   }
@@ -188,44 +199,52 @@ object TemporalQueryUtil extends Logging {
    * Nota bene:
    * Columns which occur in both data frames df1 and df2 will occur only once in the result frame with df1 precedence over df2 using coalesce.
    */
-  private def temporalJoinImpl( df1:DataFrame, df2:DataFrame, keyCondition:Column, joinType:String = "inner" )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-    // history join
-    val df2ren = df2.withColumnRenamed(hc.fromColName,hc.fromColName2).withColumnRenamed(hc.toColName,hc.toColName2)
-    val df_join = df1.join( df2ren, keyCondition and col(hc.fromColName)<=col(hc.toColName2) and col(hc.toColName)>=col(hc.fromColName2), joinType)
+  private def temporalJoinImpl( df1:DataFrame, df2:DataFrame, keyCondition:Column, joinType:String = "inner" )(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
+
+    require(!(df2.columns.contains(tc.fromColName2) || df2.columns.contains(tc.toColName2)),
+      s"(temporalJoinImpl) Your right-dataframe must not contain columns named ${tc.fromColName2} or ${tc.toColName2}! df.columns = ${df2.columns}")
+
+    // temporal join
+    val df2ren = df2.withColumnRenamed(tc.fromColName,tc.fromColName2).withColumnRenamed(tc.toColName,tc.toColName2)
+    val df_join = df1.join( df2ren, keyCondition and tc.fromCol <= tc.toCol2 and tc.toCol >= tc.fromCol2, joinType)
     // select final schema
-    val dfCommonColNames = df1.columns.intersect(df2.columns).diff(hc.technicalColNames)
+    val dfCommonColNames = df1.columns.intersect(df2.columns).diff(tc.technicalColNames)
     val commonCols: Array[Column] = dfCommonColNames.map(colName => coalesce(df1(colName),df2(colName)).as(colName))
-    val colsDf1: Array[Column] = df1.columns.diff(dfCommonColNames ++ hc.technicalColNames).map(df1(_))
-    val colsDf2: Array[Column] = df2.columns.diff(dfCommonColNames ++ hc.technicalColNames).map(df2(_))
-    val timeColumns: Array[Column] = Array(greatest(col(hc.fromColName), col(hc.fromColName2)).as(hc.fromColName),least(col(hc.toColName), col(hc.toColName2)).as(hc.toColName))
+    val colsDf1: Array[Column] = df1.columns.diff(dfCommonColNames ++ tc.technicalColNames).map(df1(_))
+    val colsDf2: Array[Column] = df2.columns.diff(dfCommonColNames ++ tc.technicalColNames).map(df2(_))
+    val timeColumns: Array[Column] = Array(greatest(tc.fromCol, tc.fromCol2).as(tc.fromColName),least(tc.toCol, tc.toCol2).as(tc.toColName))
     val selCols: Array[Column] = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
 
     df_join.select(selCols:_*)
   }
-  private def temporalKeyJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], joinType:String = "inner" )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+  private def temporalKeyJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], joinType:String = "inner" )(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
     temporalJoinImpl( df1, df2, createKeyCondition(df1, df2, keys), joinType )
   }
 
   /**
    * build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
    */
-  private def temporalRangesImpl( df:DataFrame, keys:Seq[String], extend:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
+  private def temporalRangesImpl( df:DataFrame, keys:Seq[String], extend:Boolean )(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
+    val ptColName = "_pt"
+
+    require(!(df.columns.contains(tc.fromColName2) || df.columns.contains(tc.toColName2) || df.columns.contains(ptColName)),
+      s"(temporalRangesImpl) Your dataframe must not contain columns named ${tc.fromColName2}, ${tc.toColName2} or $ptColName! df.columns = ${df.columns}")
+
     val keyCols = keys.map(col)
     // get start/end-points for every key
-    val df_points = df.select( keyCols :+ col(hc.fromColName).as("_dt"):_*).union( df.select( keyCols :+ udf_successorTime(hc)(col(hc.toColName)).as("_dt"):_* ))
+    val df_points = df.select( keyCols :+ tc.fromCol.as(ptColName):_*).union( df.select( keyCols :+ udf_successorTime(tc)(tc.toCol).as(ptColName):_* ))
     // if desired, extend every key with min/maxDate-points
     val df_pointsExt = if (extend) {
       df_points
-        .union( df_points.select( keyCols:_*).distinct.withColumn( "_dt", lit(hc.minDate)))
-        .union( df_points.select( keyCols:_*).distinct.withColumn( "_dt", lit(hc.maxDate)))
+        .union( df_points.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.minDate)))
+        .union( df_points.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.maxDate)))
         .distinct
     } else df_points.distinct
     // build ranges
     df_pointsExt
-      .withColumnRenamed("_dt", "range_von")
-      .withColumn( "range_bis",
-        udf_predecessorTime(hc)(lead(col("range_von"),1).over(Window.partitionBy(keys.map(col):_*).orderBy(col("range_von")))))
-      .where(col("range_bis").isNotNull)
+      .withColumnRenamed(ptColName, tc.fromColName2)
+      .withColumn( tc.toColName2, udf_predecessorTime(tc)(lead(tc.fromCol2,1).over(Window.partitionBy(keys.map(col):_*).orderBy(tc.fromCol2))))
+      .where(tc.toCol2.isNotNull)
   }
 
   /**
@@ -233,22 +252,21 @@ object TemporalQueryUtil extends Logging {
    */
   private def temporalCleanupExtendImpl( df:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)]
                                          , rnkFilter:Boolean , extend: Boolean = true, fillGapsWithNull: Boolean = true )
-                                       (implicit ss:SparkSession, hc:TemporalQueryConfig) : DataFrame = {
-    import ss.implicits._
+                                       (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
     if(extend && !fillGapsWithNull) logger.warn("temporalCleanupExtendImpl: extend=true has no effect if fillGapsWithNull=false!")
 
-    require(!(df.columns.contains(hc.fromColName2) || df.columns.contains(hc.toColName2)),
-      s"Your dataframe df must not contain columns named ${hc.fromColName2} or ${hc.toColName2}!\ndf.columns = ${df.columns}")
+    require(!df.columns.contains(tc.fromColName2) && !df.columns.contains(tc.toColName2) && !df.columns.contains(tc.definedColName),
+      s"(temporalCleanupExtendImpl) Your dataframe must not contain columns named ${tc.fromColName2}, ${tc.toColName2} or ${tc.definedColName}! df.columns = ${df.columns}")
 
     // use 2nd pair of from/to column names so that original pair can still be used in rnk- & aggExpressions
-    val df2 = df.withColumn(hc.fromColName2,col(hc.fromColName)).withColumn(hc.toColName2,col(hc.toColName))
-    val hc2 = hc.config2
-    val fenestra: WindowSpec = Window.partitionBy( keys.map(col):+ col(hc2.fromColName) :_*)
+    val df2 = df.withColumn(tc.fromColName2, tc.fromCol).withColumn(tc.toColName2, tc.toCol)
+    val tc2 = tc.config2
+    val fenestra: WindowSpec = Window.partitionBy( keys.map(col):+ tc2.fromCol :_*)
 
-    val df_join = temporalUnifyRangesImpl( df2, keys, extend, fillGapsWithNull)(ss, hc2)
-      .withColumn(hc.fromColName, coalesce(col(hc.fromColName),col(hc2.fromColName)))
-      .withColumn(hc.toColName, coalesce(col(hc.toColName),col(hc2.toColName)))
-      .withColumn("_defined", col(hc2.toColName).isNotNull)
+    val df_join = temporalUnifyRangesImpl( df2, keys, extend, fillGapsWithNull)(ss, tc2)
+      .withColumn(tc.fromColName, coalesce(tc.fromCol, tc2.fromCol))
+      .withColumn(tc.toColName, coalesce(tc.toCol, tc2.toCol))
+      .withColumn(tc.definedColName, tc2.toCol.isNotNull)
 
     // add aggregations if defined, implemented as analytical functions...£
     val df_agg = aggExpressions.foldLeft( df_join ){
@@ -256,48 +274,49 @@ object TemporalQueryUtil extends Logging {
     }
 
     // Prioritize and clean overlaps
+    val rnkColName = "_rnk"
     val df_clean = if (rnkExpressions.nonEmpty) {
-      val df_rnk = df_agg.withColumn("_rnk", row_number.over(fenestra.orderBy(rnkExpressions: _*)))
-      if (rnkFilter) df_rnk.where($"_rnk"===1) else df_rnk
+      require(!df.columns.contains(rnkColName), s"(temporalCleanupExtendImpl) Your dataframe must not contain columns named $rnkColName if rnkExpressions are defined! df.columns = ${df.columns}")
+      val df_rnk = df_agg.withColumn(rnkColName, row_number.over(fenestra.orderBy(rnkExpressions: _*)))
+      if (rnkFilter) df_rnk.where(col(rnkColName)===1) else df_rnk
     } else df_agg
 
     // select final schema
     val selCols: Seq[Column] = keys.map(df_clean(_)) ++
-      df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++
-      aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq($"_rnk") else Seq()) :+
-      df_clean(hc2.fromColName).as(hc.fromColName) :+ df_clean(hc2.toColName).as(hc.toColName) :+ $"_defined"
+      df.columns.diff(keys ++ tc.technicalColNames).map(df_clean(_)) ++
+      aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq(col(rnkColName)) else Seq()) :+
+      df_clean(tc2.fromColName).as(tc.fromColName) :+ df_clean(tc2.toColName).as(tc.toColName) :+ tc.definedCol
 
-    temporalCombineImpl( df_clean.select(selCols:_*) , Seq() )(ss,hc)
+    temporalCombineImpl( df_clean.select(selCols:_*) , Seq() )(ss,tc)
   }
 
   /**
    * outer join
    */
   private def temporalKeyOuterJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column, joinType:String)
-                                     (implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
-    import ss.implicits._
+                                     (implicit ss:SparkSession, tc:TemporalQueryConfig): DataFrame = {
     // extend df2
     val df1_extended = if (joinType=="full" || joinType=="right") temporalCleanupExtendImpl( df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Seq(), rnkFilter=true ) else df1
     val df2_extended = if (joinType=="full" || joinType=="left") temporalCleanupExtendImpl( df2, keys, rnkExpressions.intersect(df2.columns.map(col)), Seq(), rnkFilter=true ) else df2
     // join df1 & df2
-    temporalJoinImpl( df1_extended, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, joinType ).drop($"_defined")
+    temporalJoinImpl( df1_extended, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, joinType ).drop(tc.definedCol)
   }
 
   /**
    * left outer join
    */
   private def temporalLeftAntiJoinImpl( df1:DataFrame, df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column )
-                                      (implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
+                                      (implicit ss:SparkSession, tc:TemporalQueryConfig): DataFrame = {
     logger.debug(s"temporalLeftAntiJoinImpl START: joinColumns = ${joinColumns.mkString(", ")}")
     val df1Prepared = df1
     val resultColumns: Array[String] = df1Prepared.columns
     val resultColumnsDf1: Array[Column] = df1Prepared.columns.map(df1Prepared(_))
     val df2Prepared = df2
-      .withColumnRenamed(hc.fromColName,hc.fromColName2).withColumnRenamed(hc.toColName,hc.toColName2)
+      .withColumnRenamed(tc.fromColName,tc.fromColName2).withColumnRenamed(tc.toColName,tc.toColName2)
 
     val joinCondition: Column = createKeyCondition(df1Prepared, df2Prepared, joinColumns)
-      .and(col(hc.fromColName) <= col(hc.toColName2))
-      .and(col(hc.fromColName2) <= col(hc.toColName))
+      .and(tc.fromCol <= tc.toCol2)
+      .and(tc.fromCol2 <= tc.toCol)
       .and(additionalJoinFilterCondition)
 
     val dfAntiJoin = df1Prepared.join(df2Prepared, joinCondition, "leftanti")
@@ -306,9 +325,9 @@ object TemporalQueryUtil extends Logging {
     val df1ExceptAntiJoin = df1Prepared.except(dfAntiJoin)
     // We need to temporally combine df2 but without the columns which are used in additionalJoinFilterCondition
     val dfJoin = df1ExceptAntiJoin.join(df2Prepared, joinCondition, "inner")
-      .select(resultColumnsDf1 :+ col(hc.fromColName2) :+ col(hc.toColName2) :_*)
+      .select(resultColumnsDf1 :+ tc.fromCol2 :+ tc.toCol2 :_*)
     logger.debug(s"temporalLeftAntiJoinImpl: dfJoin.schema = ${dfJoin.schema.treeString}")
-    val df2Combined = temporalCombineImpl(dfJoin.select(hc.fromColName2, hc.toColName2+:joinColumns :_*), Seq())(ss,TemporalQueryConfig(hc.minDate:Timestamp,hc.maxDate,hc.fromColName2,hc.toColName2,hc.additionalTechnicalColNames))
+    val df2Combined = temporalCombineImpl(dfJoin.select(tc.fromColName2, tc.toColName2 +: joinColumns :_*), Seq())(ss, tc.config2)
     logger.debug(s"temporalLeftAntiJoinImpl: df2Combined.schema = ${df2Combined.schema.treeString}")
 
     val dfComplementJoin = if (joinColumns.isEmpty) df1ExceptAntiJoin.crossJoin(df2Combined) else {
@@ -318,16 +337,16 @@ object TemporalQueryUtil extends Logging {
 
     val dfComplementJoin_complementArray = dfComplementJoin
       .groupBy(resultColumnsDf1:_*)
-      .agg(collect_set(struct(col(hc.fromColName2).as("_1"),col(hc.toColName2).as("_1"))).as("subtrahend"))
-      .withColumn("complement_array", udf_temporalComplement(hc)(col(hc.fromColName), col(hc.toColName), col("subtrahend")))
+      .agg(collect_set(struct(tc.fromCol2.as("_1"), tc.toCol2.as("_2"))).as("subtrahend"))
+      .withColumn("complement_array", udf_temporalComplement(tc)(tc.fromCol, tc.toCol, col("subtrahend")))
       .cache()
     logger.debug(s"temporalLeftAntiJoinImpl: dfComplementJoin_complementArray.schema = ${dfComplementJoin_complementArray.schema.treeString}")
 
     val dfComplement = dfComplementJoin_complementArray
       .withColumn("complements", explode(col("complement_array")))
-      .drop("subtrahend",hc.fromColName,hc.toColName)
-      .withColumn(hc.fromColName,col("complements._1"))
-      .withColumn(hc.toColName,col("complements._2"))
+      .drop("subtrahend",tc.fromColName,tc.toColName)
+      .withColumn(tc.fromColName,col("complements._1"))
+      .withColumn(tc.toColName,col("complements._2"))
       .select(resultColumns.head, resultColumns.tail :_*)
     logger.debug(s"temporalLeftAntiJoinImpl: dfComplement.schema = ${dfComplement.schema.treeString}")
 
@@ -338,18 +357,20 @@ object TemporalQueryUtil extends Logging {
    * Combine consecutive records with same data values
    */
   private def temporalCombineImpl( df:DataFrame, ignoreColNames:Seq[String]  )
-                                 (implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
-    import ss.implicits._
+                                 (implicit ss:SparkSession, tc:TemporalQueryConfig): DataFrame = {
     val dfColumns = df.columns
-    val compairCols: Array[String] = dfColumns.diff( ignoreColNames ++ hc.technicalColNames )
-    val fenestra: WindowSpec = Window.partitionBy(compairCols.map(col):_*).orderBy(col(hc.fromColName))
+    val compairCols: Array[String] = dfColumns.diff( ignoreColNames ++ tc.technicalColNames )
+    val fenestra: WindowSpec = Window.partitionBy(compairCols.map(col):_*).orderBy(tc.fromCol)
 
-    df.temporalRoundDiscreteTime(hc)
-      .withColumn("_consecutive", coalesce(udf_predecessorTime(hc)(col(hc.fromColName)) <= lag(col(hc.toColName),1).over(fenestra),lit(false)))
-      .withColumn("_nb", sum(when($"_consecutive",lit(0)).otherwise(lit(1))).over(fenestra))
-      .groupBy( compairCols.map(col):+$"_nb":_*)
-      .agg( min(col(hc.fromColName)).as(hc.fromColName) , max(col(hc.toColName)).as(hc.toColName))
-      .drop($"_nb")
+    val nbColName = "_nb"
+    val consecutiveColName = "_consecutive"
+    require(!df.columns.contains(nbColName) && !df.columns.contains(consecutiveColName), s"(temporalCombineImpl) Your dataframe must not contain columns named $nbColName or $consecutiveColName! df.columns = ${df.columns}")
+    df.temporalRoundDiscreteTime(tc)
+      .withColumn(consecutiveColName, coalesce(udf_predecessorTime(tc)(tc.fromCol) <= lag(tc.toCol,1).over(fenestra),lit(false)))
+      .withColumn(nbColName, sum(when(col(consecutiveColName),lit(0)).otherwise(lit(1))).over(fenestra))
+      .groupBy( compairCols.map(col):+col(nbColName):_*)
+      .agg( min(tc.fromCol).as(tc.fromColName) , max(tc.toCol).as(tc.toColName))
+      .drop(nbColName)
       .select(dfColumns.head,dfColumns.tail:_*)
   }
 
@@ -357,31 +378,33 @@ object TemporalQueryUtil extends Logging {
    * Unify ranges
    */
   private def temporalUnifyRangesImpl( df:DataFrame, keys:Seq[String], extend: Boolean = false, fillGapsWithNull: Boolean = false )
-                                     (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
-    import ss.implicits._
+                                     (implicit ss:SparkSession, tc:TemporalQueryConfig) = {
     // get ranges
-    val df_ranges = temporalRangesImpl( df, keys, extend )( ss,hc )
+    val df_ranges = temporalRangesImpl( df, keys, extend )( ss,tc )
     val keyCondition = createKeyCondition( df, df_ranges, keys )
     // join back on input df
     val joinType = if (fillGapsWithNull) "left" else "inner"
-    val df_join = df_ranges.join( df, keyCondition and $"range_von".between(col(hc.fromColName),col(hc.toColName)), joinType )
+    val df_join = df_ranges.join( df, keyCondition and tc.fromCol2.between(tc.fromCol,tc.toCol), joinType )
     // select result
-    val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_join(_)) :+
-      $"range_von".as(hc.fromColName) :+ $"range_bis".as(hc.toColName)
+    val selCols = keys.map(df_ranges(_)) ++ df.columns.diff(keys ++ tc.technicalColNames).map(df_join(_)) :+
+      tc.fromCol2.as(tc.fromColName) :+ tc.toCol2.as(tc.toColName)
     df_join.select(selCols:_*)
   }
 
   /**
    * extend gueltig_ab/bis to min/maxDate
    */
-  def temporalExtendRangeImpl( df:DataFrame, keys:Seq[String], extendMin:Boolean, extendMax:Boolean )(implicit ss:SparkSession, hc:TemporalQueryConfig): DataFrame = {
-    import ss.implicits._
+  def temporalExtendRangeImpl( df:DataFrame, keys:Seq[String], extendMin:Boolean, extendMax:Boolean )(implicit ss:SparkSession, tc:TemporalQueryConfig): DataFrame = {
+    val fromMinColName = s"_${tc.fromColName}_min"
+    val toMaxColName = s"_${tc.toColName}_max"
+    require(!df.columns.contains(fromMinColName) && !df.columns.contains(toMaxColName), s"(temporalCombineImpl) Your dataframe must not contain columns named $fromMinColName or $toMaxColName! df.columns = ${df.columns}")
     val keyCols = if (keys.nonEmpty) keys.map(col) else Seq(lit(1)) // if no keys are given, we work with the global minimum.
     val df_prep = df
-      .withColumn( "_gueltig_ab_min", if( extendMin ) min(col(hc.fromColName)).over(Window.partitionBy(keyCols:_*)) else lit(null))
-      .withColumn( "_gueltig_bis_max", if( extendMax ) max(col(hc.toColName)).over(Window.partitionBy(keyCols:_*)) else lit(null))
-    val selCols = df.columns.filter( c => c!=hc.fromColName && c!=hc.toColName ).map(col) :+ when(col(hc.fromColName)===$"_gueltig_ab_min", lit(hc.minDate)).otherwise(col(hc.fromColName)).as(hc.fromColName) :+
-      when(col(hc.toColName)===$"_gueltig_bis_max", lit(hc.maxDate)).otherwise(col(hc.toColName)).as(hc.toColName)
+      .withColumn(fromMinColName, if( extendMin ) min(tc.fromCol).over(Window.partitionBy(keyCols:_*)) else lit(null))
+      .withColumn(toMaxColName, if( extendMax ) max(tc.toCol).over(Window.partitionBy(keyCols:_*)) else lit(null))
+    val selCols = df.columns.filter( c => c!=tc.fromColName && c!=tc.toColName ).map(col) :+
+      when(tc.fromCol===col(fromMinColName), lit(tc.minDate)).otherwise(tc.fromCol).as(tc.fromColName) :+
+      when(tc.toCol===col(toMaxColName), lit(tc.maxDate)).otherwise(tc.toCol).as(tc.toColName)
     df_prep.select( selCols:_* )
   }
 
