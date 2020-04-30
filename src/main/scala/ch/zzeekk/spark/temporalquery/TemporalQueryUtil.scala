@@ -31,6 +31,7 @@ object TemporalQueryUtil extends Logging {
     val fromColName2:String = fromColName+"2"
     val toColName2:String = toColName+"2"
     val technicalColNames:Seq[String] = Seq( fromColName, toColName ) ++ additionalTechnicalColNames
+    def config2 = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
   /**
@@ -236,22 +237,37 @@ object TemporalQueryUtil extends Logging {
     import ss.implicits._
     if(extend && !fillGapsWithNull) logger.warn("temporalCleanupExtendImpl: extend=true has no effect if fillGapsWithNull=false!")
 
-    val df_join = temporalUnifyRangesImpl( df, keys, extend, fillGapsWithNull)
-      .withColumn("_defined", col(hc.toColName).isNotNull)
+    require(!(df.columns.contains(hc.fromColName2) || df.columns.contains(hc.toColName2)),
+      s"Your dataframe df must not contain columns named ${hc.fromColName2} or ${hc.toColName2}!\ndf.columns = ${df.columns}")
+
+    // use 2nd pair of from/to column names so that original pair can still be used in rnk- & aggExpressions
+    val df2 = df.withColumn(hc.fromColName2,col(hc.fromColName)).withColumn(hc.toColName2,col(hc.toColName))
+    val hc2 = hc.config2
+    val fenestra: WindowSpec = Window.partitionBy( keys.map(col):+ col(hc2.fromColName) :_*)
+
+    val df_join = temporalUnifyRangesImpl( df2, keys, extend, fillGapsWithNull)(ss, hc2)
+      .withColumn(hc.fromColName, coalesce(col(hc.fromColName),col(hc2.fromColName)))
+      .withColumn(hc.toColName, coalesce(col(hc.toColName),col(hc2.toColName)))
+      .withColumn("_defined", col(hc2.toColName).isNotNull)
 
     // add aggregations if defined, implemented as analytical functions...£
     val df_agg = aggExpressions.foldLeft( df_join ){
-      case (df_acc, (name,expr)) => df_acc.withColumn(name, expr.over(Window.partitionBy( keys.map(df_join(_)):+ df_join(hc.fromColName) :_*)))
+      case (df_acc, (name,expr)) => df_acc.withColumn(name, expr.over(fenestra))
     }
+
     // Prioritize and clean overlaps
     val df_clean = if (rnkExpressions.nonEmpty) {
-      val df_rnk = df_agg.withColumn("_rnk", row_number.over(Window.partitionBy(keys.map(df_join(_)) :+ df_join(hc.fromColName) : _*).orderBy(rnkExpressions: _*)))
+      val df_rnk = df_agg.withColumn("_rnk", row_number.over(fenestra.orderBy(rnkExpressions: _*)))
       if (rnkFilter) df_rnk.where($"_rnk"===1) else df_rnk
     } else df_agg
+
     // select final schema
-    val selCols = keys.map(df_join(_)) ++ df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++ aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq($"_rnk") else Seq()) :+
-      df_join(hc.fromColName) :+ df_join(hc.toColName) :+ $"_defined"
-    temporalCombineImpl( df_clean.select(selCols:_*), Seq() )
+    val selCols: Seq[Column] = keys.map(df_clean(_)) ++
+      df.columns.diff(keys ++ hc.technicalColNames).map(df_clean(_)) ++
+      aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq($"_rnk") else Seq()) :+
+      df_clean(hc2.fromColName).as(hc.fromColName) :+ df_clean(hc2.toColName).as(hc.toColName) :+ $"_defined"
+
+    temporalCombineImpl( df_clean.select(selCols:_*) , Seq() )(ss,hc)
   }
 
   /**
@@ -344,7 +360,7 @@ object TemporalQueryUtil extends Logging {
                                      (implicit ss:SparkSession, hc:TemporalQueryConfig) = {
     import ss.implicits._
     // get ranges
-    val df_ranges = temporalRangesImpl( df, keys, extend )
+    val df_ranges = temporalRangesImpl( df, keys, extend )( ss,hc )
     val keyCondition = createKeyCondition( df, df_ranges, keys )
     // join back on input df
     val joinType = if (fillGapsWithNull) "left" else "inner"

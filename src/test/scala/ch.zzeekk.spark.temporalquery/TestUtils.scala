@@ -1,8 +1,6 @@
 package ch.zzeekk.spark.temporalquery
 
-
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
-import collection.JavaConverters._
 import java.sql.Timestamp
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{lit, when}
