@@ -125,7 +125,6 @@ object TemporalQueryUtil extends Logging {
      * - fillGapsWithNull: Wenn true, dann werden Lücken in der Historie mit Nullzeilen geschlossen.
      *   ! fillGapsWithNull muss auf true gesetzt werden, damit extend=true etwas bewirkt !
      */
-    // TODO: entkoppele Parameter extend und fillGapsWithNull
     def temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Seq()
                                , rnkFilter:Boolean = true , extend: Boolean = true, fillGapsWithNull: Boolean = true )
                              (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
@@ -296,10 +295,10 @@ object TemporalQueryUtil extends Logging {
   private def temporalKeyOuterJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column, joinType:String)
                                      (implicit ss:SparkSession, tc:TemporalQueryConfig): DataFrame = {
     // extend df2
-    val df1_extended = if (joinType=="full" || joinType=="right") temporalCleanupExtendImpl( df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Seq(), rnkFilter=true ) else df1
-    val df2_extended = if (joinType=="full" || joinType=="left") temporalCleanupExtendImpl( df2, keys, rnkExpressions.intersect(df2.columns.map(col)), Seq(), rnkFilter=true ) else df2
+    val df1_extended = if (joinType=="full" || joinType=="right") temporalCleanupExtendImpl( df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Seq(), rnkFilter=true ).drop(tc.definedColName) else df1
+    val df2_extended = if (joinType=="full" || joinType=="left") temporalCleanupExtendImpl( df2, keys, rnkExpressions.intersect(df2.columns.map(col)), Seq(), rnkFilter=true ).drop(tc.definedColName) else df2
     // join df1 & df2
-    temporalJoinImpl( df1_extended, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, joinType, keys ).drop(tc.definedCol)
+    temporalJoinImpl( df1_extended, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, joinType, keys )
   }
 
   /**
