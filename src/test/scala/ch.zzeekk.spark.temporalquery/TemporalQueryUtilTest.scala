@@ -1,12 +1,11 @@
 package ch.zzeekk.spark.temporalquery
 
+import ch.zzeekk.spark.temporalquery.TemporalHelpers._
+import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
+import ch.zzeekk.spark.temporalquery.TestUtils._
 import java.sql.Timestamp
-import org.apache.spark.sql.functions.{col,lit}
+import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.FunSuite
-
-import TemporalHelpers._
-import TemporalQueryUtil._
-import TestUtils._
 
 class TemporalQueryUtilTest extends FunSuite {
   import session.implicits._
@@ -366,6 +365,34 @@ class TemporalQueryUtilTest extends FunSuite {
     val expectedWithActualColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual)(expectedWithActualColumns)
     if (!resultat) printFailedTestResult("temporalExtendRange_dfRight",dfRight)(actual)(expectedWithActualColumns)
+    assert(resultat)
+  }
+
+  test("temporalInnerJoin dfRight 'on' semantics") {
+    val actual = dfLeft.as("dfL").temporalInnerJoin(dfRight.as("dfR"),$"dfL.id"===$"dfR.id")
+    assert(actual.columns.count(_ == "id") == 2)
+    val expected = Seq(
+      (0,4.2,0,Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,4.2,0,Some(97.15),"2018-06-01 05:24:11","2018-10-23 03:50:09.999"),
+      (0,4.2,0,Some(97.15),"2018-10-23 03:50:10","2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double,Int,Option[Double]])
+      .toDF("id", "wert_l", "id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalInnerJoin dfRight 'on' semantics",Seq(dfLeft,dfRight))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalInnerJoin dfRight with 'using' semantics") {
+    val actual = dfLeft.as("dfL").temporalInnerJoin(dfRight.as("dfR"),Seq("id"))
+    assert(3 == actual.select($"id",$"dfL.wert_l",$"dfR.wert_r").count())
+    val expected = Seq(
+      (0,4.2,Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,4.2,Some(97.15),"2018-06-01 05:24:11","2018-10-23 03:50:09.999"),
+      (0,4.2,Some(97.15),"2018-10-23 03:50:10","2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double,Option[Double]])
+      .toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalInnerJoin",Seq(dfLeft,dfRight))(actual)(expected)
     assert(resultat)
   }
 

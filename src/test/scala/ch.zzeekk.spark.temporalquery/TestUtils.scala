@@ -92,6 +92,7 @@ object TestUtils extends Logging {
   def makeRowsWithTimeRange[A,B](zeile: (A, String, String, B)): (A, Timestamp, Timestamp, B) = (zeile._1,Timestamp.valueOf(zeile._2),Timestamp.valueOf(zeile._3),zeile._4)
   def makeRowsWithTimeRangeEnd[A,B](zeile: (A, B, String, String)): (A, B, Timestamp, Timestamp) = (zeile._1,zeile._2,Timestamp.valueOf(zeile._3),Timestamp.valueOf(zeile._4))
   def makeRowsWithTimeRangeEnd[A,B,C](zeile: (A, B, C, String, String)): (A, B, C, Timestamp, Timestamp) = (zeile._1,zeile._2,zeile._3,Timestamp.valueOf(zeile._4),Timestamp.valueOf(zeile._5))
+  def makeRowsWithTimeRangeEnd[A,B,C,D](zeile: (A, B, C, D, String, String)): (A, B, C, D, Timestamp, Timestamp) = (zeile._1,zeile._2,zeile._3,zeile._4,Timestamp.valueOf(zeile._5),Timestamp.valueOf(zeile._6))
 
   val rowsLeft: Seq[(Int, String, String, Double)] = Seq((0, "2017-12-10 00:00:00", "2018-12-08 23:59:59.999", 4.2))
   val dfLeft: DataFrame = rowsLeft.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert_l")
