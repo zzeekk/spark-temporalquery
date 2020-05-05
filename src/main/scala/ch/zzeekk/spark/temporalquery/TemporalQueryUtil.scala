@@ -195,30 +195,30 @@ object TemporalQueryUtil extends Logging {
 
   /**
    * join two temporalquery dataframes
-   *
-   * Nota bene:
-   * Columns which occur in both data frames df1 and df2 will occur only once in the result frame with df1 precedence over df2 using coalesce.
+   * colsToConsolidate must occur in both data frames df1 and df2 and are consolidated in the result frame with df1 precedence over df2 using coalesce.
+   * This is used to implement "natural join" and "join using" sql behaviour.
    */
-  private def temporalJoinImpl( df1:DataFrame, df2:DataFrame, keyCondition:Column, joinType:String = "inner" )(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
-
+  private def temporalJoinImpl( df1:DataFrame, df2:DataFrame, keyCondition:Column, joinType:String = "inner", colsToConsolidate: Seq[String] = Seq())(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
     require(!(df2.columns.contains(tc.fromColName2) || df2.columns.contains(tc.toColName2)),
       s"(temporalJoinImpl) Your right-dataframe must not contain columns named ${tc.fromColName2} or ${tc.toColName2}! df.columns = ${df2.columns}")
+    require(colsToConsolidate.diff(df1.columns).isEmpty, s"(temporalJoinImpl) Your left-dataframe doesn't contain column to consolidate ${colsToConsolidate.diff(df1.columns).mkString(" and ")}")
+    require(colsToConsolidate.diff(df2.columns).isEmpty, s"(temporalJoinImpl) Your right-dataframe doesn't contain column to consolidate ${colsToConsolidate.diff(df2.columns).mkString(" and ")}")
 
     // temporal join
     val df2ren = df2.withColumnRenamed(tc.fromColName,tc.fromColName2).withColumnRenamed(tc.toColName,tc.toColName2)
     val df_join = df1.join( df2ren, keyCondition and tc.fromCol <= tc.toCol2 and tc.toCol >= tc.fromCol2, joinType)
-    // select final schema
-    val dfCommonColNames = df1.columns.intersect(df2.columns).diff(tc.technicalColNames)
-    val commonCols: Array[Column] = dfCommonColNames.map(colName => coalesce(df1(colName),df2(colName)).as(colName))
-    val colsDf1: Array[Column] = df1.columns.diff(dfCommonColNames ++ tc.technicalColNames).map(df1(_))
-    val colsDf2: Array[Column] = df2.columns.diff(dfCommonColNames ++ tc.technicalColNames).map(df2(_))
-    val timeColumns: Array[Column] = Array(greatest(tc.fromCol, tc.fromCol2).as(tc.fromColName),least(tc.toCol, tc.toCol2).as(tc.toColName))
-    val selCols: Array[Column] = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
 
+    // select final schema
+    val dfCommonColNames = colsToConsolidate
+    val commonCols = colsToConsolidate.map(colName => coalesce(df1(colName),df2(colName)).as(colName))
+    val colsDf1 = df1.columns.diff(dfCommonColNames ++ tc.technicalColNames).map(df1(_))
+    val colsDf2 = df2.columns.diff(dfCommonColNames ++ tc.technicalColNames).map(df2(_))
+    val timeColumns = Seq(greatest(tc.fromCol, tc.fromCol2).as(tc.fromColName),least(tc.toCol, tc.toCol2).as(tc.toColName))
+    val selCols = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
     df_join.select(selCols:_*)
   }
   private def temporalKeyJoinImpl( df1:DataFrame, df2:DataFrame, keys:Seq[String], joinType:String = "inner" )(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
-    temporalJoinImpl( df1, df2, createKeyCondition(df1, df2, keys), joinType )
+    temporalJoinImpl( df1, df2, createKeyCondition(df1, df2, keys), joinType, keys )
   }
 
   /**
@@ -299,7 +299,7 @@ object TemporalQueryUtil extends Logging {
     val df1_extended = if (joinType=="full" || joinType=="right") temporalCleanupExtendImpl( df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Seq(), rnkFilter=true ) else df1
     val df2_extended = if (joinType=="full" || joinType=="left") temporalCleanupExtendImpl( df2, keys, rnkExpressions.intersect(df2.columns.map(col)), Seq(), rnkFilter=true ) else df2
     // join df1 & df2
-    temporalJoinImpl( df1_extended, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, joinType ).drop(tc.definedCol)
+    temporalJoinImpl( df1_extended, df2_extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, joinType, keys ).drop(tc.definedCol)
   }
 
   /**

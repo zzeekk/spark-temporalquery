@@ -368,11 +368,26 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
-  test("temporalInnerJoin_dfRight") {
+  test("temporalInnerJoin dfRight 'on' semantics") {
+    val dfJoined = dfLeft.as("dfL").temporalInnerJoin(dfRight.as("dfR"),$"dfL.id"===$"dfR.id")
+    assert(dfJoined.columns.count(_ == "id") == 2)
+    val actual = dfJoined.drop($"dfR.id")
+    val expected = Seq(
+      (0,4.2,Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,4.2,Some(97.15),"2018-06-01 05:24:11","2018-10-23 03:50:09.999"),
+      (0,4.2,Some(97.15),"2018-10-23 03:50:10","2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double,Option[Double]])
+      .toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalInnerJoin",Seq(dfLeft,dfRight))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalInnerJoin dfRight with 'using' semantics") {
     val actual = dfLeft.as("dfL").temporalInnerJoin(dfRight.as("dfR"),Seq("id"))
+    //val actual = dfLeft.as("dfL").temporalInnerJoin(dfRight.as("dfR"),$"dfL.id"===$"dfR.id")
     actual.printSchema()
     actual.select($"id",$"dfL.wert_l",$"dfR.wert_r").show(false)
-    actual.select($"dfL.id",$"dfL.wert_l",$"dfR.wert_r").show(false)
     val expected = Seq(
       (0,4.2,Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
       (0,4.2,Some(97.15),"2018-06-01 05:24:11","2018-10-23 03:50:09.999"),
