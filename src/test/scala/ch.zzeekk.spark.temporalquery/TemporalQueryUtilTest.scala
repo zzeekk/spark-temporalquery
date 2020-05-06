@@ -768,6 +768,26 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
+  test("multipleJoins") {
+    val dfL = dfLeft.withColumnRenamed("wert_l","wert").as("dfL")
+    val dfM = dfRight.withColumnRenamed("wert_r","wert").as("dfM")
+    val dfLM = dfL.temporalInnerJoin(dfM,Seq("id"))
+    assert(3 == dfLM.select($"id",$"dfL.wert",$"dfM.wert").count())
+    dfLM.printSchema()
+    val dfR = dfMap.withColumnRenamed("img","wert").as("dfR")
+    val actual = dfLM.temporalLeftJoin(dfR,Seq("id"))
+    assert(3 == actual.select($"id",$"dfL.wert",$"dfM.wert",$"dfR.wert").count())
+    val expected = Seq(
+      (0,4.2,Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,4.2,Some(97.15),"2018-06-01 05:24:11","2018-10-23 03:50:09.999"),
+      (0,4.2,Some(97.15),"2018-10-23 03:50:10","2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double,Option[Double]])
+      .toDF("id", "wert", "wert", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("multipleJoins",Seq(dfLeft,dfRight))(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalCombine_dfRight") {
     val actual = dfRight.temporalCombine()
     val rowsExpected = Seq(
