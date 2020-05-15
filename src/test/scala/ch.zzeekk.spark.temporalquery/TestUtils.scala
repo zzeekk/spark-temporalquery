@@ -35,7 +35,7 @@ object TestUtils extends Logging {
   def printFailedTestResult(testName: String, arguments: Seq[DataFrame])(actual: DataFrame)(expected: DataFrame): Unit = {
     def printDf(df: DataFrame): Unit = {
       println(df.schema.simpleString)
-      df.orderBy(df.columns.head,df.columns.tail:_*).show(false)
+      df.show(false)
     }
 
     println(s"!!!! Test $testName Failed !!!")
