@@ -396,6 +396,22 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
+  test("temporalInnerJoin with equally named columns apart join columns") {
+    val dfL = dfLeft.withColumnRenamed("wert_l","wert").as("dfL")
+    val dfR = dfRight.withColumnRenamed("wert_r","wert").as("dfR")
+    val actual = dfL.temporalInnerJoin(dfR,Seq("id"))
+    assert(3 == actual.select($"id",$"dfL.wert",$"dfR.wert").count())
+    val expected = Seq(
+      (0,4.2,Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,4.2,Some(97.15),"2018-06-01 05:24:11","2018-10-23 03:50:09.999"),
+      (0,4.2,Some(97.15),"2018-10-23 03:50:10","2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double,Option[Double]])
+      .toDF("id", "wert", "wert", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalInnerJoin with equally named columns apart join columns",Seq(dfL,dfR))(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalLeftAntiJoin_dfRight") {
     val actual = dfLeft.temporalLeftAntiJoin(dfRight,Seq("id"))
     val expected = Seq(
@@ -679,6 +695,23 @@ class TemporalQueryUtilTest extends FunSuite {
       .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
     if (!resultat) printFailedTestResult("temporalLeftJoin_rightMapWithGapsAndRnkExpressions",Seq(dfLeft,argumentRight))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalLeftJoin with equally named columns apart join columns") {
+    val dfL = dfLeft.withColumnRenamed("wert_l","wert").as("dfL")
+    val dfR = dfRight.withColumnRenamed("wert_r","wert").as("dfR")
+    val actual = dfL.temporalLeftJoin(dfR,Seq("id"))
+    assert(4 == actual.select($"id",$"dfL.wert",$"dfR.wert").count())
+    val expected = Seq(
+      (0,4.2,None       ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
+      (0,4.2,Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (0,4.2,None       ,"2018-02-01 00:00:00","2018-06-01 05:24:10.999"),
+      (0,4.2,Some(97.15),"2018-06-01 05:24:11","2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double,Option[Double]])
+      .toDF("id", "wert", "wert", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalLeftJoin with equally named columns apart join columns",Seq(dfLeft,dfRight))(actual)(expected)
     assert(resultat)
   }
 
