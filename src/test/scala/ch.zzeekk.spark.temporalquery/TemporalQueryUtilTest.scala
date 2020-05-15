@@ -4,6 +4,9 @@ import ch.zzeekk.spark.temporalquery.TemporalHelpers._
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
 import ch.zzeekk.spark.temporalquery.TestUtils._
 import java.sql.Timestamp
+
+import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.FunSuite
 
@@ -400,6 +403,7 @@ class TemporalQueryUtilTest extends FunSuite {
     val dfL = dfLeft.withColumnRenamed("wert_l","wert").as("dfL")
     val dfR = dfRight.withColumnRenamed("wert_r","wert").as("dfR")
     val actual = dfL.temporalInnerJoin(dfR,Seq("id"))
+    actual.orderBy("id",defaultConfig.fromColName).show(false)
     assert(3 == actual.select($"id",$"dfL.wert",$"dfR.wert").count())
     val expected = Seq(
       (0,4.2,Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
@@ -803,11 +807,21 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("multipleJoins") {
     val dfL = dfLeft.withColumnRenamed("wert_l","wert").as("dfL")
+
+    val X: QueryExecution = dfL.queryExecution//.logical.resolve()
+    val Y: LogicalPlan = X.logical
+//https://javadoc.io/doc/org.apache.spark/spark-catalyst_2.11/2.2.3/index.html#org.apache.spark.sql.catalyst.plans.logical.package
+    println(s"Test multipleJoins: dfL_Alias = ${getAliasAsString(dfL)}")
+    println(s"Test multipleJoins: dfL_Alias = ${getAliasAsString(dfL, withDot = true)}")
     val dfM = dfRight.withColumnRenamed("wert_r","wert").as("dfM")
+    println(s"Test multipleJoins: dfM_Alias = ${getAliasAsString(dfM)}")
+    println(s"Test multipleJoins: dfM_Alias = ${getAliasAsString(dfM, withDot = true)}")
     val dfLM = dfL.temporalInnerJoin(dfM,Seq("id"))
     assert(3 == dfLM.select($"id",$"dfL.wert",$"dfM.wert").count())
     dfLM.printSchema()
     val dfR = dfMap.withColumnRenamed("img","wert").as("dfR")
+    println(s"Test multipleJoins: dfR_Alias = ${getAliasAsString(dfR)}")
+    println(s"Test multipleJoins: dfR_Alias = ${getAliasAsString(dfR, withDot = true)}")
     val actual = dfLM.temporalLeftJoin(dfR,Seq("id"))
     assert(3 == actual.select($"id",$"dfL.wert",$"dfM.wert",$"dfR.wert").count())
     val expected = Seq(
