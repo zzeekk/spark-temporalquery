@@ -29,7 +29,7 @@ object TestUtils extends Logging {
 
   def dfEqual(df1: DataFrame)(df2: DataFrame): Boolean = {
     // symmetricDifference ignoriert Doubletten, daher Kardinalitäten vergleichen
-    (0 == symmetricDifference(df1)(df2).count) && (df1.count == df2.count)
+    (0 == symmetricDifference(df1)(df2).count) && (df1.count == df2.count) && (df1.schema == df2.schema)
   }
 
   def printFailedTestResult(testName: String, arguments: Seq[DataFrame])(actual: DataFrame)(expected: DataFrame): Unit = {

@@ -238,15 +238,15 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps") {
     val actual = dfDirtyTimeRanges.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName),$"wert"),extend=false,fillGapsWithNull=false)
     val expected = Seq(
-      (0, Some(3.14) , "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123"),
-      (0, Some(2.72) , "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.124"),
-      (0, Some(13.0) , "2019-02-01 02:34:56.125", "2019-04-04 00:00:0"),
-      (0, Some(18.17), "2020-01-01 01:00:0"     , finisTemporisString),
-      (1, Some(-1.0) , "2019-01-01 00:00:0.124" , "2019-02-02 00:00:0"),
-      (1, Some(0.1)  , "2019-03-01 00:00:0"     , "2019-03-01 00:00:00.001"),
-      (1, Some(1.2)  , "2019-03-01 00:00:1.001" , "2019-03-01 00:00:01.002"),
-      (1, Some(-2.0) , "2019-03-03 01:00:0"     , "2021-12-01 02:34:56.1")
-    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double]])
+      (0, 3.14, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123"),
+      (0, 2.72, "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.124"),
+      (0,13.0 , "2019-02-01 02:34:56.125", "2019-04-04 00:00:0"),
+      (0,18.17, "2020-01-01 01:00:0"     , finisTemporisString),
+      (1,-1.0 , "2019-01-01 00:00:0.124" , "2019-02-02 00:00:0"),
+      (1, 0.1 , "2019-03-01 00:00:0"     , "2019-03-01 00:00:00.001"),
+      (1, 1.2 , "2019-03-01 00:00:1.001" , "2019-03-01 00:00:01.002"),
+      (1,-2.0 , "2019-03-03 01:00:0"     , "2021-12-01 02:34:56.1")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double])
       .toDF("id","wert",defaultConfig.fromColName,defaultConfig.toColName)
       .withColumn("_defined",lit(true))
     val resultat = dfEqual(actual)(expected)
@@ -517,18 +517,18 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalFullJoin(dfRight,Seq("id"))
     val expected = Seq(
       // id = 0
-      (0,None     ,None       ,initiumTemporisString,"2017-12-09 23:59:59.999"),
-      (0,Some(4.2),None       ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
-      (0,Some(4.2),Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
-      (0,Some(4.2),None       ,"2018-02-01 00:00:00","2018-06-01 05:24:10.999"),
-      (0,Some(4.2),Some(97.15),"2018-06-01 05:24:11","2018-12-08 23:59:59.999"),
-      (0,None     ,Some(97.15),"2018-12-09 00:00:00",finisTemporisString),
+      (Some(0),None     ,None       ,initiumTemporisString,"2017-12-09 23:59:59.999"),
+      (Some(0),Some(4.2),None       ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
+      (Some(0),Some(4.2),Some(97.15),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (Some(0),Some(4.2),None       ,"2018-02-01 00:00:00","2018-06-01 05:24:10.999"),
+      (Some(0),Some(4.2),Some(97.15),"2018-06-01 05:24:11","2018-12-08 23:59:59.999"),
+      (Some(0),None     ,Some(97.15),"2018-12-09 00:00:00",finisTemporisString),
       // id = 1
-      (1,None,None        ,initiumTemporisString  ,"2018-12-31 23:59:59.999"),
-      (1,None,Some(2019.0),"2019-01-01 00:00:00","2019-12-31 23:59:59.999"),
-      (1,None,Some(2020.0),"2020-01-01 00:00:00","2020-12-31 23:59:59.999"),
-      (1,None,None        ,"2021-01-01 00:00:00",finisTemporisString)
-    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double],Option[Double]])
+      (Some(1),None,None        ,initiumTemporisString  ,"2018-12-31 23:59:59.999"),
+      (Some(1),None,Some(2019.0),"2019-01-01 00:00:00","2019-12-31 23:59:59.999"),
+      (Some(1),None,Some(2020.0),"2020-01-01 00:00:00","2020-12-31 23:59:59.999"),
+      (Some(1),None,None        ,"2021-01-01 00:00:00",finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Option[Int],Option[Double],Option[Double]])
       .toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
     if (!resultat) printFailedTestResult("temporalFullJoin_dfRight",Seq(dfLeft,dfRight))(actual)(expected)
@@ -540,16 +540,16 @@ class TemporalQueryUtilTest extends FunSuite {
     val actual = dfLeft.temporalFullJoin(df2=dfMap, keys=Seq("id"))
     val expected = Seq(
       // img = {}
-      (0,None     ,None     ,initiumTemporisString  ,"2017-12-09 23:59:59.999"),
-      (0,Some(4.2),None     ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
-      (0,Some(4.2),Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
-      (0,Some(4.2),Some("B"),"2018-01-01 00:00:00","2018-02-28 23:59:59.999"),
-      (0,Some(4.2),Some("C"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
-      (0,Some(4.2),Some("D"),"2018-02-20 00:00:00","2018-03-31 23:59:59.999"),
-      (0,Some(4.2),Some("X"),"2018-02-25 14:15:16.123","2018-02-25 14:15:16.123"),
-      (0,Some(4.2),None     ,"2018-04-01 00:00:00","2018-12-08 23:59:59.999"),
-      (0,None     ,None     ,"2018-12-09 00:00:00",finisTemporisString)
-    ).map(makeRowsWithTimeRangeEnd[Int,Option[Double],Option[String]])
+      (Some(0),None     ,None     ,initiumTemporisString  ,"2017-12-09 23:59:59.999"),
+      (Some(0),Some(4.2),None     ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
+      (Some(0),Some(4.2),Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
+      (Some(0),Some(4.2),Some("B"),"2018-01-01 00:00:00","2018-02-28 23:59:59.999"),
+      (Some(0),Some(4.2),Some("C"),"2018-02-01 00:00:00","2018-02-28 23:59:59.999"),
+      (Some(0),Some(4.2),Some("D"),"2018-02-20 00:00:00","2018-03-31 23:59:59.999"),
+      (Some(0),Some(4.2),Some("X"),"2018-02-25 14:15:16.123","2018-02-25 14:15:16.123"),
+      (Some(0),Some(4.2),None     ,"2018-04-01 00:00:00","2018-12-08 23:59:59.999"),
+      (Some(0),None     ,None     ,"2018-12-09 00:00:00",finisTemporisString)
+    ).map(makeRowsWithTimeRangeEnd[Option[Int],Option[Double],Option[String]])
       .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
     if (!resultat) printFailedTestResult("temporalFullJoin_rightMap",Seq(dfLeft,dfMap))(actual)(expected)
