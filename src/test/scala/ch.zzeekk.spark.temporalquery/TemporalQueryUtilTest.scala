@@ -7,7 +7,7 @@ import java.sql.Timestamp
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.FunSuite
 
-class TemporalQueryUtilTest extends FunSuite {
+class TemporalQueryUtilTest extends FunSuite with Logging {
   import session.implicits._
 
   test("temporalContinuous2discrete") {
@@ -896,16 +896,16 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
-  test("temporalUnifyRanges1") {
+  test("temporalUnifyRanges dfMoment") {
     val actual = dfMoment.temporalUnifyRanges(Seq("id"))
       .select(dfMoment.columns.map(col):_*) // re-order columns
     val expected = dfMoment
     val resultat = dfEqual(actual)(expected)
-    if (!resultat) printFailedTestResult("temporalUnifyRanges1",dfMoment)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalUnifyRanges dfMoment",dfMoment)(actual)(expected)
     assert(resultat)
   }
 
-  test("temporalUnifyRanges2") {
+  test("temporalUnifyRanges dfMsOverlap") {
     val actual = dfMsOverlap.temporalUnifyRanges(Seq("id"))
     val expected = Seq(
       // img = {A,B}
@@ -916,11 +916,11 @@ class TemporalQueryUtilTest extends FunSuite {
     ).map(makeRowsWithTimeRangeEnd[Int,String])
       .toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-    if (!resultat) printFailedTestResult("temporalUnifyRanges2",dfMsOverlap)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalUnifyRanges dfMsOverlap",dfMsOverlap)(actual)(expected)
     assert(resultat)
   }
 
-  test("temporalUnifyRanges3") {
+  test("temporalUnifyRanges dfMap") {
     val actual = dfMap.temporalUnifyRanges(Seq("id"))
     val expected = Seq(
       // img = {A,B}
@@ -948,7 +948,29 @@ class TemporalQueryUtilTest extends FunSuite {
       .toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
 
-    if (!resultat) printFailedTestResult("temporalUnifyRanges3",dfMap)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalUnifyRanges dfMap",dfMap)(actual)(expected)
     assert(resultat)
   }
+
+  test("temporalUnifyRanges dfMicrosecTimeRanges") {
+    logger.info("\n*** Educational test case to highlight the behaviour of temporalUnifyRanges when the time has a granularity of smaller than 1ms. ***")
+    logger.info("\n*** Argument = ")
+    dfMicrosecTimeRanges.orderBy("id","gueltig_ab").show(false)
+    val actual = dfMicrosecTimeRanges.temporalUnifyRanges(Seq("id"))
+    logger.info("\n*** Argument.temporalUnifyRanges(Seq(\"id\")) = ")
+    actual.orderBy("id","gueltig_ab").show(false)
+
+    val expected = Seq(
+      (0, 3.14,"2018-06-01 00:00:00       ","2018-06-01 09:00:00"),
+      (0, 2.72,"2018-06-01 09:00:00.000124","2018-06-01 09:00:00"),
+      (0,42.0 ,"2018-06-01 09:00:00.000124","2018-06-01 09:00:00"),
+      (0, 2.72,"2018-06-01 09:00:00.001"   ,"2018-06-01 17:00:00.123")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double])
+      .toDF("id", "wert", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalUnifyRanges dfMicrosecTimeRanges",dfMicrosecTimeRanges)(actual)(expected)
+    assert(resultat)
+  }
+
 }
