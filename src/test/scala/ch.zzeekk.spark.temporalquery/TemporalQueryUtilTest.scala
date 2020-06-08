@@ -959,11 +959,10 @@ class TemporalQueryUtilTest extends FunSuite with Logging {
     val actual = dfMicrosecTimeRanges.temporalUnifyRanges(Seq("id"))
     logger.info("\n*** Argument.temporalUnifyRanges(Seq(\"id\")) = ")
     actual.orderBy("id","gueltig_ab").show(false)
-
     val expected = Seq(
       (0, 3.14,"2018-06-01 00:00:00       ","2018-06-01 09:00:00"),
-      (0, 2.72,"2018-06-01 09:00:00.000124","2018-06-01 09:00:00"),
       (0,42.0 ,"2018-06-01 09:00:00.000124","2018-06-01 09:00:00"),
+      (0, 2.72,"2018-06-01 09:00:00.000130","2018-06-01 09:00:00"),
       (0, 2.72,"2018-06-01 09:00:00.001"   ,"2018-06-01 17:00:00.123")
     ).map(makeRowsWithTimeRangeEnd[Int,Double])
       .toDF("id", "wert", defaultConfig.fromColName, defaultConfig.toColName)

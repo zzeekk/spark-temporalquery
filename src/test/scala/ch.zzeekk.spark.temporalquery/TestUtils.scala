@@ -163,7 +163,7 @@ object TestUtils extends Logging {
   val dfMicrosecTimeRanges: DataFrame = Seq(
     (0,"2018-06-01 00:00:00"       ,"2018-06-01 09:00:00.000123", 3.14),
     (0,"2018-06-01 09:00:00.000124","2018-06-01 09:00:00.000129",42.0),
-    (0,"2018-06-01 09:00:00.000124","2018-06-01 17:00:00.123456", 2.72)
+    (0,"2018-06-01 09:00:00.000130","2018-06-01 17:00:00.123456", 2.72)
   ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
 
   // Data Frame dfDirtyTimeRanges
