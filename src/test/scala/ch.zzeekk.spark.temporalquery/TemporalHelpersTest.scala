@@ -58,7 +58,7 @@ class TemporalHelpersTest extends FunSuite {
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](floorTimestamp, argExpMap)
   }
 
-  test("udf_predecessorTime") {
+  test("predecessorTime") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
       ("subtract a millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59.999")
@@ -67,6 +67,16 @@ class TemporalHelpersTest extends FunSuite {
   }
 
   test("udf_successorTime") {
+    import session.implicits._
+    //TODO: Clarify why we need to specify explicitly the implicit parameter hc of UDF
+    val actual = dfLeft.select(udf_successorTime(defaultConfig)(defaultConfig.fromCol).as(defaultConfig.fromColName))
+    val expected = Seq(Timestamp.valueOf("2017-12-10 00:00:00.001")).toDF(defaultConfig.fromColName)
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("udf_successorTime",Seq(dfLeft))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("successorTime") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("round up millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
       ("add a millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0.001")
