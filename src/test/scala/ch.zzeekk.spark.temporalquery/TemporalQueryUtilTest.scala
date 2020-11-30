@@ -900,6 +900,8 @@ class TemporalQueryUtilTest extends FunSuite with Logging {
     val actual = dfMoment.temporalUnifyRanges(Seq("id"))
       .select(dfMoment.columns.map(col):_*) // re-order columns
     val expected = dfMoment
+    logger.info("expected:")
+    expected.show(false)
     val resultat = dfEqual(actual)(expected)
     if (!resultat) printFailedTestResult("temporalUnifyRanges dfMoment",dfMoment)(actual)(expected)
     assert(resultat)
