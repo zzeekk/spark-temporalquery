@@ -846,6 +846,26 @@ class TemporalQueryUtilTest extends FunSuite with Logging {
     assert(resultat)
   }
 
+  test("temporalCombine dropped column") {
+    val actual = dfRight
+      .withColumn("test_column",lit("please drop me"))
+      .drop("test_column")
+      .temporalCombine()
+    val rowsExpected = Seq(
+      (0,"2018-01-01 00:00:00.0","2018-01-31 23:59:59.999",Some(97.15) ),
+      (0,"2018-06-01 05:24:11.0",finisTemporisString      ,Some(97.15) ),
+      (1,"2018-01-01 00:00:00.0","2018-12-31 23:59:59.999",None        ),
+      (1,"2019-01-01 00:00:00.0","2019-12-31 23:59:59.999",Some(2019.0)),
+      (1,"2020-01-01 00:00:00.0","2020-12-31 23:59:59.999",Some(2020.0)),
+      (1,"2021-01-01 00:00:00.0","2099-12-31 23:59:59.999",None        )
+    )
+    val expected = rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCombine dropped column",dfRight)(actual)(expected)
+    assert(resultat)
+  }
+
   test("temporalCombine_dfMapToCombine") {
     val actual = dfMapToCombine.temporalCombine()
     val rowsExpected = Seq(
