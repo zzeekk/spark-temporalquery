@@ -27,8 +27,8 @@ object TemporalHelpers extends Serializable with Logging {
     else if (!tempus.after(hc.minDate)) hc.minDate
     else Timestamp.from(tempus.toInstant.plusMillis(numMillis))
   }
-  def udf_plusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(1) _)
-  def udf_minusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(-1) _)
+  def getUdfPlusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(1) _)
+  def getUdfMinusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(-1) _)
 
   /**
    * returns the length of the time interval [subtrahend ; minuend] in milliseconds
@@ -43,7 +43,7 @@ object TemporalHelpers extends Serializable with Logging {
       s"Null values not supported: minuend=$minuend subtrahend=$subtrahend")
     1 + minuend.getTime - subtrahend.getTime
   }
-  def udf_durationInMillis: UserDefinedFunction = udf(durationInMillis _)
+  val udf_durationInMillis: UserDefinedFunction = udf(durationInMillis _)
 
   /**
    * rounds down timestamp tempus to the nearest millisecond
@@ -62,7 +62,7 @@ object TemporalHelpers extends Serializable with Logging {
       resultat
     } else hc.maxDate
   }
-  def udf_floorTimestamp(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(floorTimestamp _)
+  def getUdfFloorTimestamp(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(floorTimestamp _)
 
   /**
    * rounds up timestamp to next ChronoUnit
@@ -71,7 +71,7 @@ object TemporalHelpers extends Serializable with Logging {
    * @return truncated timestamp
    */
   def ceilTimestamp(tempus: Timestamp)(implicit hc:TemporalQueryConfig): Timestamp = addMillisecond(1)(predecessorTime(tempus)(hc))
-  def udf_ceilTimestamp(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(ceilTimestamp _)
+  def getUdfCeilTimestamp(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(ceilTimestamp _)
 
   /**
    * returns the predecessor timestamp with respect to ChronoUnit
@@ -85,7 +85,7 @@ object TemporalHelpers extends Serializable with Logging {
       if (resultat.equals(tempus)) addMillisecond(-1)(resultat) else resultat
     }
   }
-  def udf_predecessorTime(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(predecessorTime _)
+  def getUdfPredecessorTime(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(predecessorTime _)
 
   /**
    * returns the predecessor timestamp with respect to ChronoUnit
@@ -99,7 +99,7 @@ object TemporalHelpers extends Serializable with Logging {
       if (resultat.equals(tempus)) addMillisecond(1)(resultat) else resultat
     }
   }
-  def udf_successorTime(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(successorTime _)
+  def getUdfSuccessorTime(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(successorTime _)
 
   /**
    * returns the complement of union of subtrahends relative to the interval [validFrom, validTo]
@@ -131,6 +131,6 @@ object TemporalHelpers extends Serializable with Logging {
 
     subtrahendsSorted.foldLeft(Seq((validFrom, validTo)))(subtractOneSubtrahend)
   }
-  def udf_temporalComplement(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(temporalComplement _)
+  def getUdfTemporalComplement(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(temporalComplement _)
 
 }

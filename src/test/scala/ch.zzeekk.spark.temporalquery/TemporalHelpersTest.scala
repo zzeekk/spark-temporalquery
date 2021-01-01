@@ -22,7 +22,7 @@ class TemporalHelpersTest extends FunSuite {
     testArgumentExpectedMap[(Int,Timestamp), Timestamp](x=>addMillisecond(x._1)(x._2), argExpMap)
   }
 
-  test("udf_ceilTimestamp") {
+  test("getUdfCeilTimestamp") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("round up to next millisecond"           ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
       ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
@@ -50,7 +50,7 @@ class TemporalHelpersTest extends FunSuite {
     testArgumentExpectedMapWithComment[(String, String), Long](x => durationInMillis(Timestamp.valueOf(x._1), Timestamp.valueOf(x._2)),argExpMap)
   }
 
-  test("udf_floorTimestamp") {
+  test("getUdfFloorTimestamp") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
       ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
@@ -66,13 +66,12 @@ class TemporalHelpersTest extends FunSuite {
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](predecessorTime, argExpMap)
   }
 
-  test("udf_successorTime") {
+  test("getUdfSuccessorTime") {
     import session.implicits._
-    //TODO: Clarify why we need to specify explicitly the implicit parameter hc of UDF
-    val actual = dfLeft.select(udf_successorTime(defaultConfig)(defaultConfig.fromCol).as(defaultConfig.fromColName))
+    val actual = dfLeft.select(getUdfSuccessorTime(defaultConfig)(defaultConfig.fromCol).as(defaultConfig.fromColName))
     val expected = Seq(Timestamp.valueOf("2017-12-10 00:00:00.001")).toDF(defaultConfig.fromColName)
     val resultat = dfEqual(actual)(expected)
-    if (!resultat) printFailedTestResult("udf_successorTime",Seq(dfLeft))(actual)(expected)
+    if (!resultat) printFailedTestResult("getUdfSuccessorTime",Seq(dfLeft))(actual)(expected)
     assert(resultat)
   }
 
@@ -84,7 +83,7 @@ class TemporalHelpersTest extends FunSuite {
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](successorTime, argExpMap)
   }
 
-  test("udf_temporalComplement") {
+  test("getUdfTemporalComplement") {
     val subtrahends = Seq(
       ("2020-01-01 00:04:4","2020-01-01 00:05:0"),
       ("2020-01-01 00:00:1","2020-01-01 00:01:0"),
