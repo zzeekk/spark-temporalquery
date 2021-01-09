@@ -7,7 +7,7 @@ import java.sql.Timestamp
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.FunSuite
 
-class TemporalQueryUtilTest extends FunSuite {
+class TemporalQueryUtilTest extends FunSuite with Logging {
   import session.implicits._
 
   test("temporalContinuous2discrete") {
@@ -59,7 +59,7 @@ class TemporalQueryUtilTest extends FunSuite {
   }
 
   test("temporalCleanupExtend_dfLeft") {
-    val actual = dfLeft.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName)))
+    val actual = dfLeft.temporalCleanupExtend(Seq("id"),Seq(defaultConfig.fromCol))
     val expected = Seq(
       (0, None     , initiumTemporisString, "2017-12-09 23:59:59.999"),
       (0, Some(4.2), "2017-12-10 00:00:00", "2018-12-08 23:59:59.999"),
@@ -76,7 +76,7 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCleanupExtend_dfRight_noExtend_nofillGaps") {
     val actual = dfRight.temporalCleanupExtend(
       keys=Seq("id"),
-      rnkExpressions=Seq(col(defaultConfig.fromColName)),
+      rnkExpressions=Seq(defaultConfig.fromCol),
       extend = false,
       fillGapsWithNull = false
     )
@@ -99,7 +99,7 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCleanupExtend_dfRight_fillGaps_noExtend") {
     val actual = dfRight.temporalCleanupExtend(
       keys=Seq("id"),
-      rnkExpressions=Seq(col(defaultConfig.fromColName)),
+      rnkExpressions=Seq(defaultConfig.fromCol),
       extend = false
     )
     val expected = Seq(
@@ -121,7 +121,7 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCleanupExtend_dfRight_extend_nofillGaps") {
     val actual = dfRight.temporalCleanupExtend(
       keys=Seq("id"),
-      rnkExpressions=Seq(col(defaultConfig.fromColName)),
+      rnkExpressions=Seq(defaultConfig.fromCol),
       fillGapsWithNull = false
     )
     val expected = Seq(
@@ -143,7 +143,7 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalCleanupExtend_dfRight_extend_fillGaps") {
     val actual = dfRight.temporalCleanupExtend(
       keys=Seq("id"),
-      rnkExpressions=Seq(col(defaultConfig.fromColName)))
+      rnkExpressions=Seq(defaultConfig.fromCol))
     val expected = Seq(
       (0, None        , initiumTemporisString , "2017-12-31 23:59:59.999"),
       (0, Some(97.15) , "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
@@ -193,7 +193,7 @@ class TemporalQueryUtilTest extends FunSuite {
   }
 
   test("temporalCleanupExtend_dfMsOverlap") {
-    val actual = dfMsOverlap.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName)))
+    val actual = dfMsOverlap.temporalCleanupExtend(Seq("id"),Seq(defaultConfig.fromCol))
     val expected = Seq(
       (0, None     , initiumTemporisString    , "2018-12-31 23:59:59.999"),
       (0, Some("A"), "2019-01-01 00:00:00"    , "2019-01-01 10:00:00"),
@@ -209,7 +209,7 @@ class TemporalQueryUtilTest extends FunSuite {
   }
 
   test("temporalCleanupExtend_dfDirtyTimeRanges") {
-    val actual = dfDirtyTimeRanges.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName),$"wert"))
+    val actual = dfDirtyTimeRanges.temporalCleanupExtend(Seq("id"),Seq(defaultConfig.fromCol,$"wert"))
     val expected = Seq(
       (0, None       , initiumTemporisString    , "2019-01-01 00:00:00.123"),
       (0, Some(3.14) , "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123"),
@@ -236,7 +236,7 @@ class TemporalQueryUtilTest extends FunSuite {
   }
 
   test("temporalCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps") {
-    val actual = dfDirtyTimeRanges.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.fromColName),$"wert"),extend=false,fillGapsWithNull=false)
+    val actual = dfDirtyTimeRanges.temporalCleanupExtend(Seq("id"),Seq(defaultConfig.fromCol,$"wert"),extend=false,fillGapsWithNull=false)
     val expected = Seq(
       (0, 3.14, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123"),
       (0, 2.72, "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.124"),
@@ -265,7 +265,7 @@ class TemporalQueryUtilTest extends FunSuite {
     ).map(makeRowsWithTimeRangeEnd[Int, String])
       .toDF("id", "val", defaultConfig.fromColName, defaultConfig.toColName)
     // we want the record with the longest validity period, i.e. maximal toColName-fromColName
-    val actual = argument.temporalCleanupExtend(Seq("id"), Seq(udf_durationInMillis(col(defaultConfig.toColName),col(defaultConfig.fromColName)).desc))
+    val actual = argument.temporalCleanupExtend(Seq("id"), Seq(udf_durationInMillis(defaultConfig.toCol,defaultConfig.fromCol).desc))
     val expected = Seq(
       (1, None     , initiumTemporisString, "2020-06-30 23:59:59.999"),
       (1, Some("A"), "2020-07-01 00:00:00", "2020-07-03 23:59:59.999"),
@@ -285,7 +285,7 @@ class TemporalQueryUtilTest extends FunSuite {
       (1, "X", "2020-07-01 00:00:00", finisTemporisString)
     ).map(makeRowsWithTimeRangeEnd[Int, String])
       .toDF("id", "val", defaultConfig.fromColName, defaultConfig.toColName)
-    val actual = argument.temporalCleanupExtend(Seq("id"), Seq(col(defaultConfig.fromColName)))
+    val actual = argument.temporalCleanupExtend(Seq("id"), Seq(defaultConfig.fromCol))
     val expected = Seq(
       (1, "S", initiumTemporisString, finisTemporisString)
     ).map(makeRowsWithTimeRangeEnd[Int, String])
@@ -304,7 +304,7 @@ class TemporalQueryUtilTest extends FunSuite {
       (1,"G","2020-09-24 00:00:00",finisTemporisString)
     ).map(makeRowsWithTimeRangeEnd[Int,String])
       .toDF("id","val",defaultConfig.fromColName, defaultConfig.toColName)
-    val actual = argument.temporalCleanupExtend(Seq("id"),Seq(col(defaultConfig.toColName).desc,col(defaultConfig.fromColName).asc))(session,defaultConfig)
+    val actual = argument.temporalCleanupExtend(Seq("id"),Seq(defaultConfig.toCol.desc,defaultConfig.fromCol.asc))(session,defaultConfig)
     val expected = Seq(
       (1,"S",initiumTemporisString,"2020-06-30 23:59:59.999"),
       (1,"X","2020-07-01 00:00:00","2020-08-02 23:59:59.999"),
@@ -586,7 +586,7 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalFullJoin_rightMapWithrnkExpressions") {
     // Testing temporalFullJoin where the right dataFrame is not unique for join attributes
-    val actual = dfLeft.temporalFullJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val actual = dfLeft.temporalFullJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",defaultConfig.fromCol))
     val expected = Seq(
       // img = {}
       (Some(0),None     ,None     ,initiumTemporisString  ,"2017-12-09 23:59:59.999"),
@@ -617,7 +617,7 @@ class TemporalQueryUtilTest extends FunSuite {
       (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X"))
       .map(makeRowsWithTimeRange)
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
-    val actual = dfLeft.temporalFullJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val actual = dfLeft.temporalFullJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",defaultConfig.fromCol))
     val expected = Seq(
       // img = {}
       (Some(0),None     ,None     ,initiumTemporisString  ,"2017-12-09 23:59:59.999"),
@@ -675,7 +675,7 @@ class TemporalQueryUtilTest extends FunSuite {
 
   test("temporalLeftJoin_rightMapWithrnkExpressions") {
     // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
-    val actual = dfLeft.temporalLeftJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val actual = dfLeft.temporalLeftJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",defaultConfig.fromCol))
     val expected =   Seq(
       // img = {}
       (0,4.2,None     ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
@@ -705,7 +705,7 @@ class TemporalQueryUtilTest extends FunSuite {
       (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X"))
       .map(makeRowsWithTimeRange)
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
-    val actual = dfLeft.temporalLeftJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val actual = dfLeft.temporalLeftJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",defaultConfig.fromCol))
     val expected = Seq(
       // img = {}
       (0,4.2,None     ,"2017-12-10 00:00:00","2017-12-31 23:59:59.999"),
@@ -784,7 +784,7 @@ class TemporalQueryUtilTest extends FunSuite {
   test("temporalRightJoin_rightMapWithrnkExpressions") {
     // Testing temporalRightJoin where the right dataFrame is not unique for join attributes
     // but in a right join rnkExpressions are applied to left data frame
-    val actual = dfLeft.temporalRightJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val actual = dfLeft.temporalRightJoin(df2=dfMap, keys=Seq("id"), rnkExpressions=Seq($"img",defaultConfig.fromCol))
     val expected = Seq(
       // img = {}
       (0,Some(4.2),Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
@@ -813,7 +813,7 @@ class TemporalQueryUtilTest extends FunSuite {
       .map(makeRowsWithTimeRange)
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
 
-    val actual = dfLeft.temporalRightJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",col(defaultConfig.fromColName)))
+    val actual = dfLeft.temporalRightJoin(df2=argumentRight, keys=Seq("id"), rnkExpressions=Seq($"img",defaultConfig.fromCol))
     val expected = Seq(
       // img = {}
       (0,Some(4.2),Some("A"),"2018-01-01 00:00:00","2018-01-31 23:59:59.999"),
@@ -843,6 +843,26 @@ class TemporalQueryUtilTest extends FunSuite {
     val resultat = dfEqual(actual)(expected)
 
     if (!resultat) printFailedTestResult("temporalCombine_dfRight",dfRight)(actual)(expected)
+    assert(resultat)
+  }
+
+  test("temporalCombine dropped column") {
+    val actual = dfRight
+      .withColumn("test_column",lit("please drop me"))
+      .drop("test_column")
+      .temporalCombine()
+    val rowsExpected = Seq(
+      (0,"2018-01-01 00:00:00.0","2018-01-31 23:59:59.999",Some(97.15) ),
+      (0,"2018-06-01 05:24:11.0",finisTemporisString      ,Some(97.15) ),
+      (1,"2018-01-01 00:00:00.0","2018-12-31 23:59:59.999",None        ),
+      (1,"2019-01-01 00:00:00.0","2019-12-31 23:59:59.999",Some(2019.0)),
+      (1,"2020-01-01 00:00:00.0","2020-12-31 23:59:59.999",Some(2020.0)),
+      (1,"2021-01-01 00:00:00.0","2099-12-31 23:59:59.999",None        )
+    )
+    val expected = rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalCombine dropped column",dfRight)(actual)(expected)
     assert(resultat)
   }
 
@@ -896,16 +916,18 @@ class TemporalQueryUtilTest extends FunSuite {
     assert(resultat)
   }
 
-  test("temporalUnifyRanges1") {
+  test("temporalUnifyRanges dfMoment") {
     val actual = dfMoment.temporalUnifyRanges(Seq("id"))
       .select(dfMoment.columns.map(col):_*) // re-order columns
     val expected = dfMoment
+    logger.info("expected:")
+    expected.show(false)
     val resultat = dfEqual(actual)(expected)
-    if (!resultat) printFailedTestResult("temporalUnifyRanges1",dfMoment)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalUnifyRanges dfMoment",dfMoment)(actual)(expected)
     assert(resultat)
   }
 
-  test("temporalUnifyRanges2") {
+  test("temporalUnifyRanges dfMsOverlap") {
     val actual = dfMsOverlap.temporalUnifyRanges(Seq("id"))
     val expected = Seq(
       // img = {A,B}
@@ -916,11 +938,11 @@ class TemporalQueryUtilTest extends FunSuite {
     ).map(makeRowsWithTimeRangeEnd[Int,String])
       .toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
-    if (!resultat) printFailedTestResult("temporalUnifyRanges2",dfMsOverlap)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalUnifyRanges dfMsOverlap",dfMsOverlap)(actual)(expected)
     assert(resultat)
   }
 
-  test("temporalUnifyRanges3") {
+  test("temporalUnifyRanges dfMap") {
     val actual = dfMap.temporalUnifyRanges(Seq("id"))
     val expected = Seq(
       // img = {A,B}
@@ -948,7 +970,28 @@ class TemporalQueryUtilTest extends FunSuite {
       .toDF("id", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual)(expected)
 
-    if (!resultat) printFailedTestResult("temporalUnifyRanges3",dfMap)(actual)(expected)
+    if (!resultat) printFailedTestResult("temporalUnifyRanges dfMap",dfMap)(actual)(expected)
     assert(resultat)
   }
+
+  test("temporalUnifyRanges dfMicrosecTimeRanges") {
+    logger.info("\n*** Educational test case to highlight the behaviour of temporalUnifyRanges when the time has a granularity of smaller than 1ms. ***")
+    logger.info("\n*** Argument = ")
+    dfMicrosecTimeRanges.orderBy("id","gueltig_ab").show(false)
+    val actual = dfMicrosecTimeRanges.temporalUnifyRanges(Seq("id"))
+    logger.info("\n*** Argument.temporalUnifyRanges(Seq(\"id\")) = ")
+    actual.orderBy("id","gueltig_ab").show(false)
+    val expected = Seq(
+      (0, 3.14,"2018-06-01 00:00:00       ","2018-06-01 09:00:00"),
+      (0,42.0 ,"2018-06-01 09:00:00.000124","2018-06-01 09:00:00"),
+      (0, 2.72,"2018-06-01 09:00:00.000130","2018-06-01 09:00:00"),
+      (0, 2.72,"2018-06-01 09:00:00.001"   ,"2018-06-01 17:00:00.123")
+    ).map(makeRowsWithTimeRangeEnd[Int,Double])
+      .toDF("id", "wert", defaultConfig.fromColName, defaultConfig.toColName)
+    val resultat = dfEqual(actual)(expected)
+
+    if (!resultat) printFailedTestResult("temporalUnifyRanges dfMicrosecTimeRanges",dfMicrosecTimeRanges)(actual)(expected)
+    assert(resultat)
+  }
+
 }

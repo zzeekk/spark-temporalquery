@@ -167,13 +167,13 @@ object TemporalQueryUtil extends Logging {
      *
      * @return temporal dataframe with a discreteness of milliseconds
      */
-    def temporalRoundDiscreteTime(implicit tc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_floorTimestamp(tc))
+    def temporalRoundDiscreteTime(implicit tc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(getUdfFloorTimestamp)
 
     /**
      * Transforms [[DataFrame]] with continuous time, half open time intervals [fromColName , toColName [, to discrete time ([fromColName , toColName])
      * @return [[DataFrame]] with discrete time axis
      */
-    def temporalContinuous2discrete(implicit tc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(udf_predecessorTime)
+    def temporalContinuous2discrete(implicit tc:TemporalQueryConfig): DataFrame = shrinkValidityImpl(df1)(getUdfPredecessorTime)
 
   }
 
@@ -185,7 +185,7 @@ object TemporalQueryUtil extends Logging {
 
   private def shrinkValidityImpl(df: DataFrame)(udfFloorOrPred: UserDefinedFunction)(implicit tc:TemporalQueryConfig): DataFrame= {
     val spalten: Seq[String] = df.columns
-    df.withColumn(tc.fromColName,udf_ceilTimestamp(tc)(tc.fromCol))
+    df.withColumn(tc.fromColName,getUdfCeilTimestamp(tc)(tc.fromCol))
       .withColumn(tc.toColName,udfFloorOrPred(tc.toCol))
       .where(tc.fromCol <= tc.toCol)
       // return columns in same order as provided
@@ -231,7 +231,7 @@ object TemporalQueryUtil extends Logging {
 
     val keyCols = keys.map(col)
     // get start/end-points for every key
-    val df_points = df.select( keyCols :+ tc.fromCol.as(ptColName):_*).union( df.select( keyCols :+ udf_successorTime(tc)(tc.toCol).as(ptColName):_* ))
+    val df_points = df.select( keyCols :+ tc.fromCol.as(ptColName):_*).union( df.select( keyCols :+ getUdfSuccessorTime(tc)(tc.toCol).as(ptColName):_* ))
     // if desired, extend every key with min/maxDate-points
     val df_pointsExt = if (extend) {
       df_points
@@ -242,7 +242,7 @@ object TemporalQueryUtil extends Logging {
     // build ranges
     df_pointsExt
       .withColumnRenamed(ptColName, tc.fromColName2)
-      .withColumn( tc.toColName2, udf_predecessorTime(tc)(lead(tc.fromCol2,1).over(Window.partitionBy(keys.map(col):_*).orderBy(tc.fromCol2))))
+      .withColumn( tc.toColName2, getUdfPredecessorTime(tc)(lead(tc.fromCol2,1).over(Window.partitionBy(keys.map(col):_*).orderBy(tc.fromCol2))))
       .where(tc.toCol2.isNotNull)
   }
 
@@ -337,7 +337,7 @@ object TemporalQueryUtil extends Logging {
     val dfComplementJoin_complementArray = dfComplementJoin
       .groupBy(resultColumnsDf1:_*)
       .agg(collect_set(struct(tc.fromCol2.as("_1"), tc.toCol2.as("_2"))).as("subtrahend"))
-      .withColumn("complement_array", udf_temporalComplement(tc)(tc.fromCol, tc.toCol, col("subtrahend")))
+      .withColumn("complement_array", getUdfTemporalComplement(tc)(tc.fromCol, tc.toCol, col("subtrahend")))
       .cache()
     logger.debug(s"temporalLeftAntiJoinImpl: dfComplementJoin_complementArray.schema = ${dfComplementJoin_complementArray.schema.treeString}")
 
@@ -365,7 +365,7 @@ object TemporalQueryUtil extends Logging {
     val consecutiveColName = "_consecutive"
     require(!df.columns.contains(nbColName) && !df.columns.contains(consecutiveColName), s"(temporalCombineImpl) Your dataframe must not contain columns named $nbColName or $consecutiveColName! df.columns = ${df.columns}")
     df.temporalRoundDiscreteTime(tc)
-      .withColumn(consecutiveColName, coalesce(udf_predecessorTime(tc)(tc.fromCol) <= lag(tc.toCol,1).over(fenestra),lit(false)))
+      .withColumn(consecutiveColName, coalesce(getUdfPredecessorTime(tc)(tc.fromCol) <= lag(tc.toCol,1).over(fenestra),lit(false)))
       .withColumn(nbColName, sum(when(col(consecutiveColName),lit(0)).otherwise(lit(1))).over(fenestra))
       .groupBy( compairCols.map(col):+col(nbColName):_*)
       .agg( min(tc.fromCol).as(tc.fromColName) , max(tc.toCol).as(tc.toColName))
