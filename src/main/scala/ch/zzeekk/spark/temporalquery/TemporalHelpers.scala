@@ -1,11 +1,12 @@
 package ch.zzeekk.spark.temporalquery
 
-import java.sql.Timestamp
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
-import org.apache.spark.sql.Row
 
-import TemporalQueryUtil.TemporalQueryConfig
+import java.sql.Timestamp
+import java.time.temporal.ChronoUnit
+import scala.reflect.runtime.universe._
 
 object TemporalHelpers extends Serializable with Logging {
   // "extends Serializable" needed to avoid
@@ -15,20 +16,16 @@ object TemporalHelpers extends Serializable with Logging {
   val millisPerDay: Long = 24 * millisPerHour
 
   /**
-   * rounds down timestamp tempus to the nearest millisecond
-   * if tempus is not before hc.maxDate then return hc.maxDate
-   * @param numMillis: number of milliseconds to add
-   * @param tempus: timestamp to which the milliseconds are to be added
-   * @return rounded down timestamp
-   */
-  def addMillisecond(numMillis: Int)(tempus: Timestamp)(implicit hc:TemporalQueryConfig) : Timestamp = {
+   * Add time units to timestamp respecting min/maxDate
+    */
+  def addTimeUnits(tempus: Timestamp, amount: Int, unit: ChronoUnit, minDate: Timestamp, maxDate: Timestamp): Timestamp = {
     if (tempus == null) null
-    else if (!tempus.before(hc.maxDate)) hc.maxDate
-    else if (!tempus.after(hc.minDate)) hc.minDate
-    else Timestamp.from(tempus.toInstant.plusMillis(numMillis))
+    earliest(latest(Timestamp.from(tempus.toInstant.plus(amount, unit)), minDate), maxDate)
   }
-  def getUdfPlusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(1) _)
-  def getUdfMinusMillisecond(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(addMillisecond(-1) _)
+
+  implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a,b) => a.before(b))
+  private def latest(tempis: Timestamp*): Timestamp = tempis.max
+  private def earliest(tempis: Timestamp*): Timestamp = tempis.min
 
   /**
    * returns the length of the time interval [subtrahend ; minuend] in milliseconds
@@ -46,60 +43,60 @@ object TemporalHelpers extends Serializable with Logging {
   val udf_durationInMillis: UserDefinedFunction = udf(durationInMillis _)
 
   /**
-   * rounds down timestamp tempus to the nearest millisecond
+   * rounds down timestamp tempus to the next ChronoUnit
    * if tempus is not before hc.maxDate then return hc.maxDate
    * @param tempus: timestamp to truncate
+   * @param unit: chrono unit for time step
+   * @param maxDate: maximum of time axis
    * @return rounded down timestamp
    */
-  def floorTimestamp(tempus: Timestamp)(implicit hc:TemporalQueryConfig): Timestamp = {
+  def floorTimestamp(tempus: Timestamp, unit: ChronoUnit = ChronoUnit.MILLIS, minDate: Timestamp, maxDate: Timestamp): Timestamp = {
     // return hc.maxDate in case input tempus is after or equal hc.maxDate
     if (tempus == null) null
-    else if (tempus.before(hc.maxDate)) {
-      // to start with: resultat = truncate tempus to SECONDS
-
-      val resultat: Timestamp = new Timestamp(1000 * (tempus.getTime / 1000)) // mutable and will be mutated
-      resultat.setNanos(1000000 * (tempus.getNanos / 1000000))
-      resultat
-    } else hc.maxDate
+    earliest(Timestamp.from(tempus.toInstant.truncatedTo(unit)), maxDate)
   }
-  def getUdfFloorTimestamp(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(floorTimestamp _)
 
   /**
    * rounds up timestamp to next ChronoUnit
    * but at most up to hc.maxDate
    * @param tempus: timestamp to round up
+   * @param unit: chrono unit for time step
    * @return truncated timestamp
    */
-  def ceilTimestamp(tempus: Timestamp)(implicit hc:TemporalQueryConfig): Timestamp = addMillisecond(1)(predecessorTime(tempus)(hc))
-  def getUdfCeilTimestamp(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(ceilTimestamp _)
+  def ceilTimestamp(tempus: Timestamp, unit: ChronoUnit = ChronoUnit.MILLIS, minDate: Timestamp, maxDate: Timestamp): Timestamp = {
+    if (tempus == null) null
+    addTimeUnits(predecessorTime(tempus, unit, minDate, maxDate), 1, unit, minDate, maxDate)
+  }
 
   /**
    * returns the predecessor timestamp with respect to ChronoUnit
-   * @param tempus: timestamp to truncate
-   * @return truncated timestamp
+   * @param tempus: timestamp to manipulate
+   * @param unit: chrono unit for time step
+   * @return predecessor timestamp
    */
-  def predecessorTime(tempus: Timestamp)(implicit hc:TemporalQueryConfig): Timestamp = {
+  def predecessorTime(tempus: Timestamp, unit: ChronoUnit = ChronoUnit.MILLIS, minDate: Timestamp, maxDate: Timestamp): Timestamp = {
     if (tempus == null) null
     else {
-      val resultat: Timestamp = floorTimestamp(tempus)(hc)
-      if (resultat.equals(tempus)) addMillisecond(-1)(resultat) else resultat
+      val tempusFloored = floorTimestamp(tempus, unit, minDate, maxDate)
+      if (tempusFloored.equals(tempus)) addTimeUnits(tempusFloored, -1, unit, minDate, maxDate)
+      else tempusFloored
     }
   }
-  def getUdfPredecessorTime(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(predecessorTime _)
 
   /**
    * returns the predecessor timestamp with respect to ChronoUnit
-   * @param tempus: timestamp to truncate
-   * @return truncated timestamp
+   * @param tempus: timestamp to manipulate
+   * @param unit: chrono unit for time step
+   * @return successor timestamp
    */
-  def successorTime(tempus: Timestamp)(implicit hc:TemporalQueryConfig): Timestamp = {
+  def successorTime(tempus: Timestamp, unit: ChronoUnit = ChronoUnit.MILLIS, minDate: Timestamp, maxDate: Timestamp): Timestamp = {
     if (tempus == null) null
     else {
-      val resultat: Timestamp = ceilTimestamp(tempus)(hc)
-      if (resultat.equals(tempus)) addMillisecond(1)(resultat) else resultat
+      val tempusCeiled = ceilTimestamp(tempus, unit, minDate, maxDate)
+      if (tempusCeiled.equals(tempus)) addTimeUnits(tempusCeiled, 1, unit, minDate, maxDate)
+      else tempusCeiled
     }
   }
-  def getUdfSuccessorTime(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(successorTime _)
 
   /**
    * returns the complement of union of subtrahends relative to the interval [validFrom, validTo]
@@ -109,28 +106,31 @@ object TemporalHelpers extends Serializable with Logging {
    * @param subtrahends: sequence of which the temporal complement is taken
    * @return [validFrom, validTo] ∖ (⋃ subtrahends)
    */
-  def temporalComplement(validFrom: Timestamp, validTo: Timestamp, subtrahends: Seq[Row])(implicit hc:TemporalQueryConfig): Seq[(Timestamp,Timestamp)] = {
+  def temporalComplement[T: Ordering](validFrom: T, validTo: T, subtrahends: Seq[Row], ic: IntervalQueryConfig[T])
+                           (implicit ordering: Ordering[T]): Seq[(T,T)] = {
     logger.debug(s"temporalComplement: START validity = [$validFrom , $validTo]")
-    val subtrahendsSorted: List[(Timestamp, Timestamp)] = subtrahends
-      .map(r => (r.getTimestamp(0),r.getTimestamp(1)))
-      .sortWith({(x,y) => x._1.before(y._1)})
-      .filterNot({x => validTo.before(x._1)})
-      .filterNot({x => validFrom.after(x._2)})
+    val subtrahendsSorted: List[(T, T)] = subtrahends
+      .map(r => (r.getAs[T](0),r.getAs[T](1)))
+      .sorted(Ordering.Tuple2(ordering, ordering))
+      .filterNot(x => ordering.lt(validTo, x._1))
+      .filterNot(x => ordering.gt(validFrom, x._2))
       .toList
     logger.debug(s"temporalComplement: subtrahendsSorted = ${subtrahendsSorted.mkString(" U ")}")
 
-    def getOneComplement(minuend: (Timestamp, Timestamp), subtrahend: (Timestamp,Timestamp)):  Seq[(Timestamp,Timestamp)] = {
-      List( (successorTime(subtrahend._2),minuend._2) , (minuend._1,predecessorTime(subtrahend._1)) )
-        .filterNot(x => x._2.before(x._1))
+    def getOneComplement(minuend: (T,T), subtrahend: (T,T)):  Seq[(T,T)] = {
+      List(
+        (ic.intervalDef.successor(subtrahend._2, ic), minuend._2),
+        (minuend._1, ic.intervalDef.predecessor(subtrahend._1, ic))
+      ).filterNot(x => ordering.lt(x._2, x._1))
     }
 
-    def subtractOneSubtrahend(res: Seq[(Timestamp, Timestamp)], subtrahend: (Timestamp,Timestamp)):  Seq[(Timestamp,Timestamp)] = {
+    def subtractOneSubtrahend(res: Seq[(T,T)], subtrahend: (T,T)):  Seq[(T,T)] = {
       logger.debug(s"temporalComplement.subtractOneSubtrahend: START subtrahend = $subtrahend")
       getOneComplement(res.head, subtrahend) ++ res.tail
     }
 
     subtrahendsSorted.foldLeft(Seq((validFrom, validTo)))(subtractOneSubtrahend)
   }
-  def getUdfTemporalComplement(implicit hc:TemporalQueryConfig): UserDefinedFunction = udf(temporalComplement _)
+  def getUdfTemporalComplement[T: Ordering: TypeTag](implicit hc:IntervalQueryConfig[T]): UserDefinedFunction = udf(temporalComplement[T] _)
 
 }
