@@ -17,8 +17,8 @@ object IntervalQueryImpl extends Logging {
 
   private[temporalquery] def roundIntervalsToDiscreteTime[T: Ordering: TypeTag](df: DataFrame)
                                                                                (implicit tc:IntervalQueryConfig[T]): DataFrame= {
-    df.withColumn(tc.fromColName, tc.intervalDef.getCeilExpr(tc.fromCol, tc))
-      .withColumn(tc.toColName, tc.intervalDef.getFloorExpr(tc.toCol, tc))
+    df.withColumn(tc.fromColName, tc.intervalDef.getCeilExpr(tc.fromCol))
+      .withColumn(tc.toColName, tc.intervalDef.getFloorExpr(tc.toCol))
       .where(tc.fromCol <= tc.toCol)
       // return columns in same order as provided
       .select(df.columns.map(col):_*)
@@ -26,8 +26,8 @@ object IntervalQueryImpl extends Logging {
 
   private[temporalquery] def transformHalfOpenToClosedInterval[T: Ordering: TypeTag](df: DataFrame)
                                                                                     (implicit tc:IntervalQueryConfig[T]): DataFrame= {
-    df.withColumn(tc.fromColName, tc.intervalDef.getCeilExpr(tc.fromCol, tc))
-      .withColumn(tc.toColName, tc.intervalDef.getPredecessorExpr(tc.toCol, tc))
+    df.withColumn(tc.fromColName, tc.intervalDef.getCeilExpr(tc.fromCol))
+      .withColumn(tc.toColName, tc.intervalDef.getPredecessorExpr(tc.toCol))
       .where(tc.fromCol <= tc.toCol)
       // return columns in same order as provided
       .select(df.columns.map(col):_*)
@@ -75,18 +75,18 @@ object IntervalQueryImpl extends Logging {
 
     val keyCols = keys.map(col)
     // get start/end-points for every key
-    val df_points = df.select( keyCols :+ tc.fromCol.as(ptColName):_*).union( df.select( keyCols :+ tc.intervalDef.getSuccessorExpr(tc.toCol, tc).as(ptColName):_* ))
+    val df_points = df.select( keyCols :+ tc.fromCol.as(ptColName):_*).union( df.select( keyCols :+ tc.intervalDef.getSuccessorExpr(tc.toCol).as(ptColName):_* ))
     // if desired, extend every key with min/maxDate-points
     val df_pointsExt = if (extend) {
       df_points
-        .union( df_points.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.minValue)))
-        .union( df_points.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.maxValue)))
+        .union( df_points.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.intervalDef.lowerBound)))
+        .union( df_points.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.intervalDef.upperBound)))
         .distinct
     } else df_points.distinct
     // build ranges
     df_pointsExt
       .withColumnRenamed(ptColName, tc.fromColName2)
-      .withColumn( tc.toColName2, tc.intervalDef.getPredecessorExpr(lead(tc.fromCol2,1).over(Window.partitionBy(keys.map(col):_*).orderBy(tc.fromCol2)), tc))
+      .withColumn( tc.toColName2, tc.intervalDef.getPredecessorExpr(lead(tc.fromCol2,1).over(Window.partitionBy(keys.map(col):_*).orderBy(tc.fromCol2))))
       .where(tc.toCol2.isNotNull)
   }
 
@@ -210,7 +210,7 @@ object IntervalQueryImpl extends Logging {
     val consecutiveColName = "_consecutive"
     require(!df.columns.contains(nbColName) && !df.columns.contains(consecutiveColName), s"(temporalCombineImpl) Your dataframe must not contain columns named $nbColName or $consecutiveColName! df.columns = ${df.columns}")
     roundIntervalsToDiscreteTime(df)
-      .withColumn(consecutiveColName, coalesce(tc.intervalDef.getPredecessorExpr(tc.fromCol, tc) <= lag(tc.toCol,1).over(fenestra),lit(false)))
+      .withColumn(consecutiveColName, coalesce(tc.intervalDef.getPredecessorExpr(tc.fromCol) <= lag(tc.toCol,1).over(fenestra),lit(false)))
       .withColumn(nbColName, sum(when(col(consecutiveColName),lit(0)).otherwise(lit(1))).over(fenestra))
       .groupBy( compairCols.map(col):+col(nbColName):_*)
       .agg( min(tc.fromCol).as(tc.fromColName) , max(tc.toCol).as(tc.toColName))
@@ -248,8 +248,8 @@ object IntervalQueryImpl extends Logging {
       .withColumn(fromMinColName, if( extendMin ) min(tc.fromCol).over(Window.partitionBy(keyCols:_*)) else lit(null))
       .withColumn(toMaxColName, if( extendMax ) max(tc.toCol).over(Window.partitionBy(keyCols:_*)) else lit(null))
     val selCols = df.columns.filter( c => c!=tc.fromColName && c!=tc.toColName ).map(col) :+
-      when(tc.fromCol===col(fromMinColName), lit(tc.minValue)).otherwise(tc.fromCol).as(tc.fromColName) :+
-      when(tc.toCol===col(toMaxColName), lit(tc.maxValue)).otherwise(tc.toCol).as(tc.toColName)
+      when(tc.fromCol===col(fromMinColName), lit(tc.intervalDef.lowerBound)).otherwise(tc.fromCol).as(tc.fromColName) :+
+      when(tc.toCol===col(toMaxColName), lit(tc.intervalDef.upperBound)).otherwise(tc.toCol).as(tc.toColName)
     df_prep.select( selCols:_* )
   }
 

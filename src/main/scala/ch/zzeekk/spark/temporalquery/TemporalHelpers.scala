@@ -119,8 +119,8 @@ object TemporalHelpers extends Serializable with Logging {
 
     def getOneComplement(minuend: (T,T), subtrahend: (T,T)):  Seq[(T,T)] = {
       List(
-        (ic.intervalDef.successor(subtrahend._2, ic), minuend._2),
-        (minuend._1, ic.intervalDef.predecessor(subtrahend._1, ic))
+        (ic.intervalDef.successor(subtrahend._2), minuend._2),
+        (minuend._1, ic.intervalDef.predecessor(subtrahend._1))
       ).filterNot(x => ordering.lt(x._2, x._1))
     }
 

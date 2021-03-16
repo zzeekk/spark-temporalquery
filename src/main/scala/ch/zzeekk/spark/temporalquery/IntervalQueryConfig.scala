@@ -3,16 +3,18 @@ package ch.zzeekk.spark.temporalquery
 import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.sql.functions.col
 
+/**
+ * Base class defining the configuration needed for interval queries with Spark
+ * @tparam T: scala type for interval axis
+ */
 abstract class IntervalQueryConfig[T: Ordering] { // this is an abstract class because "traits can not have type parameters with context bounds"
-  def minValue: T
-  def maxValue: T
   def fromColName: String
   def toColName: String
   def additionalTechnicalColNames: Seq[String]
   def intervalDef: IntervalDef[T]
 
-  // configuration with 2nd pair of from/to column names used as main pair
-  def config2: IntervalQueryConfig[T]
+  // copy of configuration with 2nd pair of from/to column names used as main column pair
+  def config2: IntervalQueryConfig[T] // hint: implement with case class copy constructor in subclass
 
   // 2nd pair of from/to column names
   val fromColName2: String = fromColName+"2"
@@ -37,8 +39,8 @@ abstract class IntervalQueryConfig[T: Ordering] { // this is an abstract class b
     intervalDef.intervalJoinExpr(df1(fromColName), df1(toColName), df2(fromColName), df2(toColName) )
   def joinIntervalExpr2(df1: DataFrame, df2: DataFrame): Column =
     intervalDef.intervalJoinExpr(df1(fromColName), df1(toColName), df2(fromColName2), df2(toColName2) )
-  def getFloorExpr(value: Column): Column = intervalDef.getFloorExpr(value, this)
-  def getCeilExpr(value: Column): Column = intervalDef.getCeilExpr(value, this)
-  def getPredecessorExpr(value: Column): Column = intervalDef.getPredecessorExpr(value, this)
-  def getSuccessorExpr(value: Column): Column = intervalDef.getSuccessorExpr(value, this)
+  def getFloorExpr(value: Column): Column = intervalDef.getFloorExpr(value)
+  def getCeilExpr(value: Column): Column = intervalDef.getCeilExpr(value)
+  def getPredecessorExpr(value: Column): Column = intervalDef.getPredecessorExpr(value)
+  def getSuccessorExpr(value: Column): Column = intervalDef.getSuccessorExpr(value)
 }

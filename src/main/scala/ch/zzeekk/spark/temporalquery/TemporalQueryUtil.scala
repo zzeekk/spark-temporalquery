@@ -22,15 +22,15 @@ object TemporalQueryUtil extends Logging {
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
-  case class TemporalQueryConfig( minDate: Timestamp = Timestamp.valueOf("0001-01-01 00:00:00"),
-                                  maxDate: Timestamp = Timestamp.valueOf("9999-12-31 00:00:00"),
-                                  override val fromColName: String    = "gueltig_ab",
+  case class TemporalQueryConfig( override val fromColName: String    = "gueltig_ab",
                                   override val toColName: String      = "gueltig_bis",
                                   override val additionalTechnicalColNames: Seq[String] = Seq(),
-                                  override val intervalDef: IntervalDef[Timestamp] = ClosedInterval(TimeAxis(ChronoUnit.MILLIS))
+                                  override val intervalDef: IntervalDef[Timestamp] = ClosedInterval(
+                                    Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)
+                                  )
                                  ) extends IntervalQueryConfig[Timestamp] {
-    override val minValue: Timestamp = minDate
-    override val maxValue: Timestamp = maxDate
+    val minDate: Timestamp = intervalDef.lowerBound
+    val maxDate: Timestamp = intervalDef.upperBound
     override val config2: TemporalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
