@@ -18,7 +18,7 @@ import scala.reflect.runtime.universe._
  * implicit val sss = ss // make SparkSession implicitly available
  * val df_joined = df1.linearJoin(df2) // use linear query functions with Spark
  */
-object LinearFloatQueryUtil extends LinearQueryUtil[Float]
+object LinearFloatQueryUtil extends LinearGenericQueryUtil[Float]
 
 /**
  * Linear query utils for interval axis of type Double
@@ -29,13 +29,13 @@ object LinearFloatQueryUtil extends LinearQueryUtil[Float]
  * implicit val sss = ss // make SparkSession implicitly available
  * val df_joined = df1.linearJoin(df2) // use linear query functions with Spark
  */
-object LinearDoubleQueryUtil extends LinearQueryUtil[Double]
+object LinearDoubleQueryUtil extends LinearGenericQueryUtil[Double]
 
 /**
  * Generic class to provide linear query utils for different interval axis types
  * @tparam T: scala type for interval axis
  */
-class LinearQueryUtil[T: Ordering: TypeTag] extends Logging {
+class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Logging {
 
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
