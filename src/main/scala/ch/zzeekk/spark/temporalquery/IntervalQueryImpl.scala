@@ -79,8 +79,8 @@ object IntervalQueryImpl extends Logging {
     // if desired, extend every key with min/maxDate-points
     val df_pointsExt = if (extend) {
       df_points
-        .union( df_points.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.intervalDef.lowerBound)))
-        .union( df_points.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.intervalDef.upperBound)))
+        .union( df_points.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.intervalDef.minValue)))
+        .union( df_points.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.intervalDef.maxValue)))
         .distinct
     } else df_points.distinct
     // build ranges
@@ -248,8 +248,8 @@ object IntervalQueryImpl extends Logging {
       .withColumn(fromMinColName, if( extendMin ) min(tc.fromCol).over(Window.partitionBy(keyCols:_*)) else lit(null))
       .withColumn(toMaxColName, if( extendMax ) max(tc.toCol).over(Window.partitionBy(keyCols:_*)) else lit(null))
     val selCols = df.columns.filter( c => c!=tc.fromColName && c!=tc.toColName ).map(col) :+
-      when(tc.fromCol===col(fromMinColName), lit(tc.intervalDef.lowerBound)).otherwise(tc.fromCol).as(tc.fromColName) :+
-      when(tc.toCol===col(toMaxColName), lit(tc.intervalDef.upperBound)).otherwise(tc.toCol).as(tc.toColName)
+      when(tc.fromCol===col(fromMinColName), lit(tc.intervalDef.minValue)).otherwise(tc.fromCol).as(tc.fromColName) :+
+      when(tc.toCol===col(toMaxColName), lit(tc.intervalDef.maxValue)).otherwise(tc.toCol).as(tc.toColName)
     df_prep.select( selCols:_* )
   }
 

@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2017 Zacharias Kull under MIT Licence
+ */
+
 package ch.zzeekk.spark.temporalquery
 
 import org.apache.spark.sql._
@@ -7,15 +11,13 @@ import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
 
 /**
- * Copyright (c) 2017 Zacharias Kull under MIT Licence
+ *  Temporal query utils for interval axis of type Timestamp
  *
  * Usage:
- *
- * import ch.zzeekk.spark-temporalquery.TemporalQueryUtil._ // this imports temporalquery* implicit functions on DataFrame
- * implicit val tqc = TemporalQueryConfig() // configure options for temporalquery operations
+ * import ch.zzeekk.spark-temporalquery.TemporalQueryUtil._ // this imports temporal* implicit functions on DataFrame and Columns
+ * implicit val tqc = TemporalQueryConfig() // configure options for temporal query operations
  * implicit val sss = ss // make SparkSession implicitly available
- *
- * val df_joined = df1.temporalJoin(df2)
+ * val df_joined = df1.temporalJoin(df2) // use temporal query functions with Spark
  */
 object TemporalQueryUtil extends Logging {
 
@@ -29,8 +31,8 @@ object TemporalQueryUtil extends Logging {
                                     Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)
                                   )
                                  ) extends IntervalQueryConfig[Timestamp] {
-    val minDate: Timestamp = intervalDef.lowerBound
-    val maxDate: Timestamp = intervalDef.upperBound
+    val minDate: Timestamp = intervalDef.minValue
+    val maxDate: Timestamp = intervalDef.maxValue
     override val config2: TemporalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
@@ -120,8 +122,6 @@ object TemporalQueryUtil extends Logging {
     /**
      * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung gibt.
      * Zuerst wird der Dataframe mittels [[temporalRoundDiscreteTime]] etwas bereinigt, siehe Beschreibung dort
-     *
-     * @return temporal dataframe with combined validities
      */
     def temporalCombine( keys:Seq[String] = Seq() , ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
       if(keys.nonEmpty) logger.warn("Parameter keys is superfluous and therefore ignored. Please refrain from using it!")
@@ -135,7 +135,7 @@ object TemporalQueryUtil extends Logging {
       IntervalQueryImpl.unifyIntervalRanges( df1, keys )
 
     /**
-     * Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
+     * Erweitert die Historie des kleinsten Werts pro Key auf minDate
      */
     def temporalExtendRange( keys:Seq[String]=Seq(), extendMin:Boolean=true, extendMax:Boolean=true )(implicit ss:SparkSession, tc:TemporalQueryConfig): DataFrame =
       IntervalQueryImpl.extendIntervalRanges( df1, keys, extendMin, extendMax )

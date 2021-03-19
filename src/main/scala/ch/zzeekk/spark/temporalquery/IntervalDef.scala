@@ -14,21 +14,21 @@ import scala.reflect.runtime.universe._
 abstract class IntervalDef[T: Ordering: TypeTag] {
 
   /**
-   * Define lower boundary of the interval axis
+   * Define min value of the interval axis
    */
-  def lowerBound: T
+  def minValue: T
   /**
-   * Define upper boundary of the interval axis
+   * Define max value of the interval axis
    */
-  def upperBound: T
+  def maxValue: T
   /**
    * Expression to check if a value is included in a given interval
    */
-  def isInIntervalExpr(value: Column, from: Column, to: Column): Column
+  def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column
   /**
    * Expression to join two intervals
    */
-  def intervalJoinExpr(from1: Column, to1: Column, from2: Column, to2: Column): Column
+  def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column
   /**
    * Method to floor a scala value of type T
    */
@@ -49,35 +49,35 @@ abstract class IntervalDef[T: Ordering: TypeTag] {
   /**
    * Expression to floor a column
    */
-  def getFloorExpr(value: Column): Column = {
+  def getFloorExpr(valueCol: Column): Column = {
     val udfTransform = udf((v: T) => floor(v))
-    udfTransform(value)
+    udfTransform(valueCol)
   }
   /**
    * Expression to ceil a column
    */
-  def getCeilExpr(value: Column): Column = {
+  def getCeilExpr(valueCol: Column): Column = {
     val udfTransform = udf((v: T) => ceil(v))
-    udfTransform(value)
+    udfTransform(valueCol)
   }
   /**
    * Expression get predecessor for a column
    */
-  def getPredecessorExpr(value: Column): Column = {
+  def getPredecessorExpr(valueCol: Column): Column = {
     val udfTransform = udf((v: T) => predecessor(v))
-    udfTransform(value)
+    udfTransform(valueCol)
   }
   /**
    * Expression get successor for a column
    */
-  def getSuccessorExpr(value: Column): Column = {
+  def getSuccessorExpr(valueCol: Column): Column = {
     val udfTransform = udf((v: T) => successor(v))
-    udfTransform(value)
+    udfTransform(valueCol)
   }
   /**
-   * make sure value is between boundaries
+   * make sure value is between min- and maxValue
    */
-  def fitToBoundaries(value: T): T = least(greatest(value, lowerBound), upperBound)
+  def fitToBoundaries(value: T): T = least(greatest(value, minValue), maxValue)
 
   // Helpers
   private def least(values: T*): T = values.min
@@ -87,11 +87,13 @@ abstract class IntervalDef[T: Ordering: TypeTag] {
 /**
  * A closed interval is an interval which includes its lower and upper bound.
  * Use this for discret interval axis.
+ * @param minValue minimum value of the interval axis
+ * @param maxValue maximum value of the interval axis
  * @tparam T: scala type for discrete interval axis, e.g. Timestamp, Integer, ...
  */
-case class ClosedInterval[T: Ordering: TypeTag](override val lowerBound: T, override val upperBound: T, discreteAxisDef: DiscreteAxisDef[T]) extends IntervalDef[T] {
-  override def isInIntervalExpr(value: Column, from: Column, to: Column): Column = {
-    from <= value && value < to
+case class ClosedInterval[T: Ordering: TypeTag](override val minValue: T, override val maxValue: T, discreteAxisDef: DiscreteAxisDef[T]) extends IntervalDef[T] {
+  override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
+    fromCol <= valueCol && valueCol < toCol
   }
   override def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column = {
     fromCol1 <= toCol2 and toCol1 >= fromCol2
@@ -105,11 +107,13 @@ case class ClosedInterval[T: Ordering: TypeTag](override val lowerBound: T, over
 /**
  * Lower bound is included, upper bound is excluded
  * Use this for continuous interval axis.
+ * @param minValue minimum value of the interval axis
+ * @param maxValue maximum value of the interval axis
  * @tparam T: scala type for continuous interval axis, e.g. Float, Double...
  */
-case class ClosedFromOpenToInterval[T: Ordering: Fractional: TypeTag](override val lowerBound: T, override val upperBound: T) extends IntervalDef[T] {
-  override def isInIntervalExpr(value: Column, from: Column, to: Column): Column = {
-    from <= value && value < to
+case class ClosedFromOpenToInterval[T: Ordering: Fractional: TypeTag](override val minValue: T, override val maxValue: T) extends IntervalDef[T] {
+  override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
+    fromCol <= valueCol && valueCol < toCol
   }
   override def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column = {
     fromCol1 <= toCol2 and toCol1 > fromCol2 // condition for second term is not inclusive
@@ -118,10 +122,10 @@ case class ClosedFromOpenToInterval[T: Ordering: Fractional: TypeTag](override v
   def ceil(value: T): T = value // no rounding
   def predecessor(value: T): T = value // predecessor is the same
   def successor(value: T): T = value // successor is the same
-  override def getFloorExpr(value: Column): Column = value // no rounding
-  override def getCeilExpr(value: Column): Column = value // no rounding
-  override def getPredecessorExpr(value: Column): Column = value // predecessor is the same
-  override def getSuccessorExpr(value: Column): Column = value // successor is the same
+  override def getFloorExpr(valueCol: Column): Column = valueCol // no rounding
+  override def getCeilExpr(valueCol: Column): Column = valueCol // no rounding
+  override def getPredecessorExpr(valueCol: Column): Column = valueCol // predecessor is the same
+  override def getSuccessorExpr(valueCol: Column): Column = valueCol // successor is the same
 }
 
 
@@ -147,19 +151,19 @@ abstract class DiscreteAxisDef[T] {
 }
 
 /**
- * Implementation of axis behaviour for discrete time axis using Timestamp as scala type
+ * Implementation of axis behaviour for discrete time axis using Timestamp as scala axis type
+ * @param timeUnit time unit used as step for discrete time axis
  */
 case class DiscreteTimeAxis(timeUnit: ChronoUnit) extends DiscreteAxisDef[Timestamp] {
-  override def floor(value: Timestamp): Timestamp =
-    Timestamp.from(value.toInstant.truncatedTo(timeUnit))
-  override def next(value: Timestamp): Timestamp =
-    Timestamp.from(value.toInstant.plus(1, timeUnit))
-  override def prev(value: Timestamp): Timestamp =
-    Timestamp.from(value.toInstant.minus(1, timeUnit))
+  override def floor(value: Timestamp): Timestamp = Timestamp.from(value.toInstant.truncatedTo(timeUnit))
+  override def next(value: Timestamp): Timestamp = Timestamp.from(value.toInstant.plus(1, timeUnit))
+  override def prev(value: Timestamp): Timestamp = Timestamp.from(value.toInstant.minus(1, timeUnit))
 }
 
 /**
  * Implementation of axis behaviour for discrete time axis any Integral scala type, e.g. Integer, Long,...
+ * @param timeUnit step size used for discrete interval axis
+ * @tparam T: scala type for interval axis
  */
 case class DiscreteNumericAxis[T: Integral](step: T)(implicit f: Integral[T]) extends DiscreteAxisDef[T] {
   implicit private def ops(lhs: T): f.IntegralOps = f.mkNumericOps(lhs)
