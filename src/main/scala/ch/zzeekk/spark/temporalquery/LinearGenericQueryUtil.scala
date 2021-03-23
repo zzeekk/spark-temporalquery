@@ -58,7 +58,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Logging {
      */
     def linearInnerJoin( df2:DataFrame, keys:Seq[String] )
                        (implicit ss:SparkSession, tc:LinearQueryConfig) : DataFrame =
-      IntervalQueryImpl.temporalKeyJoinImpl( df1, df2, keys )
+      IntervalQueryImpl.joinIntervalsWithKeysImpl( df1, df2, keys )
 
     /**
      * Implementiert ein inner-join von historisierten Daten über eine ausformulierte Join-Bedingung

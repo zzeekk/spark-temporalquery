@@ -48,7 +48,7 @@ object TemporalQueryUtil extends Logging {
      */
     def temporalInnerJoin( df2:DataFrame, keys:Seq[String] )
                          (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame =
-      IntervalQueryImpl.temporalKeyJoinImpl( df1, df2, keys )
+      IntervalQueryImpl.joinIntervalsWithKeysImpl( df1, df2, keys )
 
     /**
      * Implementiert ein inner-join von historisierten Daten über eine ausformulierte Join-Bedingung

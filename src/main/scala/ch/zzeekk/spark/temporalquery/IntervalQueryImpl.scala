@@ -1,6 +1,6 @@
 package ch.zzeekk.spark.temporalquery
 
-import ch.zzeekk.spark.temporalquery.TemporalHelpers.getUdfTemporalComplement
+import ch.zzeekk.spark.temporalquery.TemporalHelpers._
 import org.apache.spark.sql.expressions.{Window, WindowSpec}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{Column, DataFrame, SparkSession}
@@ -39,9 +39,9 @@ object IntervalQueryImpl extends Logging {
    * This is used to implement "natural join" and "join using" sql behaviour.
    */
   private[temporalquery] def joinIntervals[T: Ordering: TypeTag](df1:DataFrame, df2:DataFrame, keyCondition:Column, joinType:String = "inner", colsToConsolidate: Seq[String] = Seq())
-                                          (implicit ss:SparkSession, tc:IntervalQueryConfig[T]) : DataFrame = {
+                                                                (implicit ss:SparkSession, tc:IntervalQueryConfig[T]) : DataFrame = {
     require(!(df2.columns.contains(tc.fromColName2) || df2.columns.contains(tc.toColName2)),
-      s"(temporalJoinImpl) Your right-dataframe must not contain columns named ${tc.fromColName2} or ${tc.toColName2}! df.columns = ${df2.columns}")
+      s"(joinIntervals) Your right-dataframe must not contain columns named ${tc.fromColName2} or ${tc.toColName2}! df.columns = ${df2.columns}")
     require(colsToConsolidate.diff(df1.columns).isEmpty, s"(temporalJoinImpl) Your left-dataframe doesn't contain column to consolidate ${colsToConsolidate.diff(df1.columns).mkString(" and ")}")
     require(colsToConsolidate.diff(df2.columns).isEmpty, s"(temporalJoinImpl) Your right-dataframe doesn't contain column to consolidate ${colsToConsolidate.diff(df2.columns).mkString(" and ")}")
 
@@ -58,8 +58,8 @@ object IntervalQueryImpl extends Logging {
     val selCols = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
     df_join.select(selCols:_*)
   }
-  private[temporalquery] def temporalKeyJoinImpl[T: Ordering: TypeTag]( df1:DataFrame, df2:DataFrame, keys:Seq[String], joinType:String = "inner" )
-                                                (implicit ss:SparkSession, tc:IntervalQueryConfig[T]) : DataFrame = {
+  private[temporalquery] def joinIntervalsWithKeysImpl[T: Ordering: TypeTag](df1:DataFrame, df2:DataFrame, keys:Seq[String], joinType:String = "inner" )
+                                                                            (implicit ss:SparkSession, tc:IntervalQueryConfig[T]) : DataFrame = {
     joinIntervals( df1, df2, createKeyCondition(df1, df2, keys), joinType, keys )
   }
 
@@ -71,7 +71,7 @@ object IntervalQueryImpl extends Logging {
     val ptColName = "_pt"
 
     require(!(df.columns.contains(tc.fromColName2) || df.columns.contains(tc.toColName2) || df.columns.contains(ptColName)),
-      s"(temporalRangesImpl) Your dataframe must not contain columns named ${tc.fromColName2}, ${tc.toColName2} or $ptColName! df.columns = ${df.columns}")
+      s"(buildIntervalRanges) Your dataframe must not contain columns named ${tc.fromColName2}, ${tc.toColName2} or $ptColName! df.columns = ${df.columns}")
 
     val keyCols = keys.map(col)
     // get start/end-points for every key
@@ -94,12 +94,12 @@ object IntervalQueryImpl extends Logging {
    * cleanup overlaps, fill holes and extend to min/maxDate
    */
   private[temporalquery] def cleanupExtendIntervals[T: Ordering: TypeTag](df:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)]
-                                                    , rnkFilter:Boolean, extend: Boolean = true, fillGapsWithNull: Boolean = true )
+                                                  , rnkFilter:Boolean, extend: Boolean = true, fillGapsWithNull: Boolean = true )
                                                    (implicit ss:SparkSession, tc:IntervalQueryConfig[T]) : DataFrame = {
-    if(extend && !fillGapsWithNull) logger.warn("temporalCleanupExtendImpl: extend=true has no effect if fillGapsWithNull=false!")
+    if(extend && !fillGapsWithNull) logger.warn("cleanupExtendIntervals: extend=true has no effect if fillGapsWithNull=false!")
 
     require(!df.columns.contains(tc.fromColName2) && !df.columns.contains(tc.toColName2) && !df.columns.contains(tc.definedColName),
-      s"(temporalCleanupExtendImpl) Your dataframe must not contain columns named ${tc.fromColName2}, ${tc.toColName2} or ${tc.definedColName}! df.columns = ${df.columns}")
+      s"(cleanupExtendIntervals) Your dataframe must not contain columns named ${tc.fromColName2}, ${tc.toColName2} or ${tc.definedColName}! df.columns = ${df.columns}")
 
     // use 2nd pair of from/to column names so that original pair can still be used in rnk- & aggExpressions
     val df2 = df.withColumn(tc.fromColName2, tc.fromCol).withColumn(tc.toColName2, tc.toCol)
@@ -119,7 +119,7 @@ object IntervalQueryImpl extends Logging {
     // Prioritize and clean overlaps
     val rnkColName = "_rnk"
     val df_clean = if (rnkExpressions.nonEmpty) {
-      require(!df.columns.contains(rnkColName), s"(temporalCleanupExtendImpl) Your dataframe must not contain columns named $rnkColName if rnkExpressions are defined! df.columns = ${df.columns}")
+      require(!df.columns.contains(rnkColName), s"(cleanupExtendIntervals) Your dataframe must not contain columns named $rnkColName if rnkExpressions are defined! df.columns = ${df.columns}")
       val df_rnk = df_agg.withColumn(rnkColName, row_number.over(fenestra.orderBy(rnkExpressions: _*)))
       if (rnkFilter) df_rnk.where(col(rnkColName)===1) else df_rnk
     } else df_agg
@@ -150,7 +150,7 @@ object IntervalQueryImpl extends Logging {
    */
   private[temporalquery] def leftAntiJoinIntervals[T: Ordering: TypeTag](df1:DataFrame, df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column )
                                                   (implicit ss:SparkSession, tc:IntervalQueryConfig[T]): DataFrame = {
-    logger.debug(s"temporalLeftAntiJoinImpl START: joinColumns = ${joinColumns.mkString(", ")}")
+    logger.debug(s"leftAntiJoinIntervals START: joinColumns = ${joinColumns.mkString(", ")}")
     val df1Prepared = df1
     val resultColumns: Array[String] = df1Prepared.columns
     val resultColumnsDf1: Array[Column] = df1Prepared.columns.map(df1Prepared(_))
@@ -163,28 +163,28 @@ object IntervalQueryImpl extends Logging {
       .and(additionalJoinFilterCondition)
 
     val dfAntiJoin = df1Prepared.join(df2Prepared, joinCondition, "leftanti")
-    logger.debug(s"temporalLeftAntiJoinImpl: dfAntiJoin.schema = ${dfAntiJoin.schema.treeString}")
+    logger.debug(s"leftAntiJoinIntervals: dfAntiJoin.schema = ${dfAntiJoin.schema.treeString}")
 
     val df1ExceptAntiJoin = df1Prepared.except(dfAntiJoin)
-    // We need to temporally combine df2 but without the columns which are used in additionalJoinFilterCondition
+    // We need to combine df2 but without the columns which are used in additionalJoinFilterCondition
     val dfJoin = df1ExceptAntiJoin.join(df2Prepared, joinCondition, "inner")
       .select(resultColumnsDf1 :+ tc.fromCol2 :+ tc.toCol2 :_*)
-    logger.debug(s"temporalLeftAntiJoinImpl: dfJoin.schema = ${dfJoin.schema.treeString}")
+    logger.debug(s"leftAntiJoinIntervals: dfJoin.schema = ${dfJoin.schema.treeString}")
     val df2Combined = combineIntervals(dfJoin.select(tc.fromColName2, tc.toColName2 +: joinColumns :_*), Seq())(implicitly[Ordering[T]], implicitly[TypeTag[T]], ss, tc.config2)
-    logger.debug(s"temporalLeftAntiJoinImpl: df2Combined.schema = ${df2Combined.schema.treeString}")
+    logger.debug(s"leftAntiJoinIntervals: df2Combined.schema = ${df2Combined.schema.treeString}")
 
     val dfComplementJoin = if (joinColumns.isEmpty) df1ExceptAntiJoin.crossJoin(df2Combined) else {
       df1ExceptAntiJoin.join(df2Combined, joinColumns, "inner")
     }
-    logger.debug(s"temporalLeftAntiJoinImpl: dfComplementJoin.schema = ${dfComplementJoin.schema.treeString}")
+    logger.debug(s"leftAntiJoinIntervals: dfComplementJoin.schema = ${dfComplementJoin.schema.treeString}")
 
-    val udfTemporalComplement = getUdfTemporalComplement[T]
+    val udfIntervalComplement = getUdfIntervalComplement[T]
     val dfComplementJoin_complementArray = dfComplementJoin
       .groupBy(resultColumnsDf1:_*)
       .agg(collect_set(struct(tc.fromCol2.as("_1"), tc.toCol2.as("_2"))).as("subtrahend"))
-      .withColumn("complement_array", udfTemporalComplement(tc.fromCol, tc.toCol, col("subtrahend")))
+      .withColumn("complement_array", udfIntervalComplement(tc.fromCol, tc.toCol, col("subtrahend")))
       .cache()
-    logger.debug(s"temporalLeftAntiJoinImpl: dfComplementJoin_complementArray.schema = ${dfComplementJoin_complementArray.schema.treeString}")
+    logger.debug(s"leftAntiJoinIntervals: dfComplementJoin_complementArray.schema = ${dfComplementJoin_complementArray.schema.treeString}")
 
     val dfComplement = dfComplementJoin_complementArray
       .withColumn("complements", explode(col("complement_array")))
@@ -192,7 +192,7 @@ object IntervalQueryImpl extends Logging {
       .withColumn(tc.fromColName,col("complements._1"))
       .withColumn(tc.toColName,col("complements._2"))
       .select(resultColumns.head, resultColumns.tail :_*)
-    logger.debug(s"temporalLeftAntiJoinImpl: dfComplement.schema = ${dfComplement.schema.treeString}")
+    logger.debug(s"leftAntiJoinIntervals: dfComplement.schema = ${dfComplement.schema.treeString}")
 
     dfAntiJoin.union(dfComplement)
   }
@@ -208,7 +208,7 @@ object IntervalQueryImpl extends Logging {
 
     val nbColName = "_nb"
     val consecutiveColName = "_consecutive"
-    require(!df.columns.contains(nbColName) && !df.columns.contains(consecutiveColName), s"(temporalCombineImpl) Your dataframe must not contain columns named $nbColName or $consecutiveColName! df.columns = ${df.columns}")
+    require(!df.columns.contains(nbColName) && !df.columns.contains(consecutiveColName), s"(combineIntervals) Your dataframe must not contain columns named $nbColName or $consecutiveColName! df.columns = ${df.columns}")
     roundIntervalsToDiscreteTime(df)
       .withColumn(consecutiveColName, coalesce(tc.intervalDef.getPredecessorExpr(tc.fromCol) <= lag(tc.toCol,1).over(fenestra),lit(false)))
       .withColumn(nbColName, sum(when(col(consecutiveColName),lit(0)).otherwise(lit(1))).over(fenestra))
@@ -242,7 +242,7 @@ object IntervalQueryImpl extends Logging {
                                                  (implicit ss:SparkSession, tc:IntervalQueryConfig[T]): DataFrame = {
     val fromMinColName = s"_${tc.fromColName}_min"
     val toMaxColName = s"_${tc.toColName}_max"
-    require(!df.columns.contains(fromMinColName) && !df.columns.contains(toMaxColName), s"(temporalCombineImpl) Your dataframe must not contain columns named $fromMinColName or $toMaxColName! df.columns = ${df.columns}")
+    require(!df.columns.contains(fromMinColName) && !df.columns.contains(toMaxColName), s"(extendIntervalRanges) Your dataframe must not contain columns named $fromMinColName or $toMaxColName! df.columns = ${df.columns}")
     val keyCols = if (keys.nonEmpty) keys.map(col) else Seq(lit(1)) // if no keys are given, we work with the global minimum.
     val df_prep = df
       .withColumn(fromMinColName, if( extendMin ) min(tc.fromCol).over(Window.partitionBy(keyCols:_*)) else lit(null))

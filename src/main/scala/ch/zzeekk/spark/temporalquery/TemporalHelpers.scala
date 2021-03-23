@@ -103,19 +103,19 @@ object TemporalHelpers extends Serializable with Logging {
    * Hereby we use A ∖ (⋃ B_i) = A ∖ B₀∖ B₁∖ B₂∖ ...
    * @param validFrom: start of time interval
    * @param validTo: start of time interval
-   * @param subtrahends: sequence of which the temporal complement is taken
+   * @param subtrahends: sequence of which the interval complement is taken
    * @return [validFrom, validTo] ∖ (⋃ subtrahends)
    */
-  def temporalComplement[T: Ordering](validFrom: T, validTo: T, subtrahends: Seq[Row], ic: IntervalQueryConfig[T])
-                           (implicit ordering: Ordering[T]): Seq[(T,T)] = {
-    logger.debug(s"temporalComplement: START validity = [$validFrom , $validTo]")
+  def intervalComplement[T: Ordering](validFrom: T, validTo: T, subtrahends: Seq[Row], ic: IntervalQueryConfig[T])
+                                     (implicit ordering: Ordering[T]): Seq[(T,T)] = {
+    logger.debug(s"intervalComplement: START validity = [$validFrom , $validTo]")
     val subtrahendsSorted: List[(T, T)] = subtrahends
       .map(r => (r.getAs[T](0),r.getAs[T](1)))
       .sorted(Ordering.Tuple2(ordering, ordering))
       .filterNot(x => ordering.lt(validTo, x._1))
       .filterNot(x => ordering.gt(validFrom, x._2))
       .toList
-    logger.debug(s"temporalComplement: subtrahendsSorted = ${subtrahendsSorted.mkString(" U ")}")
+    logger.debug(s"intervalComplement: subtrahendsSorted = ${subtrahendsSorted.mkString(" U ")}")
 
     def getOneComplement(minuend: (T,T), subtrahend: (T,T)):  Seq[(T,T)] = {
       List(
@@ -125,12 +125,12 @@ object TemporalHelpers extends Serializable with Logging {
     }
 
     def subtractOneSubtrahend(res: Seq[(T,T)], subtrahend: (T,T)):  Seq[(T,T)] = {
-      logger.debug(s"temporalComplement.subtractOneSubtrahend: START subtrahend = $subtrahend")
+      logger.debug(s"intervalComplement.subtractOneSubtrahend: START subtrahend = $subtrahend")
       getOneComplement(res.head, subtrahend) ++ res.tail
     }
 
     subtrahendsSorted.foldLeft(Seq((validFrom, validTo)))(subtractOneSubtrahend)
   }
-  def getUdfTemporalComplement[T: Ordering: TypeTag](implicit hc:IntervalQueryConfig[T]): UserDefinedFunction = udf(temporalComplement[T] _)
+  def getUdfIntervalComplement[T: Ordering: TypeTag](implicit hc:IntervalQueryConfig[T]): UserDefinedFunction = udf(intervalComplement[T] _)
 
 }
