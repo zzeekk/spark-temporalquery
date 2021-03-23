@@ -5,10 +5,10 @@ Implicit functions for querying temporal data with Apache Spark/Scala.
 
 - add maven dependency to project
   repo: https://dl.bintray.com/zach/zzeekk-release
-  artifact: ch.zzeekk, spark-temporalquery, 0.9.5.3
+  artifact: ch.zzeekk, spark-temporalquery, 1.0.0
 
 - initialize
-```
+```scala
 // this imports temporalquery* implicit functions on DataFrame
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
 // configure options for temporalquery operations
