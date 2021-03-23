@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery
 
 import java.sql.Timestamp
-import java.util.Calendar
+import java.util.{Calendar,TimeZone}
 
 import ch.zzeekk.spark.temporalquery.TemporalHelpers._
 import ch.zzeekk.spark.temporalquery.TestUtils._
@@ -22,7 +22,7 @@ class TemporalHelpersTest extends FunSuite {
     testArgumentExpectedMap[(Int,Timestamp), Timestamp](x=>addMillisecond(x._1)(x._2), argExpMap)
   }
 
-  test("udf_ceilTimestamp") {
+  test("getUdfCeilTimestamp") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("round up to next millisecond"           ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
       ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
@@ -31,7 +31,8 @@ class TemporalHelpersTest extends FunSuite {
   }
 
   test("udf_durationInMillis") {
-    val dstOffset: Long = Calendar.getInstance().get(Calendar.DST_OFFSET)
+    println(s"test udf_durationInMillis: Calendar.getInstance().get(Calendar.DST_OFFSET) = ${Calendar.getInstance().get(Calendar.DST_OFFSET)}")
+    val dstOffset: Int = TimeZone.getDefault.getDSTSavings
     val argExpMap = Map[(String, (String, String)), Long](
       ("january 2019: 31 Tage", ("2019-01-31 23:59:59.999", "2019-01-01 00:00:0")) -> 31 * millisPerDay,
       ("Winterzeit überzogen 2019", ("2019-03-31 02:59:59.999", "2019-03-31 02:00:0")) -> millisPerHour,
@@ -46,11 +47,10 @@ class TemporalHelpersTest extends FunSuite {
       ("leap second 1995: 365 Tage (+ 1 second)", ("1995-12-31 23:59:59.999", "1995-01-01 00:00:0")) -> 365 * millisPerDay,
       ("2 leap seconds and leap year 1972: 366 Tage  (+ 2 second)", ("1972-12-31 23:59:59.999", "1972-01-01 00:00:0")) -> 366 * millisPerDay,
       ("just a moment", ("2020-03-17 10:00:0", "2020-03-17 10:00:0")) -> 1L)
-
     testArgumentExpectedMapWithComment[(String, String), Long](x => durationInMillis(Timestamp.valueOf(x._1), Timestamp.valueOf(x._2)),argExpMap)
   }
 
-  test("udf_floorTimestamp") {
+  test("getUdfFloorTimestamp") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
       ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
@@ -58,7 +58,7 @@ class TemporalHelpersTest extends FunSuite {
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](floorTimestamp, argExpMap)
   }
 
-  test("udf_predecessorTime") {
+  test("predecessorTime") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
       ("subtract a millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59.999")
@@ -66,7 +66,16 @@ class TemporalHelpersTest extends FunSuite {
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](predecessorTime, argExpMap)
   }
 
-  test("udf_successorTime") {
+  test("getUdfSuccessorTime") {
+    import session.implicits._
+    val actual = dfLeft.select(getUdfSuccessorTime(defaultConfig)(defaultConfig.fromCol).as(defaultConfig.fromColName))
+    val expected = Seq(Timestamp.valueOf("2017-12-10 00:00:00.001")).toDF(defaultConfig.fromColName)
+    val resultat = dfEqual(actual)(expected)
+    if (!resultat) printFailedTestResult("getUdfSuccessorTime",Seq(dfLeft))(actual)(expected)
+    assert(resultat)
+  }
+
+  test("successorTime") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("round up millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
       ("add a millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0.001")
@@ -74,7 +83,7 @@ class TemporalHelpersTest extends FunSuite {
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](successorTime, argExpMap)
   }
 
-  test("udf_temporalComplement") {
+  test("getUdfTemporalComplement") {
     val subtrahends = Seq(
       ("2020-01-01 00:04:4","2020-01-01 00:05:0"),
       ("2020-01-01 00:00:1","2020-01-01 00:01:0"),
