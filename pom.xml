@@ -16,7 +16,7 @@
 			<properties>
 				<scala.minor.version>2.12</scala.minor.version>
 				<scala.version>${scala.minor.version}.10</scala.version>
-				<spark.version>2.4.4</spark.version>
+				<spark.version>3.1.1</spark.version>
 			</properties>
 		</profile>
 		<profile>
@@ -25,7 +25,7 @@
 			<properties>
 				<scala.minor.version>2.11</scala.minor.version>
 				<scala.version>${scala.minor.version}.12</scala.version>
-				<spark.version>2.4.4</spark.version>
+				<spark.version>2.4.7</spark.version>
 			</properties>
 		</profile>
 		<profile>
@@ -88,15 +88,6 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>
-			<plugin>
-				<artifactId>maven-assembly-plugin</artifactId>
-				<version>3.1.1</version>
-				<configuration>
-					<descriptorRefs>
-						<descriptorRef>jar</descriptorRef>
-					</descriptorRefs>
-				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

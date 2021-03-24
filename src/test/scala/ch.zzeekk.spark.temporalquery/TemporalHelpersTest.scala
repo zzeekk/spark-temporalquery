@@ -10,24 +10,12 @@ import org.scalatest.FunSuite
 
 class TemporalHelpersTest extends FunSuite {
 
-  test("addMillisecond") {
-    val argExpMap: Map[(Int,Timestamp),Timestamp] = Map(
-      ( 1,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124456789"),
-      ( 1,Timestamp.valueOf("2019-03-03 00:00:0"))            -> Timestamp.valueOf("2019-03-03 00:00:0.001"),
-      (-1,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.122456789"),
-      (-1,Timestamp.valueOf("2019-03-03 00:00:0"))            -> Timestamp.valueOf("2019-03-02 23:59:59.999"),
-      ( 0,Timestamp.valueOf("2019-03-03 00:00:0"))            -> Timestamp.valueOf("2019-03-03 00:00:0"),
-      ( 0,Timestamp.valueOf("2019-03-03 00:00:0"))            -> Timestamp.valueOf("2019-03-03 00:00:0")
-    )
-    testArgumentExpectedMap[(Int,Timestamp), Timestamp](x=>addMillisecond(x._1)(x._2), argExpMap)
-  }
-
   test("getUdfCeilTimestamp") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("round up to next millisecond"           ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
       ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](ceilTimestamp, argExpMap)
+    testArgumentExpectedMapWithComment[Timestamp, Timestamp]( defaultConfig.intervalDef.ceil, argExpMap)
   }
 
   test("udf_durationInMillis") {
@@ -55,7 +43,7 @@ class TemporalHelpersTest extends FunSuite {
       ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
       ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](floorTimestamp, argExpMap)
+    testArgumentExpectedMapWithComment[Timestamp, Timestamp](defaultConfig.intervalDef.floor, argExpMap)
   }
 
   test("predecessorTime") {
@@ -63,12 +51,12 @@ class TemporalHelpersTest extends FunSuite {
       ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
       ("subtract a millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59.999")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](predecessorTime, argExpMap)
+    testArgumentExpectedMapWithComment[Timestamp, Timestamp](defaultConfig.intervalDef.predecessor, argExpMap)
   }
 
   test("getUdfSuccessorTime") {
     import session.implicits._
-    val actual = dfLeft.select(getUdfSuccessorTime(defaultConfig)(defaultConfig.fromCol).as(defaultConfig.fromColName))
+    val actual = dfLeft.select(defaultConfig.intervalDef.getSuccessorExpr(defaultConfig.fromCol).as(defaultConfig.fromColName))
     val expected = Seq(Timestamp.valueOf("2017-12-10 00:00:00.001")).toDF(defaultConfig.fromColName)
     val resultat = dfEqual(actual)(expected)
     if (!resultat) printFailedTestResult("getUdfSuccessorTime",Seq(dfLeft))(actual)(expected)
@@ -80,7 +68,7 @@ class TemporalHelpersTest extends FunSuite {
       ("round up millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
       ("add a millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0.001")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](successorTime, argExpMap)
+    testArgumentExpectedMapWithComment[Timestamp, Timestamp](defaultConfig.intervalDef.successor, argExpMap)
   }
 
   test("getUdfTemporalComplement") {
@@ -126,7 +114,8 @@ class TemporalHelpersTest extends FunSuite {
     ).map { case (comment, validFrom, validTo, resultSeq) => ((comment, (Timestamp.valueOf(validFrom), Timestamp.valueOf(validTo))), resultSeq.map(y => (Timestamp.valueOf(y._1), Timestamp.valueOf(y._2)))) }
       .toMap
 
-    testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends), argExpMap)
+    implicit val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a,b) => a.before(b))
+    testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends, defaultConfig), argExpMap)
   }
 
 }

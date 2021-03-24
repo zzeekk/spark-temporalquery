@@ -19,7 +19,7 @@ import java.time.temporal.ChronoUnit
  * implicit val sss = ss // make SparkSession implicitly available
  * val df_joined = df1.temporalJoin(df2) // use temporal query functions with Spark
  */
-object TemporalQueryUtil extends Logging {
+case object TemporalQueryUtil extends Logging {
 
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
@@ -33,7 +33,7 @@ object TemporalQueryUtil extends Logging {
                                  ) extends IntervalQueryConfig[Timestamp] {
     val minDate: Timestamp = intervalDef.minValue
     val maxDate: Timestamp = intervalDef.maxValue
-    override val config2: TemporalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+    override lazy val config2: TemporalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
   implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a,b) => a.before(b))

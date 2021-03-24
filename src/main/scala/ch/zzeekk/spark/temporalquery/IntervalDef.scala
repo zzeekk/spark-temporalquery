@@ -11,7 +11,7 @@ import scala.reflect.runtime.universe._
  * Trait to describe interval behaviour
  * @tparam T: scala type for interval axis
  */
-abstract class IntervalDef[T: Ordering: TypeTag] {
+abstract class IntervalDef[T : Ordering : TypeTag] {
 
   /**
    * Define min value of the interval axis
@@ -50,28 +50,28 @@ abstract class IntervalDef[T: Ordering: TypeTag] {
    * Expression to floor a column
    */
   def getFloorExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: T) => floor(v))
+    val udfTransform = udf((v: T) => Option(v).map(floor))
     udfTransform(valueCol)
   }
   /**
    * Expression to ceil a column
    */
   def getCeilExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: T) => ceil(v))
+    val udfTransform = udf((v: T) => Option(v).map(ceil))
     udfTransform(valueCol)
   }
   /**
    * Expression get predecessor for a column
    */
   def getPredecessorExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: T) => predecessor(v))
+    val udfTransform = udf((v: T) => Option(v).map(predecessor))
     udfTransform(valueCol)
   }
   /**
    * Expression get successor for a column
    */
   def getSuccessorExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: T) => successor(v))
+    val udfTransform = udf((v: T) => Option(v).map(successor))
     udfTransform(valueCol)
   }
   /**
@@ -137,7 +137,12 @@ abstract class DiscreteAxisDef[T] {
   def floor(value: T): T
   def next(value: T): T
   def prev(value: T): T
-  def ceil(value: T): T = next(floor(value)) // round down to next step and add one step
+  def ceil(value: T): T = {
+    // round down to next step and add one step
+    val valueFloored = floor(value)
+    if (valueFloored.equals(value)) value
+    else next(valueFloored)
+  }
   def predecessor(value: T): T = {
     val valueFloored = floor(value)
     if (valueFloored.equals(value)) prev(valueFloored)

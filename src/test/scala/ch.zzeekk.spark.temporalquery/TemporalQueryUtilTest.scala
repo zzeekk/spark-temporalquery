@@ -13,12 +13,12 @@ class TemporalQueryUtilTest extends FunSuite with Logging {
   test("temporalContinuous2discrete") {
     val actual = dfContinuousTime.temporalContinuous2discrete(defaultConfig)
     val expected = Seq(
-      (0,"2019-01-01 00:00:00.124","2019-01-05 12:34:56.123", 3.14),
-      (0,"2019-01-05 12:34:56.124","2019-02-01 02:34:56.123", 2.72),
+      (0,"2019-01-01 00:00:00.124","2019-01-05 12:34:56.123",3.14 ),
+      (0,"2019-01-05 12:34:56.124","2019-02-01 02:34:56.123",2.72 ),
       (0,"2019-02-01 02:34:56.124","2019-02-01 02:34:56.124",42.0 ),
       (0,"2019-02-01 02:34:56.125","2019-03-02 23:59:59.999",13.0 ),
       (0,"2019-03-03 00:00:0"     ,"2019-04-03 23:59:59.999",12.0 ),
-      (0,"2020-01-01 01:00:0"     ,finisTemporisString,18.17),
+      (0,"2020-01-01 01:00:0"     ,finisTemporisString,      18.17),
       (1,"2019-01-01 00:00:0.124" ,"2019-02-01 23:59:59.999",-1.0 ),
       (1,"2019-03-03 01:00:0"     ,"2021-12-01 02:34:56.099",-2.0 )
     ).map(makeRowsWithTimeRange[Int, Double]).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")

@@ -35,7 +35,7 @@ object LinearDoubleQueryUtil extends LinearGenericQueryUtil[Double]
  * Generic class to provide linear query utils for different interval axis types
  * @tparam T: scala type for interval axis
  */
-class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Logging {
+case class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Logging {
 
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
@@ -45,7 +45,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Logging {
                                 override val additionalTechnicalColNames: Seq[String] = Seq(),
                                 override val intervalDef: IntervalDef[T]
                               ) extends IntervalQueryConfig[T] {
-    override val config2: LinearQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+    override lazy val config2: LinearQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
   /**
