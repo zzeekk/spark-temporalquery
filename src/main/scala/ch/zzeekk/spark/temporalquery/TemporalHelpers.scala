@@ -43,62 +43,6 @@ object TemporalHelpers extends Serializable with Logging {
   val udf_durationInMillis: UserDefinedFunction = udf(durationInMillis _)
 
   /**
-   * rounds down timestamp tempus to the next ChronoUnit
-   * if tempus is not before hc.maxDate then return hc.maxDate
-   * @param tempus: timestamp to truncate
-   * @param unit: chrono unit for time step
-   * @param maxDate: maximum of time axis
-   * @return rounded down timestamp
-   */
-  def floorTimestamp(tempus: Timestamp, unit: ChronoUnit = ChronoUnit.MILLIS, minDate: Timestamp, maxDate: Timestamp): Timestamp = {
-    // return hc.maxDate in case input tempus is after or equal hc.maxDate
-    if (tempus == null) null
-    earliest(Timestamp.from(tempus.toInstant.truncatedTo(unit)), maxDate)
-  }
-
-  /**
-   * rounds up timestamp to next ChronoUnit
-   * but at most up to hc.maxDate
-   * @param tempus: timestamp to round up
-   * @param unit: chrono unit for time step
-   * @return truncated timestamp
-   */
-  def ceilTimestamp(tempus: Timestamp, unit: ChronoUnit = ChronoUnit.MILLIS, minDate: Timestamp, maxDate: Timestamp): Timestamp = {
-    if (tempus == null) null
-    addTimeUnits(predecessorTime(tempus, unit, minDate, maxDate), 1, unit, minDate, maxDate)
-  }
-
-  /**
-   * returns the predecessor timestamp with respect to ChronoUnit
-   * @param tempus: timestamp to manipulate
-   * @param unit: chrono unit for time step
-   * @return predecessor timestamp
-   */
-  def predecessorTime(tempus: Timestamp, unit: ChronoUnit = ChronoUnit.MILLIS, minDate: Timestamp, maxDate: Timestamp): Timestamp = {
-    if (tempus == null) null
-    else {
-      val tempusFloored = floorTimestamp(tempus, unit, minDate, maxDate)
-      if (tempusFloored.equals(tempus)) addTimeUnits(tempusFloored, -1, unit, minDate, maxDate)
-      else tempusFloored
-    }
-  }
-
-  /**
-   * returns the predecessor timestamp with respect to ChronoUnit
-   * @param tempus: timestamp to manipulate
-   * @param unit: chrono unit for time step
-   * @return successor timestamp
-   */
-  def successorTime(tempus: Timestamp, unit: ChronoUnit = ChronoUnit.MILLIS, minDate: Timestamp, maxDate: Timestamp): Timestamp = {
-    if (tempus == null) null
-    else {
-      val tempusCeiled = ceilTimestamp(tempus, unit, minDate, maxDate)
-      if (tempusCeiled.equals(tempus)) addTimeUnits(tempusCeiled, 1, unit, minDate, maxDate)
-      else tempusCeiled
-    }
-  }
-
-  /**
    * returns the complement of union of subtrahends relative to the interval [validFrom, validTo]
    * Hereby we use A ∖ (⋃ B_i) = A ∖ B₀∖ B₁∖ B₂∖ ...
    * @param validFrom: start of time interval
