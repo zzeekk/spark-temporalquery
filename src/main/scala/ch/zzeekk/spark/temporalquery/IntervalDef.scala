@@ -80,8 +80,8 @@ abstract class IntervalDef[T : Ordering : TypeTag] {
   def fitToBoundaries(value: T): T = least(greatest(value, minValue), maxValue)
 
   // Helpers
-  private def least(values: T*): T = values.min
-  private def greatest(values: T*): T = values.max
+  @inline private def least(values: T*): T = values.min
+  @inline private def greatest(values: T*): T = values.max
 }
 
 /**
@@ -138,20 +138,20 @@ abstract class DiscreteAxisDef[T] {
   def next(value: T): T
   def prev(value: T): T
   def ceil(value: T): T = {
-    // round down to next step and add one step
-    val valueFloored = floor(value)
-    if (valueFloored.equals(value)) value
-    else next(valueFloored)
+    // round down step and eventually add one step
+    val valueFloor = floor(value)
+    if (valueFloor.equals(value)) value
+    else next(valueFloor)
   }
   def predecessor(value: T): T = {
+    // round down step and eventually remove one step
     val valueFloored = floor(value)
     if (valueFloored.equals(value)) prev(valueFloored)
     else valueFloored
   }
   def successor(value: T): T = {
-    val valueCeiled = ceil(value)
-    if (valueCeiled.equals(value)) next(valueCeiled)
-    else valueCeiled
+    // round down step and add one step
+    next(floor(value))
   }
 }
 
@@ -167,7 +167,7 @@ case class DiscreteTimeAxis(timeUnit: ChronoUnit) extends DiscreteAxisDef[Timest
 
 /**
  * Implementation of axis behaviour for discrete time axis any Integral scala type, e.g. Integer, Long,...
- * @param timeUnit step size used for discrete interval axis
+ * @param step step size used for discrete interval axis
  * @tparam T: scala type for interval axis
  */
 case class DiscreteNumericAxis[T: Integral](step: T)(implicit f: Integral[T]) extends DiscreteAxisDef[T] {

@@ -171,7 +171,7 @@ case class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Logging {
      */
     def linearConvertToClosedIntervals(implicit tc:LinearQueryConfig): DataFrame = {
       assert(tc.intervalDef.isInstanceOf[ClosedFromOpenToInterval[_]], "ClosedInterval interval definition needed in LinearQueryConfig for linearConvertToClosedIntervals()")
-      IntervalQueryImpl.transformHalfOpenToClosedInterval(df1)
+      IntervalQueryImpl.transformHalfOpenToClosedIntervals(df1)
     }
 
   }

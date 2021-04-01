@@ -159,7 +159,7 @@ case object TemporalQueryUtil extends Logging {
      * @return [[DataFrame]] with discrete time axis
      */
     def temporalContinuous2discrete(implicit tc:TemporalQueryConfig): DataFrame =
-      IntervalQueryImpl.transformHalfOpenToClosedInterval(df1)
+      IntervalQueryImpl.transformHalfOpenToClosedIntervals(df1)
 
   }
 
