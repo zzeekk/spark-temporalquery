@@ -1,17 +1,17 @@
 package ch.zzeekk.spark.temporalquery
 
-import org.apache.spark.sql.Column
+import org.apache.spark.sql.{Column, functions}
 import org.apache.spark.sql.functions.udf
-
 import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
+
 import scala.reflect.runtime.universe._
 
 /**
  * Trait to describe interval behaviour
  * @tparam T: scala type for interval axis
  */
-abstract class IntervalDef[T : Ordering : TypeTag] {
+abstract class IntervalDef[T : Ordering : TypeTag] extends Serializable {
 
   /**
    * Define min value of the interval axis
@@ -77,7 +77,9 @@ abstract class IntervalDef[T : Ordering : TypeTag] {
   /**
    * make sure value is between min- and maxValue
    */
-  def fitToBoundaries(value: T): T = least(greatest(value, minValue), maxValue)
+  @inline def fitToBoundaries(value: T): T = least(greatest(value, minValue), maxValue)
+  def getFitToBoundariesExpr(valueCol: Column): Column =
+    functions.least(functions.greatest(valueCol, functions.lit(minValue)), functions.lit(maxValue))
 
   // Helpers
   @inline private def least(values: T*): T = values.min
@@ -92,6 +94,8 @@ abstract class IntervalDef[T : Ordering : TypeTag] {
  * @tparam T: scala type for discrete interval axis, e.g. Timestamp, Integer, ...
  */
 case class ClosedInterval[T: Ordering: TypeTag](override val minValue: T, override val maxValue: T, discreteAxisDef: DiscreteAxisDef[T]) extends IntervalDef[T] {
+  assert(minValue == floor(minValue), s"minValue $minValue is not discrete value of the axis")
+  assert(maxValue == floor(maxValue), s"minValue $maxValue is not discrete value of the axis")
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
     fromCol <= valueCol && valueCol < toCol
   }
@@ -100,8 +104,10 @@ case class ClosedInterval[T: Ordering: TypeTag](override val minValue: T, overri
   }
   def floor(value: T): T = fitToBoundaries(discreteAxisDef.floor(value))
   def ceil(value: T): T = fitToBoundaries(discreteAxisDef.ceil(value))
-  def predecessor(value: T): T = fitToBoundaries(discreteAxisDef.predecessor(value))
-  def successor(value: T): T = fitToBoundaries(discreteAxisDef.successor(value))
+  def predecessor(value: T): T =
+    fitToBoundaries(if (value==maxValue) value else discreteAxisDef.predecessor(value)) // max value has no predecessor
+  def successor(value: T): T =
+    fitToBoundaries(if (value==minValue) value else discreteAxisDef.successor(value)) // min value has no successor
 }
 
 /**
@@ -118,14 +124,15 @@ case class ClosedFromOpenToInterval[T: Ordering: Fractional: TypeTag](override v
   override def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column = {
     fromCol1 <= toCol2 and toCol1 > fromCol2 // condition for second term is not inclusive
   }
-  def floor(value: T): T = value // no rounding
-  def ceil(value: T): T = value // no rounding
-  def predecessor(value: T): T = value // predecessor is the same
-  def successor(value: T): T = value // successor is the same
-  override def getFloorExpr(valueCol: Column): Column = valueCol // no rounding
-  override def getCeilExpr(valueCol: Column): Column = valueCol // no rounding
-  override def getPredecessorExpr(valueCol: Column): Column = valueCol // predecessor is the same
-  override def getSuccessorExpr(valueCol: Column): Column = valueCol // successor is the same
+  def floor(value: T): T = fitToBoundaries(value) // no rounding
+  def ceil(value: T): T = fitToBoundaries(value) // no rounding
+  def predecessor(value: T): T = fitToBoundaries(value) // predecessor is the same
+  def successor(value: T): T = fitToBoundaries(value) // successor is the same
+  // override expressions to avoid UDFs for performance reasons
+  override def getFloorExpr(valueCol: Column): Column = getFitToBoundariesExpr(valueCol) // no rounding
+  override def getCeilExpr(valueCol: Column): Column = getFitToBoundariesExpr(valueCol) // no rounding
+  override def getPredecessorExpr(valueCol: Column): Column = getFitToBoundariesExpr(valueCol) // predecessor is the same
+  override def getSuccessorExpr(valueCol: Column): Column = getFitToBoundariesExpr(valueCol) // successor is the same
 }
 
 

@@ -7,7 +7,7 @@ import org.apache.spark.sql.functions.col
  * Base class defining the configuration needed for interval queries with Spark
  * @tparam T: scala type for interval axis
  */
-abstract class IntervalQueryConfig[T: Ordering] { // this is an abstract class because "traits can not have type parameters with context bounds"
+abstract class IntervalQueryConfig[T: Ordering] extends Serializable { // this is an abstract class because "traits can not have type parameters with context bounds"
   def fromColName: String
   def toColName: String
   def additionalTechnicalColNames: Seq[String]

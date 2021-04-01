@@ -123,8 +123,7 @@ case object TemporalQueryUtil extends Logging {
      * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung gibt.
      * Zuerst wird der Dataframe mittels [[temporalRoundDiscreteTime]] etwas bereinigt, siehe Beschreibung dort
      */
-    def temporalCombine( keys:Seq[String] = Seq() , ignoreColNames:Seq[String] = Seq() )(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
-      if(keys.nonEmpty) logger.warn("Parameter keys is superfluous and therefore ignored. Please refrain from using it!")
+    def temporalCombine(ignoreColNames:Seq[String] = Seq())(implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame = {
       IntervalQueryImpl.combineIntervals( df1, ignoreColNames )
     }
 

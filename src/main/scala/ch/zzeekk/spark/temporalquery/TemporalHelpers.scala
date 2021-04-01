@@ -37,8 +37,8 @@ object TemporalHelpers extends Serializable with Logging {
    * @param subtrahends: sequence of which the interval complement is taken
    * @return [validFrom, validTo] ∖ (⋃ subtrahends)
    */
-  def intervalComplement[T: Ordering](validFrom: T, validTo: T, subtrahends: Seq[Row], ic: IntervalQueryConfig[T])
-                                     (implicit ordering: Ordering[T]): Seq[(T,T)] = {
+  def intervalComplement[T: Ordering](validFrom: T, validTo: T, subtrahends: Seq[Row])
+                                     (implicit ordering: Ordering[T], ic: IntervalQueryConfig[T]): Seq[(T,T)] = {
     logger.debug(s"intervalComplement: START validity = [$validFrom , $validTo]")
     val subtrahendsSorted: List[(T, T)] = subtrahends
       .map(r => (r.getAs[T](0),r.getAs[T](1)))

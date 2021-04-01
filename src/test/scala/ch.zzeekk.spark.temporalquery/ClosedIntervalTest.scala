@@ -22,7 +22,7 @@ class ClosedIntervalTest extends FunSuite {
     Timestamp.valueOf("1900-01-01 00:00:00"), Timestamp.valueOf("2999-12-31 59:59:59"), DiscreteTimeAxis(ChronoUnit.SECONDS)
   )
   private val longStep2IntervalDef = ClosedInterval(
-    0L, Long.MaxValue, DiscreteNumericAxis[Long](2L)
+    0L, Long.MaxValue -1, DiscreteNumericAxis[Long](2L)
   )
 
 
@@ -78,7 +78,8 @@ class ClosedIntervalTest extends FunSuite {
   test("predecessor second") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("cut of fraction of second"                      ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56"),
-      ("subtract a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59")
+      ("subtract a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59"),
+      ("max value has no successor"                     ,secondIntervalDef.maxValue) -> secondIntervalDef.maxValue
     )
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.predecessor, argExpMap)
   }
@@ -87,7 +88,8 @@ class ClosedIntervalTest extends FunSuite {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("cut of fraction of second"                 ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:57"),
       ("add a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:59:59")) -> Timestamp.valueOf("2019-03-03 01:00:0"),
-      ("add a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:1")
+      ("add a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:1"),
+      ("min value has no successor"                ,secondIntervalDef.minValue) -> secondIntervalDef.minValue
     )
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.successor, argExpMap)
   }
@@ -143,8 +145,8 @@ class ClosedIntervalTest extends FunSuite {
     ).map { case (comment, validFrom, validTo, resultSeq) => ((comment, (Timestamp.valueOf(validFrom), Timestamp.valueOf(validTo))), resultSeq.map(y => (Timestamp.valueOf(y._1), Timestamp.valueOf(y._2)))) }
       .toMap
 
-    val intervalConfig = TemporalQueryConfig(intervalDef = millisIntervalDef)
-    testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends, intervalConfig), argExpMap)
+    implicit val intervalConfig: TemporalQueryConfig = TemporalQueryConfig(intervalDef = millisIntervalDef)
+    testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends), argExpMap)
   }
 
   test("ceil long step2") {

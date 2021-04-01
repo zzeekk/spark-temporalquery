@@ -2,8 +2,9 @@ package ch.zzeekk.spark.temporalquery
 
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
 import java.sql.Timestamp
+
 import org.apache.spark.sql._
-import org.apache.spark.sql.functions.{lit, when}
+import org.apache.spark.sql.functions.{col, lit, when}
 
 object TestUtils extends Logging {
   implicit val session: SparkSession = SparkSession.builder.master("local").appName("TemporalQueryUtilTest").getOrCreate()
@@ -14,51 +15,64 @@ object TestUtils extends Logging {
   val initiumTemporisString: String = defaultConfig.minDate.toString
   val finisTemporisString: String = defaultConfig.maxDate.toString
 
-  def symmetricDifference(df1: DataFrame)(df2: DataFrame): DataFrame = {
+  def symmetricDifference(df1: DataFrame, df2: DataFrame): DataFrame = {
     // attention, "except" works on Dataset and not on DataFrame. We need to check that schema is equal.
     require(df1.columns.toSeq==df2.columns.toSeq,
       s"""Cannot calculate symmetric difference for DataFrames with different schema.
-         |schema of df1: ${df1.columns.toSeq.mkString(" ;")}
+         |schema of df1: ${df1.columns.toSeq.mkString(",")}
          |${df1.schema.treeString}
-         |schema of df2: ${df2.columns.toSeq.mkString(" ;")}
+         |schema of df2: ${df2.columns.toSeq.mkString(",")}
          |${df2.schema.treeString}
-         |         |""".stripMargin)
+         |""".stripMargin)
     df1.except(df2).withColumn("_in_first_df",lit(true))
       .union(df2.except(df1).withColumn("_row_in_first_df",lit(false)))
   }
 
-  def dfEqual(df1: DataFrame)(df2: DataFrame): Boolean = {
-    // symmetricDifference ignoriert Doubletten, daher Kardinalitäten vergleichen
-    (0 == symmetricDifference(df1)(df2).count) && (df1.count == df2.count) && (df1.schema == df2.schema)
+  def reorderCols(dfToReorder: DataFrame, dfRef: DataFrame): DataFrame = {
+    require(dfRef.columns.toSet == dfToReorder.columns.toSet,
+      s"""Cannot reorder columns for DataFrames with different columns.
+       |columns of dfRef: ${dfRef.columns.toSeq.mkString(",")}
+       |columns of dfToReorder: ${dfToReorder.columns.toSeq.mkString(",")}
+       |""".stripMargin)
+    if (dfRef.columns.toSet.size < dfRef.columns.length) dfToReorder // cannot reorder DataFrames with schemas that have duplicate column names
+    else dfToReorder.select(dfRef.columns.map(col):_*)
   }
 
-  def printFailedTestResult(testName: String, arguments: Seq[DataFrame])(actual: DataFrame)(expected: DataFrame): Unit = {
+  def dfEqual(df1: DataFrame, df2: DataFrame): Boolean = {
+    val df1reordered = reorderCols(df1, df2)
+    // symmetricDifference ignoriert Doubletten, daher Kardinalitäten vergleichen
+    (0 == symmetricDifference(df1reordered, df2).count) && (df1reordered.count == df2.count) && (df1reordered.schema == df2.schema)
+  }
+
+  def printFailedTestResult(testName: String, arguments: Seq[DataFrame])(actual: DataFrame,expected: DataFrame): Unit = {
     def printDf(df: DataFrame): Unit = {
       println(df.schema.simpleString)
       df.show(false)
     }
+    val actualReordered = reorderCols(actual, expected)
 
     println(s"!!!! Test $testName Failed !!!")
     println("   Arguments ")
     arguments.foreach(printDf)
     println("   Actual ")
-    println(s"  actual.count() =  ${actual.count()}")
-    printDf(actual)
+    println(s"  actual.count() =  ${actualReordered.count()}")
+    printDf(actualReordered)
     println("   Expected ")
     println(s"  expected.count() =  ${expected.count()}")
     printDf(expected)
-    println(s"  schemata equal =  ${actual.schema == expected.schema}")
-    if (actual.schema != expected.schema) {
-      println(s"actual.schema:${actual.schema.treeString}")
+    println(s"  schemata equal =  ${actualReordered.schema == expected.schema}")
+    if (actualReordered.schema != expected.schema) {
+      println(s"actual.schema:${actualReordered.schema.treeString}")
       println(s"expected.schema:${expected.schema.treeString}")
     }
     println("   symmetric Difference ")
-    printDf(symmetricDifference(actual)(expected)
+    printDf(symmetricDifference(actualReordered,expected)
       .withColumn("_df", when($"_in_first_df","actual").otherwise("expected"))
       .drop($"_in_first_df"))
   }
 
-  def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame)(expected: DataFrame): Unit = printFailedTestResult(testName, Seq(argument))(actual)(expected)
+  def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame, expected: DataFrame): Unit =
+    printFailedTestResult(testName, Seq(argument))(actual,expected)
 
   def testArgumentExpectedMapWithComment[K,V](experiendum: K=>V, argExpMapComm: Map[(String,K),V]): Unit = {
     def logFailure(argument: K, actual:V, expected: V, comment: String): Unit = {

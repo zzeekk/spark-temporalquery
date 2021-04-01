@@ -47,7 +47,7 @@ object IntervalQueryImpl extends Logging {
 
     // temporal join
     val df2Renamed = renameIntervalCols2nd(df2)
-    val dfJoined = df1.join( df2Renamed, keyCondition and tc.joinIntervalExpr2(df1, df2), joinType)
+    val dfJoined = df1.join( df2Renamed, keyCondition and tc.joinIntervalExpr2(df1, df2Renamed), joinType)
 
     // select final schema
     val commonColNames = colsToConsolidate
@@ -105,9 +105,9 @@ object IntervalQueryImpl extends Logging {
     val fenestra = Window.partitionBy( keys.map(col):+ tc.fromCol2 :_*)
 
     val dfJoin = unifyIntervalRanges( df2nd, keys, extend, fillGapsWithNull)(implicitly[Ordering[T]], implicitly[TypeTag[T]], ss, tc.config2)
+      .withColumn(tc.definedColName, tc.toCol.isNotNull)
       .withColumn(tc.fromColName, coalesce(tc.fromCol, tc.fromCol2))
       .withColumn(tc.toColName, coalesce(tc.toCol, tc.toCol2))
-      .withColumn(tc.definedColName, tc.toCol.isNotNull)
 
     // add aggregations if defined, implemented as analytical functions...
     val dfAgg = aggExpressions.foldLeft( dfJoin ){
@@ -128,7 +128,7 @@ object IntervalQueryImpl extends Logging {
       aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq(col(rnkColName)) else Seq()) :+
       dfClean(tc.fromColName2).as(tc.fromColName) :+ dfClean(tc.toColName2).as(tc.toColName) :+ tc.definedCol
 
-    combineIntervals(dfClean.select(selCols:_*) , Seq())
+    dfClean.select(selCols:_*)
   }
 
   /**
