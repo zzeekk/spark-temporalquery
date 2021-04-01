@@ -33,7 +33,7 @@ object TemporalQueryUtil extends Logging {
                                  ) extends IntervalQueryConfig[Timestamp] {
     val minDate: Timestamp = intervalDef.minValue
     val maxDate: Timestamp = intervalDef.maxValue
-    override val config2: TemporalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+    override lazy val config2: TemporalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
   implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a,b) => a.before(b))
@@ -159,7 +159,7 @@ object TemporalQueryUtil extends Logging {
      * @return [[DataFrame]] with discrete time axis
      */
     def temporalContinuous2discrete(implicit tc:TemporalQueryConfig): DataFrame =
-      IntervalQueryImpl.transformHalfOpenToClosedInterval(df1)
+      IntervalQueryImpl.transformHalfOpenToClosedIntervals(df1)
 
   }
 

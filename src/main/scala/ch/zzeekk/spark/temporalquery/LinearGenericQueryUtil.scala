@@ -45,7 +45,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Logging {
                                 override val additionalTechnicalColNames: Seq[String] = Seq(),
                                 override val intervalDef: IntervalDef[T]
                               ) extends IntervalQueryConfig[T] {
-    override val config2: LinearQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+    override lazy val config2: LinearQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
   /**
@@ -171,7 +171,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Logging {
      */
     def linearConvertToClosedIntervals(implicit tc:LinearQueryConfig): DataFrame = {
       assert(tc.intervalDef.isInstanceOf[ClosedFromOpenToInterval[_]], "ClosedInterval interval definition needed in LinearQueryConfig for linearConvertToClosedIntervals()")
-      IntervalQueryImpl.transformHalfOpenToClosedInterval(df1)
+      IntervalQueryImpl.transformHalfOpenToClosedIntervals(df1)
     }
 
   }
