@@ -21,6 +21,9 @@ class ClosedIntervalTest extends FunSuite {
   private val limitedIntervalDef = ClosedInterval(
     Timestamp.valueOf("1900-01-01 00:00:00"), Timestamp.valueOf("2999-12-31 59:59:59"), DiscreteTimeAxis(ChronoUnit.SECONDS)
   )
+  private val longStep2IntervalDef = ClosedInterval(
+    0L, Long.MaxValue, DiscreteNumericAxis[Long](2L)
+  )
 
 
   test("ceil timestamp millis") {
@@ -58,7 +61,7 @@ class ClosedIntervalTest extends FunSuite {
 
   test("ceil timestamp second") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("round up to next second     "           ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:57"),
+      ("round up to next second"                ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:57"),
       ("no change as no fraction of second"     ,Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.ceil, argExpMap)
@@ -142,5 +145,37 @@ class ClosedIntervalTest extends FunSuite {
 
     val intervalConfig = TemporalQueryConfig(intervalDef = millisIntervalDef)
     testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends, intervalConfig), argExpMap)
+  }
+
+  test("ceil long step2") {
+    val argExpMap = Map(
+      ("round up",35L) -> 36L,
+      ("no change",36L) -> 36L
+    )
+    testArgumentExpectedMapWithComment(longStep2IntervalDef.ceil, argExpMap)
+  }
+
+  test("floor long step2") {
+    val argExpMap = Map(
+      ("round down",35L) -> 34L,
+      ("no change",36L) -> 36L
+    )
+    testArgumentExpectedMapWithComment(longStep2IntervalDef.floor, argExpMap)
+  }
+
+  test("predecessor long step2") {
+    val argExpMap = Map(
+      ("round down",35L) -> 34L,
+      ("remove one step",36L) -> 34L
+    )
+    testArgumentExpectedMapWithComment(longStep2IntervalDef.predecessor, argExpMap)
+  }
+
+  test("successor long step2") {
+    val argExpMap = Map(
+      ("round up",35L) -> 36L,
+      ("add one step",36L) -> 38L
+    )
+    testArgumentExpectedMapWithComment(longStep2IntervalDef.successor, argExpMap)
   }
 }

@@ -8,22 +8,22 @@ class ClosedFromOpenToIntervalTest extends FunSuite {
   private val floatIntervalDef = ClosedFromOpenToInterval[Float](minValue = 0f, maxValue = Float.MaxValue)
   private val limitedIntervalDef = ClosedFromOpenToInterval[Float](minValue = 23.34f, maxValue = 45.32f)
 
-  test("ceil timestamp millis") {
+  test("ceil float") {
     val argExpMap = Map(("ceil is the same",35.9393f) -> 35.9393f)
     testArgumentExpectedMapWithComment[Float, Float](floatIntervalDef.ceil, argExpMap)
   }
 
-  test("floor timestamp millis") {
+  test("floor float") {
     val argExpMap = Map(("floor is the same",35.9393f) -> 35.9393f)
     testArgumentExpectedMapWithComment[Float, Float](floatIntervalDef.floor, argExpMap)
   }
 
-  test("predecessor millis") {
+  test("predecessor float") {
     val argExpMap = Map(("predecessor is the same",35.9393f) -> 35.9393f)
     testArgumentExpectedMapWithComment[Float, Float](floatIntervalDef.predecessor, argExpMap)
   }
 
-  test("successor millis") {
+  test("successor float") {
     val argExpMap = Map(("successor is the same",35.9393f) -> 35.9393f)
     testArgumentExpectedMapWithComment[Float, Float](floatIntervalDef.successor, argExpMap)
   }
