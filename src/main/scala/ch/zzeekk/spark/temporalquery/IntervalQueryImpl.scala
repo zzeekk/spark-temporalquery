@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery
 
 import ch.zzeekk.spark.temporalquery.TemporalHelpers._
-import org.apache.spark.sql.expressions.{Window, WindowSpec}
+import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 
@@ -46,7 +46,7 @@ object IntervalQueryImpl extends Logging {
     require(colsToConsolidate.diff(df2.columns).isEmpty, s"(temporalJoinImpl) Your right-dataframe doesn't contain column to consolidate ${colsToConsolidate.diff(df2.columns).mkString(" and ")}")
 
     // temporal join
-    val df2Renamed = renameIntervalCols2(df2)
+    val df2Renamed = renameIntervalCols2nd(df2)
     val dfJoined = df1.join( df2Renamed, keyCondition and tc.joinIntervalExpr2(df1, df2), joinType)
 
     // select final schema
@@ -70,25 +70,23 @@ object IntervalQueryImpl extends Logging {
                                                                       (implicit ss:SparkSession, tc:IntervalQueryConfig[T]) : DataFrame = {
     val ptColName = "_pt"
 
-    require(!(df.columns.contains(tc.fromColName2) || df.columns.contains(tc.toColName2) || df.columns.contains(ptColName)),
-      s"(buildIntervalRanges) Your dataframe must not contain columns named ${tc.fromColName2}, ${tc.toColName2} or $ptColName! df.columns = ${df.columns.mkString(",")}")
+    require(!df.columns.contains(ptColName), s"(buildIntervalRanges) Your dataframe must not contain column $ptColName! df.columns = ${df.columns.mkString(",")}")
 
     val keyCols = keys.map(col)
     // get start/end-points for every key
-    val dfPoints = df.select( keyCols :+ tc.fromCol.as(ptColName):_*).union( df.select( keyCols :+ tc.intervalDef.getSuccessorExpr(tc.toCol).as(ptColName):_* ))
+    val dfPoints = df.select(keyCols :+ tc.fromCol.as(ptColName):_*).union( df.select( keyCols :+ tc.intervalDef.getSuccessorExpr(tc.toCol).as(ptColName):_* ))
     // if desired, extend every key with min/maxDate-points
     val dfPointsExt = if (extend) {
       dfPoints
-        .union( dfPoints.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.intervalDef.minValue)))
-        .union( dfPoints.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.intervalDef.maxValue)))
+        .union(dfPoints.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.intervalDef.minValue)))
+        .union(dfPoints.select( keyCols:_*).distinct.withColumn( ptColName, lit(tc.intervalDef.maxValue)))
         .distinct
     } else dfPoints.distinct
     // build ranges
-    // TODO: why using col2?
     dfPointsExt
-      .withColumnRenamed(ptColName, tc.fromColName2)
-      .withColumn( tc.toColName2, tc.intervalDef.getPredecessorExpr(lead(tc.fromCol2,1).over(Window.partitionBy(keys.map(col):_*).orderBy(tc.fromCol2))))
-      .where(tc.toCol2.isNotNull)
+      .withColumnRenamed(ptColName, tc.fromColName)
+      .withColumn(tc.toColName, tc.intervalDef.getPredecessorExpr(lead(tc.fromCol,1).over(Window.partitionBy(keys.map(col):_*).orderBy(tc.fromCol))))
+      .where(tc.toCol.isNotNull)
   }
 
   /**
@@ -100,18 +98,18 @@ object IntervalQueryImpl extends Logging {
     if(extend && !fillGapsWithNull) logger.warn("cleanupExtendIntervals: extend=true has no effect if fillGapsWithNull=false!")
 
     require(!df.columns.contains(tc.fromColName2) && !df.columns.contains(tc.toColName2) && !df.columns.contains(tc.definedColName),
-      s"(cleanupExtendIntervals) Your dataframe must not contain columns named ${tc.fromColName2}, ${tc.toColName2} or ${tc.definedColName}! df.columns = ${df.columns}")
+      s"(cleanupExtendIntervals) Your dataframe must not contain columns named ${tc.fromColName2}, ${tc.toColName2} or ${tc.definedColName}! df.columns = ${df.columns.mkString(",")}")
 
     // use 2nd pair of from/to column names so that original pair can still be used in rnk- & aggExpressions
-    val dfRenamed = renameIntervalCols2(df)
+    val df2nd = copyIntervalCols2nd(df)
     val fenestra = Window.partitionBy( keys.map(col):+ tc.fromCol2 :_*)
 
-    val dfJoin = unifyIntervalRanges( dfRenamed, keys, extend, fillGapsWithNull)(implicitly[Ordering[T]], implicitly[TypeTag[T]], ss, tc.config2)
+    val dfJoin = unifyIntervalRanges( df2nd, keys, extend, fillGapsWithNull)(implicitly[Ordering[T]], implicitly[TypeTag[T]], ss, tc.config2)
       .withColumn(tc.fromColName, coalesce(tc.fromCol, tc.fromCol2))
       .withColumn(tc.toColName, coalesce(tc.toCol, tc.toCol2))
-      .withColumn(tc.definedColName, tc.toCol2.isNotNull)
+      .withColumn(tc.definedColName, tc.toCol.isNotNull)
 
-    // add aggregations if defined, implemented as analytical functions...£
+    // add aggregations if defined, implemented as analytical functions...
     val dfAgg = aggExpressions.foldLeft( dfJoin ){
       case (df_acc, (name,expr)) => df_acc.withColumn(name, expr.over(fenestra))
     }
@@ -119,7 +117,7 @@ object IntervalQueryImpl extends Logging {
     // Prioritize and clean overlaps
     val rnkColName = "_rnk"
     val dfClean = if (rnkExpressions.nonEmpty) {
-      require(!df.columns.contains(rnkColName), s"(cleanupExtendIntervals) Your dataframe must not contain columns named $rnkColName if rnkExpressions are defined! df.columns = ${df.columns}")
+      require(!df.columns.contains(rnkColName), s"(cleanupExtendIntervals) Your dataframe must not contain columns named $rnkColName if rnkExpressions are defined! df.columns = ${df.columns.mkString(",")}")
       val df_rnk = dfAgg.withColumn(rnkColName, row_number.over(fenestra.orderBy(rnkExpressions: _*)))
       if (rnkFilter) df_rnk.where(col(rnkColName)===1) else df_rnk
     } else dfAgg
@@ -153,7 +151,7 @@ object IntervalQueryImpl extends Logging {
     logger.debug(s"leftAntiJoinIntervals START: joinColumns = ${joinColumns.mkString(", ")}")
     val resultColumns = df1.columns
     val resultColumnsDf1 = df1.columns.map(df1(_))
-    val df2Renamed = renameIntervalCols2(df2)
+    val df2Renamed = renameIntervalCols2nd(df2)
 
     val joinCondition: Column = createKeyCondition(df1, df2Renamed, joinColumns)
       .and(tc.joinIntervalExpr2(df1, df2Renamed))
@@ -204,7 +202,7 @@ object IntervalQueryImpl extends Logging {
 
     val nbColName = "_nb"
     val consecutiveColName = "_consecutive"
-    require(!df.columns.contains(nbColName) && !df.columns.contains(consecutiveColName), s"(combineIntervals) Your dataframe must not contain columns named $nbColName or $consecutiveColName! df.columns = ${df.columns}")
+    require(!df.columns.contains(nbColName) && !df.columns.contains(consecutiveColName), s"(combineIntervals) Your dataframe must not contain columns named $nbColName or $consecutiveColName! df.columns = ${df.columns.mkString(",")}")
     df.withColumn(consecutiveColName, coalesce(tc.intervalDef.getPredecessorExpr(tc.fromCol) <= lag(tc.toCol,1).over(fenestra),lit(false)))
       .withColumn(nbColName, sum(when(col(consecutiveColName),lit(0)).otherwise(lit(1))).over(fenestra))
       .groupBy( compareCols.map(col):+col(nbColName):_*)
@@ -219,7 +217,7 @@ object IntervalQueryImpl extends Logging {
   private[temporalquery] def unifyIntervalRanges[T: Ordering: TypeTag](df:DataFrame, keys:Seq[String], extend: Boolean = false, fillGapsWithNull: Boolean = false )
                                                 (implicit ss:SparkSession, tc:IntervalQueryConfig[T]) = {
     // get ranges
-    val dfRanges = buildIntervalRanges(df, keys, extend)
+    val dfRanges = renameIntervalCols2nd(buildIntervalRanges(df, keys, extend))
     val keyCondition = createKeyCondition( df, dfRanges, keys )
     // join back on input df
     val joinType = if (fillGapsWithNull) "left" else "inner"
@@ -237,7 +235,7 @@ object IntervalQueryImpl extends Logging {
                                                  (implicit ss:SparkSession, tc:IntervalQueryConfig[T]): DataFrame = {
     val fromMinColName = s"_${tc.fromColName}_min"
     val toMaxColName = s"_${tc.toColName}_max"
-    require(!df.columns.contains(fromMinColName) && !df.columns.contains(toMaxColName), s"(extendIntervalRanges) Your dataframe must not contain columns named $fromMinColName or $toMaxColName! df.columns = ${df.columns}")
+    require(!df.columns.contains(fromMinColName) && !df.columns.contains(toMaxColName), s"(extendIntervalRanges) Your dataframe must not contain columns named $fromMinColName or $toMaxColName! df.columns = ${df.columns.mkString(",")}")
     val keyCols = if (keys.nonEmpty) keys.map(col) else Seq(lit(1)) // if no keys are given, we work with the global minimum.
     val df_prep = df
       .withColumn(fromMinColName, if( extendMin ) min(tc.fromCol).over(Window.partitionBy(keyCols:_*)) else lit(null))
@@ -249,11 +247,27 @@ object IntervalQueryImpl extends Logging {
   }
 
   /**
-   * Helper method to rename interval columns to 2nd pair of column names defined in IntervalQueryConfig
+   * Helper method to rename main pair of interval columns to 2nd pair of column names defined in IntervalQueryConfig
    */
-  private def renameIntervalCols2[T: Ordering: TypeTag](df: DataFrame)(implicit tc:IntervalQueryConfig[T]): DataFrame = {
+  private def renameIntervalCols2nd[T: Ordering: TypeTag](df: DataFrame)(implicit tc:IntervalQueryConfig[T]): DataFrame = {
     assert(df.columns.contains(tc.fromColName) && df.columns.contains(tc.toColName))
     assert(!df.columns.contains(tc.fromColName2) && !df.columns.contains(tc.toColName2))
     df.withColumnRenamed(tc.fromColName,tc.fromColName2).withColumnRenamed(tc.toColName,tc.toColName2)
+  }
+
+  /**
+   * Helper method to rename 2nd pair of interval columns to main pair of column names defined in IntervalQueryConfig
+   */
+  private def renameIntervalColsMain[T: Ordering: TypeTag](df: DataFrame)(implicit tc:IntervalQueryConfig[T]): DataFrame = {
+    assert(df.columns.contains(tc.fromColName2) && df.columns.contains(tc.toColName2))
+    assert(!df.columns.contains(tc.fromColName) && !df.columns.contains(tc.toColName))
+    df.withColumnRenamed(tc.fromColName2,tc.fromColName).withColumnRenamed(tc.toColName2,tc.toColName)
+  }
+
+  /**
+   * Helper method to copy main pair of interval columns as 2nd pair of interval columns defined in IntervalQueryConfig
+   */
+  private def copyIntervalCols2nd[T: Ordering: TypeTag](df: DataFrame)(implicit tc:IntervalQueryConfig[T]): DataFrame = {
+    df.withColumn(tc.fromColName2,tc.fromCol).withColumn(tc.toColName2,tc.toCol)
   }
 }

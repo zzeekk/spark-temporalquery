@@ -17,8 +17,15 @@ abstract class IntervalQueryConfig[T: Ordering] { // this is an abstract class b
   def config2: IntervalQueryConfig[T] // hint: implement with case class copy constructor in subclass
 
   // 2nd pair of from/to column names
-  val fromColName2: String = fromColName+"2"
-  val toColName2: String = toColName+"2"
+  private def increaseColNameNb(colName: String): String = {
+    val regexColNameNb = "(.*)([0-9]+)$".r
+    colName match {
+      case regexColNameNb(name, nb) => name + (nb.toInt+1).toString
+      case _ => colName + "2" // if no number found, start with 2
+    }
+  }
+  val fromColName2: String = increaseColNameNb(fromColName)
+  val toColName2: String = increaseColNameNb(toColName)
 
   // technical column names to be excluded in some operations
   val technicalColNames: Seq[String] = Seq( fromColName, toColName ) ++ additionalTechnicalColNames
