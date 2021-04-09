@@ -5,11 +5,10 @@ import java.time.temporal.ChronoUnit
 
 import ch.zzeekk.spark.temporalquery.TemporalHelpers.intervalComplement
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
-import ch.zzeekk.spark.temporalquery.TestUtils.{testArgumentExpectedMap, testArgumentExpectedMapWithComment}
 import org.apache.spark.sql.Row
 import org.scalatest.FunSuite
 
-class ClosedIntervalTest extends FunSuite {
+class ClosedIntervalTest extends FunSuite with TestUtils {
 
   implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a,b) => a.before(b))
   private val millisIntervalDef = ClosedInterval(

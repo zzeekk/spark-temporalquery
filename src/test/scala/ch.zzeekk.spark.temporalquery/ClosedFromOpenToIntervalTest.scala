@@ -1,9 +1,8 @@
 package ch.zzeekk.spark.temporalquery
 
-import ch.zzeekk.spark.temporalquery.TestUtils.testArgumentExpectedMapWithComment
 import org.scalatest.FunSuite
 
-class ClosedFromOpenToIntervalTest extends FunSuite {
+class ClosedFromOpenToIntervalTest extends FunSuite with TestUtils{
 
   private val floatIntervalDef = ClosedFromOpenToInterval[Float](minValue = 0f, maxValue = Float.MaxValue)
   private val limitedIntervalDef = ClosedFromOpenToInterval[Float](minValue = 23.34f, maxValue = 45.32f)

@@ -42,6 +42,7 @@ abstract class IntervalQueryConfig[T: Ordering] extends Serializable { // this i
 
   // interval functions
   def isInIntervalExpr(value: Column): Column = intervalDef.isInIntervalExpr(value, fromCol, toCol)
+  def isValidIntervalExpr: Column = intervalDef.isValidIntervalExpr(fromCol, toCol)
   def joinIntervalExpr(df1: DataFrame, df2: DataFrame): Column =
     intervalDef.intervalJoinExpr(df1(fromColName), df1(toColName), df2(fromColName), df2(toColName) )
   def joinIntervalExpr2(df1: DataFrame, df2: DataFrame): Column =

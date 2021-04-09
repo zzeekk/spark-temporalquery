@@ -2,7 +2,7 @@ package ch.zzeekk.spark.temporalquery
 
 import ch.zzeekk.spark.temporalquery.TemporalHelpers._
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
-import ch.zzeekk.spark.temporalquery.TestUtils._
+import ch.zzeekk.spark.temporalquery.TemporalTestUtils._
 import java.sql.Timestamp
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.FunSuite
@@ -74,7 +74,7 @@ class TemporalQueryUtilTest extends FunSuite with Logging {
     assert(resultat)
   }
 
-  test("temporalCleanupExtend_dfRight_noExtend_nofillGaps") {
+  test("temporalCleanupExtend dfRight_noExtend_nofillGaps") {
     val actual = dfRight.temporalCleanupExtend(
       keys=Seq("id"),
       rnkExpressions=Seq(defaultConfig.fromCol),

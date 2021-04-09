@@ -19,7 +19,7 @@ object IntervalQueryImpl extends Logging {
                                                                                (implicit tc:IntervalQueryConfig[T]): DataFrame= {
     df.withColumn(tc.fromColName, tc.intervalDef.getCeilExpr(tc.fromCol))
       .withColumn(tc.toColName, tc.intervalDef.getFloorExpr(tc.toCol))
-      .where(tc.fromCol <= tc.toCol)
+      .where(tc.isValidIntervalExpr)
       // return columns in same order as provided
       .select(df.columns.map(col):_*)
   }
@@ -28,7 +28,7 @@ object IntervalQueryImpl extends Logging {
                                                                                      (implicit tc:IntervalQueryConfig[T]): DataFrame= {
     df.withColumn(tc.fromColName, tc.intervalDef.getCeilExpr(tc.fromCol))
       .withColumn(tc.toColName, tc.intervalDef.getPredecessorExpr(tc.toCol))
-      .where(tc.fromCol <= tc.toCol)
+      .where(tc.isValidIntervalExpr)
       // return columns in same order as provided
       .select(df.columns.map(col):_*)
   }
@@ -221,7 +221,7 @@ object IntervalQueryImpl extends Logging {
     val keyCondition = createKeyCondition( df, dfRanges, keys )
     // join back on input df
     val joinType = if (fillGapsWithNull) "left" else "inner"
-    val dfJoin = dfRanges.join( df, keyCondition and tc.fromCol2.between(tc.fromCol,tc.toCol), joinType )
+    val dfJoin = dfRanges.join( df, keyCondition and tc.isInIntervalExpr(tc.fromCol2), joinType )
     // select result
     val selCols = keys.map(dfRanges(_)) ++ df.columns.diff(keys ++ tc.technicalColNames).map(dfJoin(_)) :+
       tc.fromCol2.as(tc.fromColName) :+ tc.toCol2.as(tc.toColName)

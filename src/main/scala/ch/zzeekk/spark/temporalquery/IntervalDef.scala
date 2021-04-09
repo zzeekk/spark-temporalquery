@@ -26,6 +26,10 @@ abstract class IntervalDef[T : Ordering : TypeTag] extends Serializable {
    */
   def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column
   /**
+   * Expression to check if an interval is valid, e.g. start is before end.
+   */
+  def isValidIntervalExpr(fromCol: Column, toCol: Column): Column
+  /**
    * Expression to join two intervals
    */
   def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column
@@ -50,36 +54,37 @@ abstract class IntervalDef[T : Ordering : TypeTag] extends Serializable {
    * Expression to floor a column
    */
   def getFloorExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: T) => Option(v).map(floor))
+    val udfTransform = udf((v: Any) => Option(v).map(x => floor(x.asInstanceOf[T])))
     udfTransform(valueCol)
   }
   /**
    * Expression to ceil a column
    */
   def getCeilExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: T) => Option(v).map(ceil))
+    val udfTransform = udf((v: Any) => Option(v).map(x => ceil(x.asInstanceOf[T])))
     udfTransform(valueCol)
   }
   /**
    * Expression get predecessor for a column
    */
   def getPredecessorExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: T) => Option(v).map(predecessor))
+    val udfTransform = udf((v: Any) => Option(v).map(x => predecessor(x.asInstanceOf[T])))
     udfTransform(valueCol)
   }
   /**
    * Expression get successor for a column
    */
   def getSuccessorExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: T) => Option(v).map(successor))
+    val udfTransform = udf((v: Any) => Option(v).map(x => successor(x.asInstanceOf[T])))
     udfTransform(valueCol)
   }
   /**
    * make sure value is between min- and maxValue
    */
   @inline def fitToBoundaries(value: T): T = least(greatest(value, minValue), maxValue)
-  def getFitToBoundariesExpr(valueCol: Column): Column =
-    functions.least(functions.greatest(valueCol, functions.lit(minValue)), functions.lit(maxValue))
+  def getFitToBoundariesExpr(valueCol: Column): Column = {
+    functions.when(valueCol.isNotNull, functions.least(functions.greatest(valueCol, functions.lit(minValue)), functions.lit(maxValue)))
+  }
 
   // Helpers
   @inline private def least(values: T*): T = values.min
@@ -97,7 +102,10 @@ case class ClosedInterval[T: Ordering: TypeTag](override val minValue: T, overri
   assert(minValue == floor(minValue), s"minValue $minValue is not discrete value of the axis")
   assert(maxValue == floor(maxValue), s"minValue $maxValue is not discrete value of the axis")
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
-    fromCol <= valueCol && valueCol < toCol
+    fromCol <= valueCol && valueCol <= toCol
+  }
+  def isValidIntervalExpr(fromCol: Column, toCol: Column): Column = {
+    fromCol <= toCol
   }
   override def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column = {
     fromCol1 <= toCol2 and toCol1 >= fromCol2
@@ -120,6 +128,9 @@ case class ClosedInterval[T: Ordering: TypeTag](override val minValue: T, overri
 case class ClosedFromOpenToInterval[T: Ordering: Fractional: TypeTag](override val minValue: T, override val maxValue: T) extends IntervalDef[T] {
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
     fromCol <= valueCol && valueCol < toCol
+  }
+  def isValidIntervalExpr(fromCol: Column, toCol: Column): Column = {
+    fromCol < toCol
   }
   override def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column = {
     fromCol1 <= toCol2 and toCol1 > fromCol2 // condition for second term is not inclusive

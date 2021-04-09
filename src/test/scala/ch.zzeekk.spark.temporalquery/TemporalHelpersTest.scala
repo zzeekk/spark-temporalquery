@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.util.{Calendar, TimeZone}
 
 import ch.zzeekk.spark.temporalquery.TemporalHelpers._
-import ch.zzeekk.spark.temporalquery.TestUtils._
+import ch.zzeekk.spark.temporalquery.TemporalTestUtils._
 import org.scalatest.FunSuite
 
 class TemporalHelpersTest extends FunSuite {

@@ -14,7 +14,7 @@ import java.time.temporal.ChronoUnit
  *  Temporal query utils for interval axis of type Timestamp
  *
  * Usage:
- * import ch.zzeekk.spark-temporalquery.TemporalQueryUtil._ // this imports temporal* implicit functions on DataFrame and Columns
+ * import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._ // this imports temporal* implicit functions on DataFrame and Columns
  * implicit val tqc = TemporalQueryConfig() // configure options for temporal query operations
  * implicit val sss = ss // make SparkSession implicitly available
  * val df_joined = df1.temporalJoin(df2) // use temporal query functions with Spark
@@ -99,6 +99,8 @@ case object TemporalQueryUtil extends Logging {
     /**
      * Implementiert ein left-anti-join von historisierten Daten über eine Liste von gleichbenannten Spalten
      * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-anti-join
+     *
+     * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
     def temporalLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true) )
                             (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame =
@@ -148,6 +150,8 @@ case object TemporalQueryUtil extends Logging {
      * If a timestamp lies outside of [minDate , maxDate] it will be replaced by minDate, maxDate respectively.
      * Rows for which the validity ends before it starts, i.e. with toCol.before(fromCol), are removed.
      *
+     * Note: This function needs TemporalQueryConfig with a ClosedInterval definition
+     *
      * @return temporal dataframe with a discreteness of milliseconds
      */
     def temporalRoundDiscreteTime(implicit tc:TemporalQueryConfig): DataFrame =
@@ -155,6 +159,9 @@ case object TemporalQueryUtil extends Logging {
 
     /**
      * Transforms [[DataFrame]] with continuous time, half open time intervals [fromColName , toColName [, to discrete time ([fromColName , toColName])
+     *
+     * Note: This function needs TemporalQueryConfig with a ClosedInterval definition
+     *
      * @return [[DataFrame]] with discrete time axis
      */
     def temporalContinuous2discrete(implicit tc:TemporalQueryConfig): DataFrame =
