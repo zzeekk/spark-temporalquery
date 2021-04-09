@@ -66,13 +66,6 @@ object LinearDoubleTestUtils extends TestUtils {
     (0,  190101.100000,  190102.0, "B")
   ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
 
-  // Small intervals
-  val dfSmallIntervals: DataFrame = Seq(
-    (0, 180601.000000      , 180601.090000000123, 3.14),
-    (0, 180601.090000000124, 180601.090000000129,42.0),
-    (0, 180601.090000000130, 180601.170000123456, 2.72)
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
-
   // Data Frame dfDirtyIntervals
   val dfDirtyIntervals: DataFrame = Seq(
     (0, 190101.000000123456789, 190105.123456123456789, 3.14),
@@ -99,18 +92,5 @@ object LinearDoubleTestUtils extends TestUtils {
     (1, 190201.023456125      , 190201.0234561245, 2.72), // ends before it starts
     (1, 190101.000000         , 200101.0         ,42.0 )
   ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
-
-  val dfContinuous: DataFrame = Seq(
-    (0, 190101.000000123456789, 190105.123456123456789, 3.14),
-    (0, 190105.123456123456789, 190201.0234561235     , 2.72),
-    (0, 190201.0234561235     , 190201.0234561245     ,42.0 ),
-    (0, 190201.0234561245     , 190303.000000           ,13.0 ),
-    (0, 190303.000000         , 190404.000000           ,12.0 ),
-    (0, 190905.0234561231     , 190905.0234561239     ,42.0 ),
-    (0, 200101.010000         , intervalMaxValue      ,18.17),
-    (1, 190101.000000123456789, 190202.000000          ,-1.0 ),
-    (1, 190303.010000         , 211201.0234561        ,-2.0 )
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
-
 
 }

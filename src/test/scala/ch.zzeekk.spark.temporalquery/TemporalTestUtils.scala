@@ -110,7 +110,7 @@ object TemporalTestUtils extends TestUtils {
     (1,"2019-02-01 01:00:00.0"        ,"2019-02-01 02:34:56.1245", 2.72), // overlaps with previous record
     (1,"2019-02-01 02:34:56.125"      ,"2019-02-01 02:34:56.1245", 2.72), // ends before it starts
     (1,"2019-01-01 00:00:0"           ,"2019-12-31 23:59:59.999" ,42.0 )
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
+  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
 
   val dfContinuousTime: DataFrame = Seq(
     (0,"2019-01-01 00:00:00.123456789","2019-01-05 12:34:56.123456789", 3.14),
@@ -122,7 +122,7 @@ object TemporalTestUtils extends TestUtils {
     (0,"2020-01-01 01:00:0"           ,"9999-12-31 23:59:59.999999999",18.17),
     (1,"2019-01-01 00:00:0.123456789" ,"2019-02-02 00:00:00"          ,-1.0 ),
     (1,"2019-03-03 01:00:0"           ,"2021-12-01 02:34:56.1"        ,-2.0 )
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
+  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
 
 
 }
