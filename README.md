@@ -16,7 +16,8 @@ Breaking changes in version 2.x:
 
 ### temporal queries
 TemporalQueryUtil provides implicit function on DataFrame to query temporal data with timestamp interval axis datatype.
-```
+
+```scala
   // this imports temporal* implicit functions on DataFrame
   import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
   // configure options for temporal query operations
@@ -40,7 +41,7 @@ The following shortcuts exists to use it with predefined datatypes:
 - LinearFloatQueryUtil
 - LinearDoubleQueryUtil
 
-```
+```scala
   // this imports linear* implicit functions on DataFrame
   import ch.zzeekk.spark.temporalquery.LinearDoubleQueryUtil._
   // configure options for linear query operations
