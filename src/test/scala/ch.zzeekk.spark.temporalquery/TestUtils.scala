@@ -8,9 +8,13 @@ import org.apache.spark.sql.types.{DataType, DataTypes, StructType}
 
 trait TestUtils extends Logging {
 
-  implicit val session: SparkSession = SparkSession.builder.master("local").appName("TemporalQueryUtilTest").getOrCreate()
+  implicit val session: SparkSession = SparkSession.builder
+    .config("spark.port.maxRetries", 100)
+    .config("spark.ui.enabled", false)
+    .config("spark.sql.shuffle.partitions", 1)
+    .config("spark.task.maxFailures", 1)
+    .master("local").appName("TemporalQueryUtilTest").getOrCreate()
   import session.implicits._
-  session.conf.set("spark.sql.shuffle.partitions", 1)
 
   def symmetricDifference(df1: DataFrame, df2: DataFrame): DataFrame = {
     // attention, "except" works on Dataset and not on DataFrame. We need to check that schema is equal.
