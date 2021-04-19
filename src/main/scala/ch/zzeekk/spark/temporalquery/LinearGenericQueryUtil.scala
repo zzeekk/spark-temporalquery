@@ -4,6 +4,8 @@
 
 package ch.zzeekk.spark.temporalquery
 
+import java.sql.Timestamp
+
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 
@@ -14,7 +16,7 @@ import scala.reflect.runtime.universe._
  *
  * Usage:
  * import ch.zzeekk.spark.temporalquery.LinearFloatQueryUtil._ // this imports linear* implicit functions on DataFrame & Columns
- * implicit val tqc =  LinearQueryConfig(intervalDef = ClosedFromOpenToInterval(0f, Float.MaxValue)) // configure options for linear query operations
+ * implicit val tqc =  LinearQueryConfig(intervalDef = HalfOpenInterval(0f, Float.MaxValue)) // configure options for linear query operations
  * implicit val sss = ss // make SparkSession implicitly available
  * val df_joined = df1.linearJoin(df2) // use linear query functions with Spark
  */
@@ -25,7 +27,7 @@ object LinearFloatQueryUtil extends LinearGenericQueryUtil[Float]
  *
  * Usage:
  * import ch.zzeekk.spark.temporalquery.LinearDoubleQueryUtil._ // this imports linear* implicit functions on DataFrame & Columns
- * implicit val tqc =  LinearQueryConfig(intervalDef = ClosedFromOpenToInterval(0d, Double.MaxValue)) // configure options for linear query operations
+ * implicit val tqc =  LinearQueryConfig(intervalDef = HalfOpenInterval(0d, Double.MaxValue)) // configure options for linear query operations
  * implicit val sss = ss // make SparkSession implicitly available
  * val df_joined = df1.linearJoin(df2) // use linear query functions with Spark
  */
@@ -40,13 +42,26 @@ case class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Logging {
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
-  case class LinearQueryConfig( override val fromColName: String    = "position_von",
+  case class LinearClosedIntervalQueryConfig( override val fromColName: String    = "position_von",
                                 override val toColName: String      = "position_bis",
                                 override val additionalTechnicalColNames: Seq[String] = Seq(),
-                                override val intervalDef: IntervalDef[T]
-                              ) extends IntervalQueryConfig[T] {
-    override lazy val config2: LinearQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+                                override val intervalDef: ClosedInterval[T]
+                              ) extends ClosedIntervalQueryConfig[T] {
+    override lazy val config2: LinearClosedIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
+
+  /**
+   * Configuration Parameters. An instance of this class is needed as implicit parameter.
+   */
+  case class LinearHalfOpenIntervalQueryConfig( override val fromColName: String    = "position_von",
+                                              override val toColName: String      = "position_bis",
+                                              override val additionalTechnicalColNames: Seq[String] = Seq(),
+                                              override val intervalDef: HalfOpenInterval[T]
+                                            ) extends HalfOpenIntervalQueryConfig[T] {
+    override lazy val config2: LinearHalfOpenIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+  }
+
+  type LinearQueryConfig = IntervalQueryConfig[T,_]
 
   /**
    * Pimp-my-library pattern für's DataFrame
@@ -113,7 +128,7 @@ case class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Logging {
      * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
     def linearLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true) )
-                          (implicit ss:SparkSession, tc:LinearQueryConfig) : DataFrame = {
+                          (implicit ss:SparkSession, tc:LinearClosedIntervalQueryConfig) : DataFrame = {
       assert(tc.intervalDef.isInstanceOf[ClosedInterval[_]], "Only ClosedInterval interval definition in LinearQueryConfig supported for linearLeftAntiJoin()")
       IntervalQueryImpl.leftAntiJoinIntervals( df1, df2, joinColumns, additionalJoinFilterCondition )
     }
@@ -124,7 +139,7 @@ case class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Logging {
      * - aggExpressions: Beim Bereinigen zu erstellende Aggregationen
      * - rnkFilter: Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
      * - extend: Wenn true und fillGapsWithNull=true, dann werden für jeden key Zeilen mit Null-werten hinzugefügt,
-     *           sodass die ganze lineare Achse [minValue , maxValue] von allen keys abgedeckt wird
+     *           sodass die ganze lineare Achse [lowerBound , upperBound] von allen keys abgedeckt wird
      * - fillGapsWithNull: Wenn true, dann werden Lücken in der linearen Achse mit Nullzeilen geschlossen.
      *   ! fillGapsWithNull muss auf true gesetzt werden, damit extend=true etwas bewirkt !
      */
@@ -162,14 +177,13 @@ case class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Logging {
      * Hereby the intervals may be shortened on the lower bound and extended on the upper bound.
      * To the lower bound ceiling is applied whereas to the upper bound flooring.
      * If the dataframe has a discreteness of millisecond or coarser, then the only two changes are:
-     * If a timestamp lies outside of [minvalue, maxValue] it will be replaced by minValue, maxValue respectively.
+     * If a timestamp lies outside of [lowerBound, upperBound] it will be replaced by lowerBound, upperBound respectively.
      * Rows for which the validity ends before it starts, i.e. with toCol.before(fromCol), are removed.
      *
      * Note: This function needs LinearQueryConfig with a ClosedInterval definition. ClosedInterval definitions can only
      * be created for axis with Integral-Numeric type, and not Fractional-Numeric type (e.g. Float or Double dont work).
      */
-    def linearRoundClosedIntervals(implicit tc:LinearQueryConfig): DataFrame = {
-      assert(tc.intervalDef.isInstanceOf[ClosedInterval[_]], "ClosedInterval interval definition needed in LinearQueryConfig for linearRoundDiscreteTime()")
+    def linearRoundClosedIntervals(implicit tc:LinearClosedIntervalQueryConfig): DataFrame = {
       IntervalQueryImpl.roundIntervalsToDiscreteTime(df1)
     }
 
@@ -179,8 +193,7 @@ case class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Logging {
      * Note: This function needs LinearQueryConfig with a ClosedInterval definition. ClosedInterval definitions can only
      * be created for axis with Integral-Numeric type, and not Fractional-Numeric type (e.g. Float or Double dont work).
      */
-    def linearConvertToClosedIntervals(implicit tc:LinearQueryConfig): DataFrame = {
-      assert(tc.intervalDef.isInstanceOf[ClosedInterval[_]], "ClosedInterval interval definition needed in LinearQueryConfig for linearConvertToClosedIntervals()")
+    def linearConvertToClosedIntervals(implicit tc:LinearClosedIntervalQueryConfig): DataFrame = {
       IntervalQueryImpl.transformHalfOpenToClosedIntervals(df1)
     }
 

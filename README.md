@@ -22,7 +22,7 @@ TemporalQueryUtil provides implicit function on DataFrame to query temporal data
   import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
   // configure options for temporal query operations
   val intervalDef = ClosedInterval(Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS))
-  implicit val tqc = TemporalQueryConfig( fromColName="valid_from", toColName="valid_to", intervalDef = intervalDef)
+  implicit val tqc = TemporalClosedIntervalQueryConfig( fromColName="valid_from", toColName="valid_to", intervalDef = intervalDef)
   // make SparkSession implicitly available
   implicit val sss = spark
   import sss.implicits._
@@ -45,10 +45,10 @@ The following shortcuts exists to use it with predefined datatypes:
   // this imports linear* implicit functions on DataFrame
   import ch.zzeekk.spark.temporalquery.LinearDoubleQueryUtil._
   // configure options for linear query operations
-  val intervalDef = ClosedFromOpenToInterval(0d, Double.MaxValue)
-  implicit val lqc: LinearQueryConfig = LinearQueryConfig(fromColName="pos_from", toColName="pos_to", intervalDef = intervalDef)
+  val intervalDef = HalfOpenInterval(0d, Double.MaxValue)
+  implicit val lqc: LinearQueryConfig = LinearHalfOpenIntervalQueryConfig(fromColName="pos_from", toColName="pos_to", intervalDef = intervalDef)
   // make SparkSession implicitly available
-  implicit val sss = TemporalTestUtils.session
+  implicit val sss = session
   import sss.implicits._
   // prepare some DataFrames
   val dfLeft = Seq((0, 0.0, 100.0, 4.2))
@@ -65,7 +65,7 @@ The following sections are written for temporal queries, but the library works i
 
 For temporal queries a time axis with datatype timestamp is needed. The axis can be configured as:
 - ClosedInterval with different discrete step size, or
-- ClosedFromOpenToInterval
+- HalfOpenInterval
 via `TemporalQueryConfig.intervalDef`
 The axis starts at `TemporalQueryConfig.intervalDef.minValue` and ends at `TemporalQueryConfig.intervalDef.maxValue`.
 

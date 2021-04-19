@@ -1,20 +1,20 @@
 package ch.zzeekk.spark.temporalquery
 
 import org.apache.spark.sql.{Column, DataFrame}
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, lit, lower}
 
 /**
  * Base class defining the configuration needed for interval queries with Spark
  * @tparam T: scala type for interval axis
  */
-abstract class IntervalQueryConfig[T: Ordering] extends Serializable { // this is an abstract class because "traits can not have type parameters with context bounds"
+abstract class IntervalQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Serializable { // this is an abstract class because "traits can not have type parameters with context bounds"
   def fromColName: String
   def toColName: String
   def additionalTechnicalColNames: Seq[String]
-  def intervalDef: IntervalDef[T]
+  def intervalDef: D
 
   // copy of configuration with 2nd pair of from/to column names used as main column pair
-  def config2: IntervalQueryConfig[T] // hint: implement with case class copy constructor in subclass
+  def config2: IntervalQueryConfig[T, D] // hint: implement with case class copy constructor in subclass
 
   // 2nd pair of from/to column names
   private def increaseColNameNb(colName: String): String = {
@@ -40,15 +40,29 @@ abstract class IntervalQueryConfig[T: Ordering] extends Serializable { // this i
   @transient lazy val toCol2: Column = col(toColName2)
   @transient lazy val definedCol: Column = col(definedColName)
 
+  def lowerBound: T = intervalDef.lowerBound
+  def upperBound: T = intervalDef.upperBound
+
   // interval functions
   def isInIntervalExpr(value: Column): Column = intervalDef.isInIntervalExpr(value, fromCol, toCol)
   def isValidIntervalExpr: Column = intervalDef.isValidIntervalExpr(fromCol, toCol)
+  def isInBoundariesExpr(value: Column): Column = value.between(lit(lowerBound), lit(upperBound))
   def joinIntervalExpr(df1: DataFrame, df2: DataFrame): Column =
     intervalDef.intervalJoinExpr(df1(fromColName), df1(toColName), df2(fromColName), df2(toColName) )
   def joinIntervalExpr2(df1: DataFrame, df2: DataFrame): Column =
     intervalDef.intervalJoinExpr(df1(fromColName), df1(toColName), df2(fromColName2), df2(toColName2) )
+  def getPredecessorIntervalEndExpr(startValue: Column): Column
+  def getSuccessorIntervalStartExpr(endValue: Column): Column
+}
+
+abstract class ClosedIntervalQueryConfig[T: Ordering] extends IntervalQueryConfig[T,ClosedInterval[T]] {
   def getFloorExpr(value: Column): Column = intervalDef.getFloorExpr(value)
   def getCeilExpr(value: Column): Column = intervalDef.getCeilExpr(value)
-  def getPredecessorExpr(value: Column): Column = intervalDef.getPredecessorExpr(value)
-  def getSuccessorExpr(value: Column): Column = intervalDef.getSuccessorExpr(value)
+  def getPredecessorIntervalEndExpr(startValue: Column): Column = intervalDef.getPredecessorExpr(startValue)
+  def getSuccessorIntervalStartExpr(endValue: Column): Column = intervalDef.getSuccessorExpr(endValue)
+}
+
+abstract class HalfOpenIntervalQueryConfig[T: Ordering] extends IntervalQueryConfig[T, HalfOpenInterval[T]] {
+  def getPredecessorIntervalEndExpr(startValue: Column): Column = intervalDef.getFitToBoundariesExpr(startValue)
+  def getSuccessorIntervalStartExpr(endValue: Column): Column = intervalDef.getFitToBoundariesExpr(endValue)
 }

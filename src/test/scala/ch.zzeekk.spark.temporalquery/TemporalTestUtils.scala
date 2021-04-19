@@ -1,13 +1,13 @@
 package ch.zzeekk.spark.temporalquery
 
-import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
+import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.{TemporalClosedIntervalQueryConfig, TemporalQueryConfig}
 import org.apache.spark.sql.DataFrame
 
 object TemporalTestUtils extends TestUtils {
 
   import session.implicits._
 
-  implicit val defaultConfig: TemporalQueryConfig = TemporalQueryConfig()
+  implicit val defaultConfig: TemporalClosedIntervalQueryConfig = TemporalClosedIntervalQueryConfig()
   val initiumTemporisString: String = defaultConfig.minDate.toString
   val finisTemporisString: String = defaultConfig.maxDate.toString
 
@@ -123,6 +123,5 @@ object TemporalTestUtils extends TestUtils {
     (1,"2019-01-01 00:00:0.123456789" ,"2019-02-02 00:00:00"          ,-1.0 ),
     (1,"2019-03-03 01:00:0"           ,"2021-12-01 02:34:56.1"        ,-2.0 )
   ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
-
 
 }

@@ -24,17 +24,34 @@ case object TemporalQueryUtil extends Logging {
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
-  case class TemporalQueryConfig( override val fromColName: String    = "gueltig_ab",
-                                  override val toColName: String      = "gueltig_bis",
-                                  override val additionalTechnicalColNames: Seq[String] = Seq(),
-                                  override val intervalDef: IntervalDef[Timestamp] = ClosedInterval(
-                                    Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)
-                                  )
-                                 ) extends IntervalQueryConfig[Timestamp] {
-    val minDate: Timestamp = intervalDef.minValue
-    val maxDate: Timestamp = intervalDef.maxValue
-    override lazy val config2: TemporalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+  case class TemporalClosedIntervalQueryConfig( override val fromColName: String    = "gueltig_ab",
+                                                override val toColName: String      = "gueltig_bis",
+                                                override val additionalTechnicalColNames: Seq[String] = Seq(),
+                                                override val intervalDef: ClosedInterval[Timestamp] = ClosedInterval(
+                                                  Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)
+                                                )
+                                 ) extends ClosedIntervalQueryConfig[Timestamp] {
+    val minDate: Timestamp = intervalDef.lowerBound
+    val maxDate: Timestamp = intervalDef.upperBound
+    override lazy val config2: TemporalClosedIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
+
+  /**
+   * Configuration Parameters. An instance of this class is needed as implicit parameter for all temporal query functions.
+   */
+  case class TemporalHalfOpenIntervalQueryConfig(override val fromColName: String    = "gueltig_ab",
+                                                 override val toColName: String      = "gueltig_bis",
+                                                 override val additionalTechnicalColNames: Seq[String] = Seq(),
+                                                 override val intervalDef: HalfOpenInterval[Timestamp] = HalfOpenInterval(
+                                                    Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00")
+                                                  )
+                                                ) extends HalfOpenIntervalQueryConfig[Timestamp] {
+    val minDate: Timestamp = intervalDef.lowerBound
+    val maxDate: Timestamp = intervalDef.upperBound
+    override lazy val config2: TemporalHalfOpenIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+  }
+
+  type TemporalQueryConfig = IntervalQueryConfig[Timestamp,_]
 
   implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a,b) => a.before(b))
 
@@ -103,7 +120,7 @@ case object TemporalQueryUtil extends Logging {
      * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
     def temporalLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true) )
-                            (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame =
+                            (implicit ss:SparkSession, tc:IntervalQueryConfig[Timestamp,ClosedInterval[Timestamp]]) : DataFrame =
       IntervalQueryImpl.leftAntiJoinIntervals( df1, df2, joinColumns, additionalJoinFilterCondition )
 
     /**
@@ -154,7 +171,7 @@ case object TemporalQueryUtil extends Logging {
      *
      * @return temporal dataframe with a discreteness of milliseconds
      */
-    def temporalRoundDiscreteTime(implicit tc:TemporalQueryConfig): DataFrame =
+    def temporalRoundDiscreteTime(implicit tc: TemporalClosedIntervalQueryConfig): DataFrame =
       IntervalQueryImpl.roundIntervalsToDiscreteTime(df1)
 
     /**
@@ -164,7 +181,7 @@ case object TemporalQueryUtil extends Logging {
      *
      * @return [[DataFrame]] with discrete time axis
      */
-    def temporalContinuous2discrete(implicit tc:TemporalQueryConfig): DataFrame =
+    def temporalContinuous2discrete(implicit tc: TemporalClosedIntervalQueryConfig): DataFrame =
       IntervalQueryImpl.transformHalfOpenToClosedIntervals(df1)
 
   }

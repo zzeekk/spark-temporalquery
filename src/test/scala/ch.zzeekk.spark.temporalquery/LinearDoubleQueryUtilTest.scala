@@ -411,6 +411,7 @@ class LinearDoubleQueryUtilTest extends FunSuite with Logging {
     assert(resultat)
   }
 
+  /*
   ignore("linearLeftAntiJoin dfRight") {
     val actual = dfLeft.linearLeftAntiJoin(dfRight,Seq("id"))
     val expected = Seq(
@@ -503,6 +504,7 @@ class LinearDoubleQueryUtilTest extends FunSuite with Logging {
     if (!resultat) printFailedTestResult("linearLeftAntiJoin segmented",Seq(minuend,subtrahend))(actual,expected)
     assert(resultat)
   }
+  */
 
   test("linearFullJoin dfRight") {
     val actual = dfLeft.linearFullJoin(dfRight,Seq("id")).linearCombine()
@@ -870,7 +872,7 @@ class LinearDoubleQueryUtilTest extends FunSuite with Logging {
   }
 
   test("linearUnifyRanges dfMoment") {
-    // Note that a Moment can not be modeled with ClosedFromOpenToInterval - result is therefore empty
+    // Note that a Moment can not be modeled with HalfOpenInterval - result is therefore empty
     val actual = dfMoment.linearUnifyRanges(Seq("id"))
       .select(dfMoment.columns.map(col):_*) // re-order columns
     val expected = dfMoment.where(lit(false)) // empty data frame expected

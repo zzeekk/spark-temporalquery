@@ -2,40 +2,20 @@ package ch.zzeekk.spark.temporalquery
 
 import org.scalatest.FunSuite
 
-class ClosedFromOpenToIntervalTest extends FunSuite with TestUtils{
+class HalfOpenIntervalTest extends FunSuite with TestUtils{
 
-  private val floatIntervalDef = ClosedFromOpenToInterval[Float](minValue = 0f, maxValue = Float.MaxValue)
-  private val limitedIntervalDef = ClosedFromOpenToInterval[Float](minValue = 23.34f, maxValue = 45.32f)
-
-  test("ceil float") {
-    val argExpMap = Map(("ceil is the same",35.9393f) -> 35.9393f)
-    testArgumentExpectedMapWithComment[Float, Float](floatIntervalDef.ceil, argExpMap)
-  }
-
-  test("floor float") {
-    val argExpMap = Map(("floor is the same",35.9393f) -> 35.9393f)
-    testArgumentExpectedMapWithComment[Float, Float](floatIntervalDef.floor, argExpMap)
-  }
-
-  test("predecessor float") {
-    val argExpMap = Map(("predecessor is the same",35.9393f) -> 35.9393f)
-    testArgumentExpectedMapWithComment[Float, Float](floatIntervalDef.predecessor, argExpMap)
-  }
-
-  test("successor float") {
-    val argExpMap = Map(("successor is the same",35.9393f) -> 35.9393f)
-    testArgumentExpectedMapWithComment[Float, Float](floatIntervalDef.successor, argExpMap)
-  }
+  private val floatIntervalDef = HalfOpenInterval[Float](lowerBound = 0f, upperBound = Float.MaxValue)
+  private val limitedIntervalDef = HalfOpenInterval[Float](lowerBound = 23.34f, upperBound = 45.32f)
 
   test("cut off at boundaries)") {
     val argExpMap = Map(
-      ("cut off lower boundary",10f) -> limitedIntervalDef.minValue,
-      ("cut off upper boundary",999f) -> limitedIntervalDef.maxValue
+      ("cut off lower boundary",10f) -> limitedIntervalDef.lowerBound,
+      ("cut off upper boundary",999f) -> limitedIntervalDef.upperBound
     )
-    testArgumentExpectedMapWithComment[Float, Float](limitedIntervalDef.successor, argExpMap)
+    testArgumentExpectedMapWithComment[Float, Float](limitedIntervalDef.fitToBoundaries, argExpMap)
   }
 
-  // TODO: adapt intervalComplement for ClosedFromOpenToInterval
+  // TODO: adapt intervalComplement for HalfOpenInterval
   /*
   test("intervalComplement") {
     val subtrahends = Seq(

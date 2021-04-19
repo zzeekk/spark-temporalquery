@@ -7,9 +7,9 @@ object LinearDoubleTestUtils extends TestUtils {
 
   import session.implicits._
 
-  implicit val defaultConfig: LinearQueryConfig = LinearQueryConfig(intervalDef = ClosedFromOpenToInterval(0d, Double.MaxValue))
-  val intervalMinValue: Double = defaultConfig.intervalDef.minValue
-  val intervalMaxValue: Double = defaultConfig.intervalDef.maxValue
+  implicit val defaultConfig: LinearHalfOpenIntervalQueryConfig = LinearHalfOpenIntervalQueryConfig(intervalDef = HalfOpenInterval(0d, Double.MaxValue))
+  val intervalMinValue: Double = defaultConfig.lowerBound
+  val intervalMaxValue: Double = defaultConfig.upperBound
   
   // some beautiful nasty data frames for testing
 

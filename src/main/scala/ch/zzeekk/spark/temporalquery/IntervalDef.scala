@@ -14,13 +14,13 @@ import scala.reflect.runtime.universe._
 abstract class IntervalDef[T : Ordering : TypeTag] extends Serializable {
 
   /**
-   * Define min value of the interval axis
+   * Define lower bound of the interval axis
    */
-  def minValue: T
+  def lowerBound: T
   /**
-   * Define max value of the interval axis
+   * Define upper bound of the interval axis
    */
-  def maxValue: T
+  def upperBound: T
   /**
    * Expression to check if a value is included in a given interval
    */
@@ -34,56 +34,11 @@ abstract class IntervalDef[T : Ordering : TypeTag] extends Serializable {
    */
   def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column
   /**
-   * Method to floor a scala value of type T
+   * make sure value is between lower- and upperBound
    */
-  def floor(value: T): T
-  /**
-   * Method to ceil a scala value of type T
-   */
-  def ceil(value: T): T
-  /**
-   * Method get the predecessor for a scala value of type T for this interval axis definition
-   */
-  def predecessor(value: T): T
-  /**
-   * Method get the successor for a scala value of type T for this interval axis definition
-   */
-  def successor(value: T): T
-
-  /**
-   * Expression to floor a column
-   */
-  def getFloorExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: Any) => Option(v).map(x => floor(x.asInstanceOf[T])))
-    udfTransform(valueCol)
-  }
-  /**
-   * Expression to ceil a column
-   */
-  def getCeilExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: Any) => Option(v).map(x => ceil(x.asInstanceOf[T])))
-    udfTransform(valueCol)
-  }
-  /**
-   * Expression get predecessor for a column
-   */
-  def getPredecessorExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: Any) => Option(v).map(x => predecessor(x.asInstanceOf[T])))
-    udfTransform(valueCol)
-  }
-  /**
-   * Expression get successor for a column
-   */
-  def getSuccessorExpr(valueCol: Column): Column = {
-    val udfTransform = udf((v: Any) => Option(v).map(x => successor(x.asInstanceOf[T])))
-    udfTransform(valueCol)
-  }
-  /**
-   * make sure value is between min- and maxValue
-   */
-  @inline def fitToBoundaries(value: T): T = least(greatest(value, minValue), maxValue)
+  @inline def fitToBoundaries(value: T): T = least(greatest(value, lowerBound), upperBound)
   def getFitToBoundariesExpr(valueCol: Column): Column = {
-    functions.when(valueCol.isNotNull, functions.least(functions.greatest(valueCol, functions.lit(minValue)), functions.lit(maxValue)))
+    functions.when(valueCol.isNotNull, functions.least(functions.greatest(valueCol, functions.lit(lowerBound)), functions.lit(upperBound)))
   }
 
   // Helpers
@@ -94,13 +49,13 @@ abstract class IntervalDef[T : Ordering : TypeTag] extends Serializable {
 /**
  * A closed interval is an interval which includes its lower and upper bound.
  * Use this for discret interval axis.
- * @param minValue minimum value of the interval axis
- * @param maxValue maximum value of the interval axis
+ * @param lowerBound minimum value of the interval axis
+ * @param upperBound maximum value of the interval axis
  * @tparam T: scala type for discrete interval axis, e.g. Timestamp, Integer, ...
  */
-case class ClosedInterval[T: Ordering: TypeTag](override val minValue: T, override val maxValue: T, discreteAxisDef: DiscreteAxisDef[T]) extends IntervalDef[T] {
-  assert(minValue == floor(minValue), s"minValue $minValue is not discrete value of the axis")
-  assert(maxValue == floor(maxValue), s"minValue $maxValue is not discrete value of the axis")
+case class ClosedInterval[T: Ordering: TypeTag](override val lowerBound: T, override val upperBound: T, discreteAxisDef: DiscreteAxisDef[T]) extends IntervalDef[T] {
+  assert(lowerBound == floor(lowerBound), s"lowerBound $lowerBound is not discrete value of the axis")
+  assert(upperBound == floor(upperBound), s"lowerBound $upperBound is not discrete value of the axis")
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
     fromCol <= valueCol && valueCol <= toCol
   }
@@ -110,22 +65,54 @@ case class ClosedInterval[T: Ordering: TypeTag](override val minValue: T, overri
   override def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column = {
     fromCol1 <= toCol2 and toCol1 >= fromCol2
   }
+
+  /**
+   * Round down a value to the next discrete value of the interval axis, respecting interval axis boundaries.
+   */
   def floor(value: T): T = fitToBoundaries(discreteAxisDef.floor(value))
+  def getFloorExpr(valueCol: Column): Column = {
+    val udfTransform = udf((v: Any) => Option(v).map(x => floor(x.asInstanceOf[T])))
+    udfTransform(valueCol)
+  }
+
+  /**
+   * Round up a value to the next discrete value of the interval axis, respecting interval axis boundaries.
+   */
   def ceil(value: T): T = fitToBoundaries(discreteAxisDef.ceil(value))
+  def getCeilExpr(valueCol: Column): Column = {
+    val udfTransform = udf((v: Any) => Option(v).map(x => ceil(x.asInstanceOf[T])))
+    udfTransform(valueCol)
+  }
+
+  /**
+   * Get the predecessor for a scala value of type T for this interval axis definition
+   */
   def predecessor(value: T): T =
-    fitToBoundaries(if (value==maxValue) value else discreteAxisDef.predecessor(value)) // max value has no predecessor
+    fitToBoundaries(if (value==upperBound) value else discreteAxisDef.predecessor(value)) // max value has no predecessor
+  def getPredecessorExpr(valueCol: Column): Column = {
+    val udfTransform = udf((v: Any) => Option(v).map(x => predecessor(x.asInstanceOf[T])))
+    udfTransform(valueCol)
+  }
+
+  /**
+   * Get the successor for a scala value of type T for this interval axis definition
+   */
   def successor(value: T): T =
-    fitToBoundaries(if (value==minValue) value else discreteAxisDef.successor(value)) // min value has no successor
+    fitToBoundaries(if (value==lowerBound) value else discreteAxisDef.successor(value)) // min value has no successor
+  def getSuccessorExpr(valueCol: Column): Column = {
+    val udfTransform = udf((v: Any) => Option(v).map(x => successor(x.asInstanceOf[T])))
+    udfTransform(valueCol)
+  }
 }
 
 /**
  * Lower bound is included, upper bound is excluded
- * Use this for continuous interval axis.
- * @param minValue minimum value of the interval axis
- * @param maxValue maximum value of the interval axis
+ * Use this mainly for continuous interval axis.
+ * @param lowerBound minimum value of the interval axis
+ * @param upperBound maximum value of the interval axis
  * @tparam T: scala type for continuous interval axis, e.g. Float, Double...
  */
-case class ClosedFromOpenToInterval[T: Ordering: Fractional: TypeTag](override val minValue: T, override val maxValue: T) extends IntervalDef[T] {
+case class HalfOpenInterval[T: Ordering: TypeTag](override val lowerBound: T, override val upperBound: T) extends IntervalDef[T] {
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
     fromCol <= valueCol && valueCol < toCol
   }
@@ -135,15 +122,6 @@ case class ClosedFromOpenToInterval[T: Ordering: Fractional: TypeTag](override v
   override def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column = {
     fromCol1 <= toCol2 and toCol1 > fromCol2 // condition for second term is not inclusive
   }
-  def floor(value: T): T = fitToBoundaries(value) // no rounding
-  def ceil(value: T): T = fitToBoundaries(value) // no rounding
-  def predecessor(value: T): T = fitToBoundaries(value) // predecessor is the same
-  def successor(value: T): T = fitToBoundaries(value) // successor is the same
-  // override expressions to avoid UDFs for performance reasons
-  override def getFloorExpr(valueCol: Column): Column = getFitToBoundariesExpr(valueCol) // no rounding
-  override def getCeilExpr(valueCol: Column): Column = getFitToBoundariesExpr(valueCol) // no rounding
-  override def getPredecessorExpr(valueCol: Column): Column = getFitToBoundariesExpr(valueCol) // predecessor is the same
-  override def getSuccessorExpr(valueCol: Column): Column = getFitToBoundariesExpr(valueCol) // successor is the same
 }
 
 

@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
 
 import ch.zzeekk.spark.temporalquery.TemporalHelpers.intervalComplement
-import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalQueryConfig
+import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.{TemporalClosedIntervalQueryConfig, TemporalQueryConfig}
 import org.apache.spark.sql.Row
 import org.scalatest.FunSuite
 
@@ -78,7 +78,7 @@ class ClosedIntervalTest extends FunSuite with TestUtils {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("cut of fraction of second"                      ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56"),
       ("subtract a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59"),
-      ("max value has no successor"                     ,secondIntervalDef.maxValue) -> secondIntervalDef.maxValue
+      ("max value has no predecessor"                     ,secondIntervalDef.upperBound) -> secondIntervalDef.upperBound
     )
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.predecessor, argExpMap)
   }
@@ -88,15 +88,15 @@ class ClosedIntervalTest extends FunSuite with TestUtils {
       ("cut of fraction of second"                 ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:57"),
       ("add a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:59:59")) -> Timestamp.valueOf("2019-03-03 01:00:0"),
       ("add a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:1"),
-      ("min value has no successor"                ,secondIntervalDef.minValue) -> secondIntervalDef.minValue
+      ("min value has no successor"                ,secondIntervalDef.lowerBound) -> secondIntervalDef.lowerBound
     )
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.successor, argExpMap)
   }
 
   test("cut off at boundaries") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("cut off lower boundary",Timestamp.valueOf("1234-09-05 14:34:56.123456789")) -> limitedIntervalDef.minValue,
-      ("cut off upper boundary",Timestamp.valueOf("3456-03-03 00:59:59")) -> limitedIntervalDef.maxValue
+      ("cut off lower boundary",Timestamp.valueOf("1234-09-05 14:34:56.123456789")) -> limitedIntervalDef.lowerBound,
+      ("cut off upper boundary",Timestamp.valueOf("3456-03-03 00:59:59")) -> limitedIntervalDef.upperBound
     )
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](limitedIntervalDef.successor, argExpMap)
   }
@@ -144,7 +144,7 @@ class ClosedIntervalTest extends FunSuite with TestUtils {
     ).map { case (comment, validFrom, validTo, resultSeq) => ((comment, (Timestamp.valueOf(validFrom), Timestamp.valueOf(validTo))), resultSeq.map(y => (Timestamp.valueOf(y._1), Timestamp.valueOf(y._2)))) }
       .toMap
 
-    implicit val intervalConfig: TemporalQueryConfig = TemporalQueryConfig(intervalDef = millisIntervalDef)
+    implicit val intervalConfig: TemporalClosedIntervalQueryConfig = TemporalClosedIntervalQueryConfig(intervalDef = millisIntervalDef)
     testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends), argExpMap)
   }
 
