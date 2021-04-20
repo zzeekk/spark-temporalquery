@@ -19,7 +19,7 @@ import java.time.temporal.ChronoUnit
  * implicit val sss = ss // make SparkSession implicitly available
  * val df_joined = df1.temporalJoin(df2) // use temporal query functions with Spark
  */
-case object TemporalQueryUtil extends Logging {
+object TemporalQueryUtil extends Serializable with Logging {
 
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
@@ -30,7 +30,7 @@ case object TemporalQueryUtil extends Logging {
                                                 override val intervalDef: ClosedInterval[Timestamp] = ClosedInterval(
                                                   Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)
                                                 )
-                                 ) extends ClosedIntervalQueryConfig[Timestamp] {
+                                 ) extends ClosedIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
     val minDate: Timestamp = intervalDef.lowerBound
     val maxDate: Timestamp = intervalDef.upperBound
     override lazy val config2: TemporalClosedIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
@@ -45,13 +45,21 @@ case object TemporalQueryUtil extends Logging {
                                                  override val intervalDef: HalfOpenInterval[Timestamp] = HalfOpenInterval(
                                                     Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00")
                                                   )
-                                                ) extends HalfOpenIntervalQueryConfig[Timestamp] {
+                                                ) extends HalfOpenIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
     val minDate: Timestamp = intervalDef.lowerBound
     val maxDate: Timestamp = intervalDef.upperBound
     override lazy val config2: TemporalHalfOpenIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
-  type TemporalQueryConfig = IntervalQueryConfig[Timestamp,_]
+  /**
+   * Trait to mark temporal query configurations to make implicit resolution unique if there is also an implicit linear query configuration in scope
+   */
+  trait TemporalQueryConfigMarker
+
+  /**
+   * Type which includes TemporalClosedIntervalQueryConfig and TemporalHalfOpenIntervalQueryConfig
+   */
+  type TemporalQueryConfig = IntervalQueryConfig[Timestamp,_] with TemporalQueryConfigMarker
 
   implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a,b) => a.before(b))
 

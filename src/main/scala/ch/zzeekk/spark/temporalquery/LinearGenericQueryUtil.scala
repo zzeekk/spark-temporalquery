@@ -37,7 +37,7 @@ object LinearDoubleQueryUtil extends LinearGenericQueryUtil[Double]
  * Generic class to provide linear query utils for different interval axis types
  * @tparam T: scala type for interval axis
  */
-case class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Logging {
+class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with Logging {
 
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
@@ -46,7 +46,7 @@ case class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Logging {
                                 override val toColName: String      = "position_bis",
                                 override val additionalTechnicalColNames: Seq[String] = Seq(),
                                 override val intervalDef: ClosedInterval[T]
-                              ) extends ClosedIntervalQueryConfig[T] {
+                              ) extends ClosedIntervalQueryConfig[T] with LinearQueryConfigMarker {
     override lazy val config2: LinearClosedIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
@@ -57,11 +57,19 @@ case class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Logging {
                                               override val toColName: String      = "position_bis",
                                               override val additionalTechnicalColNames: Seq[String] = Seq(),
                                               override val intervalDef: HalfOpenInterval[T]
-                                            ) extends HalfOpenIntervalQueryConfig[T] {
+                                            ) extends HalfOpenIntervalQueryConfig[T] with LinearQueryConfigMarker {
     override lazy val config2: LinearHalfOpenIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
-  type LinearQueryConfig = IntervalQueryConfig[T,_]
+  /**
+   * Trait to mark linear query configurations to make implicit resolution unique if there is also an implicit temporal query configuration in scope
+   */
+  trait LinearQueryConfigMarker
+
+  /**
+   * Type which includes LinearClosedIntervalQueryConfig and LinearHalfOpenIntervalQueryConfig
+   */
+  type LinearQueryConfig = IntervalQueryConfig[T,_] with LinearQueryConfigMarker
 
   /**
    * Pimp-my-library pattern für's DataFrame
