@@ -120,7 +120,7 @@ case class HalfOpenInterval[T: Ordering: TypeTag](override val lowerBound: T, ov
     fromCol < toCol
   }
   override def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column = {
-    fromCol1 <= toCol2 and toCol1 > fromCol2 // condition for second term is not inclusive
+    fromCol1 < toCol2 and toCol1 > fromCol2
   }
 }
 

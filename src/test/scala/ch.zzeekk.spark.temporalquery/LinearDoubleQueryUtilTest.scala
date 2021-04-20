@@ -8,60 +8,14 @@ import org.scalatest.FunSuite
 class LinearDoubleQueryUtilTest extends FunSuite with Logging {
   import session.implicits._
 
-  /*
-  // Not possible with Double as it is no Integral type.
-  test("linearConvertToClosedIntervals") {
-    implicit val defaultConfig: LinearQueryConfig = LinearQueryConfig(intervalDef = ClosedInterval(0f, Double.MaxValue, DiscreteNumericAxis(0.000000001)))
-    val actual = dfContinuous.linearConvertToClosedIntervals()
-    val expected = Seq(
-      (0, 190101.123456124, 190105.123456123,3.14 ),
-      (0, 190105.123456124, 190201.023456123,2.72 ),
-      (0, 190201.023456124, 190201.023456124,42.0 ),
-      (0, 190201.023456125, 190302.235959999,13.0 ),
-      (0, 190303.00000    , 190403.235959999,12.0 ),
-      (0, 200101.01000    , intervalMaxValue,18.17),
-      (1, 190101.000000124, 190201.235959999,-1.0 ),
-      (1, 190303.01000    , 211201.023456099,-2.0 )
-    ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert")
-
-    val resultat = dfEqual(actual,expected)
-    if (!resultat) printFailedTestResult("linearConvertToClosedIntervals",Seq(dfContinuous))(actual,expected)
-    assert(resultat)
+  test("linear join condition symmetricity of half-open intervals") {
+    val df1 = Seq((1, 1.0, 2.0))
+      .toDF("id",defaultConfig.fromColName,defaultConfig.toColName)
+    val df2 = Seq((1, 2.0, 3.0))
+      .toDF("id",defaultConfig.fromColName,defaultConfig.toColName)
+    assert(df1.linearInnerJoin(df2, Seq("id")).isEmpty)
+    assert(df2.linearInnerJoin(df1, Seq("id")).isEmpty)
   }
-  */
-
-  /*
-  // Not possible with Double as it is no Integral type.
-  test("temporalRoundDiscreteTime_dfLeft") {
-    val actual = dfLeft.linearRoundClosedIntervals(defaultConfig)
-    val expected = dfLeft
-
-    val resultat = dfEqual(actual,expected)
-    if (!resultat) printFailedTestResult("linearRoundClosedIntervals",Seq(dfRight))(actual,expected)
-    assert(resultat)
-  }
-
-  test("linearRoundClosedIntervals dfDirtyTimeRanges") {
-    val actual = dfDirtyIntervals.linearRoundClosedIntervals(defaultConfig)
-    val zeilen_expected: Seq[(Int, String, String, Double)] = Seq(
-      (0, 190101.000000124, 190105.123456123, 3.14),
-      (0, 190105.123456124, 190201.023456123, 2.72),
-      (0, 190201.01000     , 190201.023456124, 2.72),
-      (0, 190201.023456125, 190303.00000     ,13.0 ),
-      (0, 190303.00000     , 190404.00000     ,13.0 ),
-      (0, 200101.01000     ,intervalMaxValue      ,18.17),
-      (1, 190301.00000     , 190301.00000     , 0.1 ), // duration extended to 1 millisecond
-      (1, 190301.000000001 , 190301.000000001 , 0.1 ), // duration extended to 1 millisecond
-      (1, 190301.000001001 , 190301.000001002, 1.2 ), // duration extended to 2 milliseconds
-      (1, 190101.000000124 , 190202.00000     ,-1.0 ),
-      (1, 190303.01000     , 211201.0234561  ,-2.0 ))
-    val expected = zeilen_expected.toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"wert")
-
-    val resultat = dfEqual(actual,expected)
-    if (!resultat) printFailedTestResult("linearRoundClosedIntervals",Seq(dfDirtyIntervals))(actual,expected)
-    assert(resultat)
-  }
-  */
 
   test("linearCleanupExtend dfLeft") {
     val actual = dfLeft.linearCleanupExtend(Seq("id"),Seq(defaultConfig.fromCol))
