@@ -34,11 +34,11 @@ abstract class IntervalQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Ser
   val definedColName: String = "_defined"
 
   // prepared column objects (not serializable)
-  @transient lazy val fromCol: Column = col(fromColName)
-  @transient lazy val toCol: Column = col(toColName)
-  @transient lazy val fromCol2: Column = col(fromColName2)
-  @transient lazy val toCol2: Column = col(toColName2)
-  @transient lazy val definedCol: Column = col(definedColName)
+  def fromCol: Column = col(fromColName)
+  def toCol: Column = col(toColName)
+  def fromCol2: Column = col(fromColName2)
+  def toCol2: Column = col(toColName2)
+  def definedCol: Column = col(definedColName)
 
   def lowerBound: T = intervalDef.lowerBound
   def upperBound: T = intervalDef.upperBound

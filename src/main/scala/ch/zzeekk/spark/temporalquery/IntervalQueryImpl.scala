@@ -220,7 +220,7 @@ object IntervalQueryImpl extends Logging {
   private[temporalquery] def unifyIntervalRanges[T: Ordering: TypeTag](df:DataFrame, keys:Seq[String], extend: Boolean = false, fillGapsWithNull: Boolean = false )
                                                 (implicit ss:SparkSession, tc:IntervalQueryConfig[T,_]) = {
     // get ranges
-    val dfRanges = renameIntervalCols2nd(buildIntervalRanges(df, keys, extend))
+    val dfRanges = renameIntervalCols2nd(buildIntervalRanges(df, keys, extend)).as("ranges")
     val keyCondition = createKeyCondition( df, dfRanges, keys )
     // join back on input df
     val joinType = if (fillGapsWithNull) "left" else "inner"
