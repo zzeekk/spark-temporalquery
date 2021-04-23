@@ -61,7 +61,7 @@ object TemporalQueryUtil extends Serializable with Logging {
    */
   type TemporalQueryConfig = IntervalQueryConfig[Timestamp,_] with TemporalQueryConfigMarker
 
-  implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a,b) => a.before(b))
+  implicit val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a,b) => a.before(b))
 
   /**
    * Pimp-my-library pattern für's DataFrame
