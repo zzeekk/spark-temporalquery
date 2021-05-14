@@ -12,6 +12,9 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    env:
+      # avoid "BindException: Cannot assign requested address" caused by non-unique hosts file of ubuntu-latest
+      SPARK_LOCAL_IP: 127.0.0.1
 
     steps:
     - uses: actions/checkout@v2
