@@ -4,8 +4,6 @@
 
 package ch.zzeekk.spark.temporalquery
 
-import java.sql.Timestamp
-
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 
@@ -16,22 +14,26 @@ import scala.reflect.runtime.universe._
  *
  * Usage:
  * import ch.zzeekk.spark.temporalquery.LinearFloatQueryUtil._ // this imports linear* implicit functions on DataFrame & Columns
- * implicit val tqc =  LinearQueryConfig(intervalDef = HalfOpenInterval(0f, Float.MaxValue)) // configure options for linear query operations
+ * implicit val tqc = LinearHalfOpenIntervalQueryConfig.withDefaultIntervalDef() // configure options for linear query operations if needed
  * implicit val sss = ss // make SparkSession implicitly available
  * val df_joined = df1.linearJoin(df2) // use linear query functions with Spark
  */
-object LinearFloatQueryUtil extends LinearGenericQueryUtil[Float]
+object LinearFloatQueryUtil extends LinearGenericQueryUtil[Float] {
+  implicit val defaultHalfOpenIntervalDef: HalfOpenInterval[Float] = HalfOpenInterval(Float.NegativeInfinity, Float.PositiveInfinity)
+}
 
 /**
  * Linear query utils for interval axis of type Double
  *
  * Usage:
  * import ch.zzeekk.spark.temporalquery.LinearDoubleQueryUtil._ // this imports linear* implicit functions on DataFrame & Columns
- * implicit val tqc =  LinearQueryConfig(intervalDef = HalfOpenInterval(0d, Double.MaxValue)) // configure options for linear query operations
+ * implicit val tqc = LinearHalfOpenIntervalQueryConfig.withDefaultIntervalDef() // configure options for linear query operations if needed
  * implicit val sss = ss // make SparkSession implicitly available
  * val df_joined = df1.linearJoin(df2) // use linear query functions with Spark
  */
-object LinearDoubleQueryUtil extends LinearGenericQueryUtil[Double]
+object LinearDoubleQueryUtil extends LinearGenericQueryUtil[Double] {
+  implicit val defaultHalfOpenIntervalDef: HalfOpenInterval[Double] = HalfOpenInterval(Double.NegativeInfinity, Double.PositiveInfinity)
+}
 
 /**
  * Generic class to provide linear query utils for different interval axis types
@@ -40,25 +42,33 @@ object LinearDoubleQueryUtil extends LinearGenericQueryUtil[Double]
 class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with Logging {
 
   /**
-   * Configuration Parameters. An instance of this class is needed as implicit parameter.
+   * Configuration Parameters for operations on closed intervals. An instance of this class is needed as implicit parameter.
    */
-  case class LinearClosedIntervalQueryConfig( override val fromColName: String    = "position_von",
-                                override val toColName: String      = "position_bis",
-                                override val additionalTechnicalColNames: Seq[String] = Seq(),
-                                override val intervalDef: ClosedInterval[T]
-                              ) extends ClosedIntervalQueryConfig[T] with LinearQueryConfigMarker {
+  case class LinearClosedIntervalQueryConfig( override val fromColName: String = "position_von",
+                                              override val toColName: String = "position_bis",
+                                              override val additionalTechnicalColNames: Seq[String] = Seq(),
+                                              override val intervalDef: ClosedInterval[T]
+                                            ) extends ClosedIntervalQueryConfig[T] with LinearQueryConfigMarker {
     override lazy val config2: LinearClosedIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
   /**
-   * Configuration Parameters. An instance of this class is needed as implicit parameter.
+   * Configuration Parameters for operations on half-open intervals. An instance of this class is needed as implicit parameter.
    */
-  case class LinearHalfOpenIntervalQueryConfig( override val fromColName: String    = "position_von",
-                                              override val toColName: String      = "position_bis",
-                                              override val additionalTechnicalColNames: Seq[String] = Seq(),
-                                              override val intervalDef: HalfOpenInterval[T]
-                                            ) extends HalfOpenIntervalQueryConfig[T] with LinearQueryConfigMarker {
+  case class LinearHalfOpenIntervalQueryConfig( override val fromColName: String = "position_von",
+                                                override val toColName: String = "position_bis",
+                                                override val additionalTechnicalColNames: Seq[String] = Seq(),
+                                                override val intervalDef: HalfOpenInterval[T]
+                                              ) extends HalfOpenIntervalQueryConfig[T] with LinearQueryConfigMarker {
     override lazy val config2: LinearHalfOpenIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+  }
+  object LinearHalfOpenIntervalQueryConfig {
+    /**
+     * Alternative method to create a LinearHalfOpenIntervalQueryConfig providing a default intervalDef by an implicit parameter
+     */
+    def withDefaultIntervalDef(fromColName: String = "position_von", toColName: String = "position_bis",  additionalTechnicalColNames: Seq[String] = Seq())(implicit intervalDef: HalfOpenInterval[T]): LinearHalfOpenIntervalQueryConfig = {
+      LinearHalfOpenIntervalQueryConfig(fromColName, toColName, Seq(), intervalDef = intervalDef)
+    }
   }
 
   /**
