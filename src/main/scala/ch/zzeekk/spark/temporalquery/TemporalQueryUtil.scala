@@ -31,13 +31,15 @@ object TemporalQueryUtil extends Serializable with Logging {
                                                   Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)
                                                 )
                                  ) extends ClosedIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
-    val minDate: Timestamp = intervalDef.lowerBound
-    val maxDate: Timestamp = intervalDef.upperBound
+    @deprecated("use lowerHorizon instead")
+    val minDate: Timestamp = intervalDef.lowerHorizon
+    @deprecated("use upperHorizon instead")
+    val maxDate: Timestamp = intervalDef.upperHorizon
     override lazy val config2: TemporalClosedIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
   /**
-   * Configuration Parameters. An instance of this class is needed as implicit parameter for all temporal query functions.
+   * Configuration Parameters for operations on temporal interval axis. An instance of this class is needed as implicit parameter for all temporal query functions.
    */
   case class TemporalHalfOpenIntervalQueryConfig(override val fromColName: String    = "gueltig_ab",
                                                  override val toColName: String      = "gueltig_bis",
@@ -46,8 +48,10 @@ object TemporalQueryUtil extends Serializable with Logging {
                                                     Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00")
                                                   )
                                                 ) extends HalfOpenIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
-    val minDate: Timestamp = intervalDef.lowerBound
-    val maxDate: Timestamp = intervalDef.upperBound
+    @deprecated("use intervalDef.lowerHorizon instead")
+    val minDate: Timestamp = intervalDef.lowerHorizon
+    @deprecated("use intervalDef.upperHorizon instead")
+    val maxDate: Timestamp = intervalDef.upperHorizon
     override lazy val config2: TemporalHalfOpenIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 

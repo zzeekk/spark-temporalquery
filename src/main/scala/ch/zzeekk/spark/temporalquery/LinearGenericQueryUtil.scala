@@ -157,7 +157,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
      * - aggExpressions: Beim Bereinigen zu erstellende Aggregationen
      * - rnkFilter: Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
      * - extend: Wenn true und fillGapsWithNull=true, dann werden für jeden key Zeilen mit Null-werten hinzugefügt,
-     *           sodass die ganze lineare Achse [lowerBound , upperBound] von allen keys abgedeckt wird
+     *           sodass die ganze lineare Achse [lowerHorizon , upperHorizon] von allen keys abgedeckt wird
      * - fillGapsWithNull: Wenn true, dann werden Lücken in der linearen Achse mit Nullzeilen geschlossen.
      *   ! fillGapsWithNull muss auf true gesetzt werden, damit extend=true etwas bewirkt !
      */
@@ -195,7 +195,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
      * Hereby the intervals may be shortened on the lower bound and extended on the upper bound.
      * To the lower bound ceiling is applied whereas to the upper bound flooring.
      * If the dataframe has a discreteness of millisecond or coarser, then the only two changes are:
-     * If a timestamp lies outside of [lowerBound, upperBound] it will be replaced by lowerBound, upperBound respectively.
+     * If a timestamp lies outside of [lowerHorizon, upperHorizon] it will be replaced by lowerHorizon, upperHorizon respectively.
      * Rows for which the validity ends before it starts, i.e. with toCol.before(fromCol), are removed.
      *
      * Note: This function needs LinearQueryConfig with a ClosedInterval definition. ClosedInterval definitions can only

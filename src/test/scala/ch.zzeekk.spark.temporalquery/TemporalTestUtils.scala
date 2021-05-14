@@ -8,8 +8,8 @@ object TemporalTestUtils extends TestUtils {
   import session.implicits._
 
   implicit val defaultConfig: TemporalClosedIntervalQueryConfig = TemporalClosedIntervalQueryConfig()
-  val initiumTemporisString: String = defaultConfig.minDate.toString
-  val finisTemporisString: String = defaultConfig.maxDate.toString
+  val initiumTemporisString: String = defaultConfig.lowerHorizon.toString
+  val finisTemporisString: String = defaultConfig.upperHorizon.toString
 
   // some beautiful nasty data frames for testing
 

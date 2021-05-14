@@ -14,13 +14,13 @@ import scala.reflect.runtime.universe._
 abstract class IntervalDef[T : Ordering : TypeTag] extends Serializable {
 
   /**
-   * Define lower bound of the interval axis
+   * Define lower horizon of the interval axis
    */
-  def lowerBound: T
+  def lowerHorizon: T
   /**
-   * Define upper bound of the interval axis
+   * Define upper horizon of the interval axis
    */
-  def upperBound: T
+  def upperHorizon: T
   /**
    * Expression to check if a value is included in a given interval
    */
@@ -34,11 +34,11 @@ abstract class IntervalDef[T : Ordering : TypeTag] extends Serializable {
    */
   def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column
   /**
-   * make sure value is between lower- and upperBound
+   * make sure value is between lower- and upperHorizon
    */
-  @inline def fitToBoundaries(value: T): T = least(greatest(value, lowerBound), upperBound)
-  def getFitToBoundariesExpr(valueCol: Column): Column = {
-    functions.when(valueCol.isNotNull, functions.least(functions.greatest(valueCol, functions.lit(lowerBound)), functions.lit(upperBound)))
+  @inline def fitToHorizon(value: T): T = least(greatest(value, lowerHorizon), upperHorizon)
+  def getFitToHorizonExpr(valueCol: Column): Column = {
+    functions.when(valueCol.isNotNull, functions.least(functions.greatest(valueCol, functions.lit(lowerHorizon)), functions.lit(upperHorizon)))
   }
 
   // Helpers
@@ -49,13 +49,13 @@ abstract class IntervalDef[T : Ordering : TypeTag] extends Serializable {
 /**
  * A closed interval is an interval which includes its lower and upper bound.
  * Use this for discret interval axis.
- * @param lowerBound minimum value of the interval axis
- * @param upperBound maximum value of the interval axis
+ * @param lowerHorizon negative infinity value of the interval axis. This value is used to denote intervals which have no lower bound.
+ * @param upperHorizon positive infinity value of the interval axis. This value is used to denote intervals which have no upper bound.
  * @tparam T: scala type for discrete interval axis, e.g. Timestamp, Integer, ...
  */
-case class ClosedInterval[T: Ordering: TypeTag](override val lowerBound: T, override val upperBound: T, discreteAxisDef: DiscreteAxisDef[T]) extends IntervalDef[T] {
-  assert(lowerBound == floor(lowerBound), s"lowerBound $lowerBound is not discrete value of the axis")
-  assert(upperBound == floor(upperBound), s"lowerBound $upperBound is not discrete value of the axis")
+case class ClosedInterval[T: Ordering: TypeTag](override val lowerHorizon: T, override val upperHorizon: T, discreteAxisDef: DiscreteAxisDef[T]) extends IntervalDef[T] {
+  assert(lowerHorizon == floor(lowerHorizon), s"lowerHorizon $lowerHorizon is not discrete value of the axis")
+  assert(upperHorizon == floor(upperHorizon), s"upperHorizon $upperHorizon is not discrete value of the axis")
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
     fromCol <= valueCol && valueCol <= toCol
   }
@@ -69,7 +69,7 @@ case class ClosedInterval[T: Ordering: TypeTag](override val lowerBound: T, over
   /**
    * Round down a value to the next discrete value of the interval axis, respecting interval axis boundaries.
    */
-  def floor(value: T): T = fitToBoundaries(discreteAxisDef.floor(value))
+  def floor(value: T): T = fitToHorizon(discreteAxisDef.floor(value))
   def getFloorExpr(valueCol: Column): Column = {
     val udfTransform = udf((v: Any) => Option(v).map(x => floor(x.asInstanceOf[T])))
     udfTransform(valueCol)
@@ -78,7 +78,7 @@ case class ClosedInterval[T: Ordering: TypeTag](override val lowerBound: T, over
   /**
    * Round up a value to the next discrete value of the interval axis, respecting interval axis boundaries.
    */
-  def ceil(value: T): T = fitToBoundaries(discreteAxisDef.ceil(value))
+  def ceil(value: T): T = fitToHorizon(discreteAxisDef.ceil(value))
   def getCeilExpr(valueCol: Column): Column = {
     val udfTransform = udf((v: Any) => Option(v).map(x => ceil(x.asInstanceOf[T])))
     udfTransform(valueCol)
@@ -88,7 +88,7 @@ case class ClosedInterval[T: Ordering: TypeTag](override val lowerBound: T, over
    * Get the predecessor for a scala value of type T for this interval axis definition
    */
   def predecessor(value: T): T =
-    fitToBoundaries(if (value==upperBound) value else discreteAxisDef.predecessor(value)) // max value has no predecessor
+    fitToHorizon(if (value==lowerHorizon || value==upperHorizon) value else discreteAxisDef.predecessor(value)) // max value has no predecessor
   def getPredecessorExpr(valueCol: Column): Column = {
     val udfTransform = udf((v: Any) => Option(v).map(x => predecessor(x.asInstanceOf[T])))
     udfTransform(valueCol)
@@ -98,7 +98,7 @@ case class ClosedInterval[T: Ordering: TypeTag](override val lowerBound: T, over
    * Get the successor for a scala value of type T for this interval axis definition
    */
   def successor(value: T): T =
-    fitToBoundaries(if (value==lowerBound) value else discreteAxisDef.successor(value)) // min value has no successor
+    fitToHorizon(if (value==lowerHorizon || value==upperHorizon) value else discreteAxisDef.successor(value)) // min value has no successor
   def getSuccessorExpr(valueCol: Column): Column = {
     val udfTransform = udf((v: Any) => Option(v).map(x => successor(x.asInstanceOf[T])))
     udfTransform(valueCol)
@@ -108,11 +108,11 @@ case class ClosedInterval[T: Ordering: TypeTag](override val lowerBound: T, over
 /**
  * Lower bound is included, upper bound is excluded
  * Use this mainly for continuous interval axis.
- * @param lowerBound minimum value of the interval axis
- * @param upperBound maximum value of the interval axis
+ * @param lowerHorizon negative infinity value of the interval axis. This value is used to denote intervals which have no lower bound.
+ * @param upperHorizon positive infinity value of the interval axis. This value is used to denote intervals which have no upper bound.
  * @tparam T: scala type for continuous interval axis, e.g. Float, Double...
  */
-case class HalfOpenInterval[T: Ordering: TypeTag](override val lowerBound: T, override val upperBound: T) extends IntervalDef[T] {
+case class HalfOpenInterval[T: Ordering: TypeTag](override val lowerHorizon: T, override val upperHorizon: T) extends IntervalDef[T] {
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
     fromCol <= valueCol && valueCol < toCol
   }

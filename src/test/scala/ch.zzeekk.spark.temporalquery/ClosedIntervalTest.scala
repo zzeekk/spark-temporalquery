@@ -78,7 +78,7 @@ class ClosedIntervalTest extends FunSuite with TestUtils {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
       ("cut of fraction of second"                      ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56"),
       ("subtract a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59"),
-      ("max value has no predecessor"                     ,secondIntervalDef.upperBound) -> secondIntervalDef.upperBound
+      ("max value has no predecessor"                     ,secondIntervalDef.upperHorizon) -> secondIntervalDef.upperHorizon
     )
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.predecessor, argExpMap)
   }
@@ -88,15 +88,15 @@ class ClosedIntervalTest extends FunSuite with TestUtils {
       ("cut of fraction of second"                 ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:57"),
       ("add a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:59:59")) -> Timestamp.valueOf("2019-03-03 01:00:0"),
       ("add a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:1"),
-      ("min value has no successor"                ,secondIntervalDef.lowerBound) -> secondIntervalDef.lowerBound
+      ("min value has no successor"                ,secondIntervalDef.lowerHorizon) -> secondIntervalDef.lowerHorizon
     )
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.successor, argExpMap)
   }
 
   test("cut off at boundaries") {
     val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("cut off lower boundary",Timestamp.valueOf("1234-09-05 14:34:56.123456789")) -> limitedIntervalDef.lowerBound,
-      ("cut off upper boundary",Timestamp.valueOf("3456-03-03 00:59:59")) -> limitedIntervalDef.upperBound
+      ("cut off lower boundary",Timestamp.valueOf("1234-09-05 14:34:56.123456789")) -> limitedIntervalDef.lowerHorizon,
+      ("cut off upper boundary",Timestamp.valueOf("3456-03-03 00:59:59")) -> limitedIntervalDef.upperHorizon
     )
     testArgumentExpectedMapWithComment[Timestamp, Timestamp](limitedIntervalDef.successor, argExpMap)
   }

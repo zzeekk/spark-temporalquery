@@ -4,15 +4,15 @@ import org.scalatest.FunSuite
 
 class HalfOpenIntervalTest extends FunSuite with TestUtils{
 
-  private val floatIntervalDef = HalfOpenInterval[Float](lowerBound = 0f, upperBound = Float.MaxValue)
-  private val limitedIntervalDef = HalfOpenInterval[Float](lowerBound = 23.34f, upperBound = 45.32f)
+  private val floatIntervalDef = HalfOpenInterval[Float](lowerHorizon = 0f, upperHorizon = Float.MaxValue)
+  private val limitedIntervalDef = HalfOpenInterval[Float](lowerHorizon = 23.34f, upperHorizon = 45.32f)
 
   test("cut off at boundaries)") {
     val argExpMap = Map(
-      ("cut off lower boundary",10f) -> limitedIntervalDef.lowerBound,
-      ("cut off upper boundary",999f) -> limitedIntervalDef.upperBound
+      ("cut off lower boundary",10f) -> limitedIntervalDef.lowerHorizon,
+      ("cut off upper boundary",999f) -> limitedIntervalDef.upperHorizon
     )
-    testArgumentExpectedMapWithComment[Float, Float](limitedIntervalDef.fitToBoundaries, argExpMap)
+    testArgumentExpectedMapWithComment[Float, Float](limitedIntervalDef.fitToHorizon, argExpMap)
   }
 
   // TODO: adapt intervalComplement for HalfOpenInterval

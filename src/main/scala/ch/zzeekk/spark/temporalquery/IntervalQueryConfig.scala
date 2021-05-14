@@ -33,20 +33,20 @@ abstract class IntervalQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Ser
   // helper column names
   val definedColName: String = "_defined"
 
-  // prepared column objects (not serializable)
+  // prepared column objects (implemented as methods as Column is not serializable)
   def fromCol: Column = col(fromColName)
   def toCol: Column = col(toColName)
   def fromCol2: Column = col(fromColName2)
   def toCol2: Column = col(toColName2)
   def definedCol: Column = col(definedColName)
 
-  def lowerBound: T = intervalDef.lowerBound
-  def upperBound: T = intervalDef.upperBound
+  def lowerHorizon: T = intervalDef.lowerHorizon
+  def upperHorizon: T = intervalDef.upperHorizon
 
   // interval functions
   def isInIntervalExpr(value: Column): Column = intervalDef.isInIntervalExpr(value, fromCol, toCol)
   def isValidIntervalExpr: Column = intervalDef.isValidIntervalExpr(fromCol, toCol)
-  def isInBoundariesExpr(value: Column): Column = value.between(lit(lowerBound), lit(upperBound))
+  def isInBoundariesExpr(value: Column): Column = value.between(lit(lowerHorizon), lit(upperHorizon))
   def joinIntervalExpr(df1: DataFrame, df2: DataFrame): Column =
     intervalDef.intervalJoinExpr(df1(fromColName), df1(toColName), df2(fromColName), df2(toColName) )
   def joinIntervalExpr2(df1: DataFrame, df2: DataFrame): Column =
@@ -63,6 +63,6 @@ abstract class ClosedIntervalQueryConfig[T: Ordering] extends IntervalQueryConfi
 }
 
 abstract class HalfOpenIntervalQueryConfig[T: Ordering] extends IntervalQueryConfig[T, HalfOpenInterval[T]] {
-  def getPredecessorIntervalEndExpr(startValue: Column): Column = intervalDef.getFitToBoundariesExpr(startValue)
-  def getSuccessorIntervalStartExpr(endValue: Column): Column = intervalDef.getFitToBoundariesExpr(endValue)
+  def getPredecessorIntervalEndExpr(startValue: Column): Column = intervalDef.getFitToHorizonExpr(startValue)
+  def getSuccessorIntervalStartExpr(endValue: Column): Column = intervalDef.getFitToHorizonExpr(endValue)
 }

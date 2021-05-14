@@ -328,7 +328,7 @@ class TemporalQueryUtilTest extends FunSuite with Logging {
   test("temporalExtendRange_dfLeft") {
     // argument: dfLeft from object TestUtils
     val actual = dfLeft.temporalExtendRange(Seq("id"))
-    val rowsExpected = Seq((0,4.2,defaultConfig.minDate,defaultConfig.maxDate))
+    val rowsExpected = Seq((0,4.2,defaultConfig.lowerHorizon,defaultConfig.upperHorizon))
     val expected = rowsExpected.toDF("id", "Wert_L", defaultConfig.fromColName, defaultConfig.toColName )
     val expectedWithActualColumns = expected.select(actual.columns.map(col):_*)
     val resultat = dfEqual(actual,expectedWithActualColumns)
