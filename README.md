@@ -67,7 +67,7 @@ For temporal queries a time axis with datatype timestamp is needed. The axis can
 - ClosedInterval with different discrete step size, or
 - HalfOpenInterval
 via `TemporalQueryConfig.intervalDef`
-The axis starts at `TemporalQueryConfig.intervalDef.minValue` and ends at `TemporalQueryConfig.intervalDef.maxValue`.
+The axis starts at `TemporalClosedIntervalQueryConfig.intervalDef.lowerHorizon` and ends at `TemporalClosedIntervalQueryConfig.intervalDef.upperHorizon`.
 
 Before using the operations below you must ensure that your data satisfies the requirements of the chosen `intervalDef` configuration.
 Moreover the data frame must not contain temporally overlapping entries or entries where validTo < validFrom as this will lead to confusing results.
