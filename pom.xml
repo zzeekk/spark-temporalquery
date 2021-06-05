@@ -29,13 +29,77 @@
 			</properties>
 		</profile>
 		<profile>
-			<id>scala-2.10</id>
-			<properties>
-				<scala.minor.version>2.10</scala.minor.version>
-				<scala.version>${scala.minor.version}.7</scala.version>
-				<!-- scala 2.10 support removed from spark with version 2.3 -->
-				<spark.version>2.2.3</spark.version>
-			</properties>
+			<id>release-sonatype</id>
+			<distributionManagement>
+				<snapshotRepository>
+					<id>ossrh</id>
+					<name>Central Repository OSSRH</name>
+					<url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+				</snapshotRepository>
+				<repository>
+					<id>ossrh</id>
+					<name>Central Repository OSSRH</name>
+					<url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+				</repository>
+			</distributionManagement>
+			<build>
+				<plugins>
+					<!-- create scala-doc -->
+					<plugin>
+						<groupId>net.alchim31.maven</groupId>
+						<artifactId>scala-maven-plugin</artifactId>
+						<version>4.3.1</version>
+						<executions>
+							<execution>
+								<id>scala-doc</id>
+								<goals>
+									<goal>doc-jar</goal>
+								</goals>
+								<configuration>
+									<args>
+										<arg>-no-link-warnings</arg>
+									</args>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<!-- sign artifacts with gpg -->
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.6</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+								<configuration>
+									<!-- Prevent `gpg` from using pinentry programs -->
+									<gpgArguments>
+										<arg>--pinentry-mode</arg>
+										<arg>loopback</arg>
+									</gpgArguments>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<!-- deploy to sonatype / maven central -->
+					<plugin>
+						<groupId>org.sonatype.plugins</groupId>
+						<artifactId>nexus-staging-maven-plugin</artifactId>
+						<version>1.6.7</version>
+						<extensions>true</extensions>
+						<configuration>
+							<serverId>ossrh</serverId>
+							<nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
+							<autoReleaseAfterClose>true</autoReleaseAfterClose>
+							<stagingProgressTimeoutMinutes>10</stagingProgressTimeoutMinutes>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
 		</profile>
 	</profiles>
 
@@ -44,7 +108,6 @@
 	</properties>
 
 	<dependencies>
-
 		<dependency>
 			<groupId>org.apache.spark</groupId>
 			<artifactId>spark-sql_${scala.minor.version}</artifactId>
@@ -147,13 +210,5 @@
 
 		</plugins>
 	</build>
-
-	<distributionManagement>
-		<repository>
-			<id>bintray-zach-zzeekk-release</id>
-			<name>zach-zzeekk-release</name>
-			<url>https://api.bintray.com/maven/zach/zzeekk-release/spark.temporalquery_${scala.minor.version}/;publish=1</url>
-		</repository>
-	</distributionManagement>
 
 </project>
