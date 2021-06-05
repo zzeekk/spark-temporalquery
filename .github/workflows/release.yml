@@ -39,28 +39,26 @@ jobs:
     #    printenv
     - name: Maven Set Release Version
       run: sed -i "/${MVN_CURRENT_VERSION}/{s//${MVN_RELEASE_VERSION}/;:p;n;bp}" pom.xml
-      
-    - name: Maven Deploy to Bintray for Scala 2.11
-      env:
-        BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
-      run: |
-        mkdir -p ~/.m2
-        echo "<settings><servers><server><id>bintray-zach-zzeekk-release</id><username>zach</username><password>${BINTRAY_API_KEY}</password></server></servers></settings>" > ~/.m2/settings.xml
-        mvn -Pscala-2.11 -DskipTests clean deploy -f pom.xml
-    - name: Maven Deploy to Bintray for Scala 2.12
-      env:
-        BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
-      run: |
-        mkdir -p ~/.m2
-        echo "<settings><servers><server><id>bintray-zach-zzeekk-release</id><username>zach</username><password>${BINTRAY_API_KEY}</password></server></servers></settings>" > ~/.m2/settings.xml
-        mvn -Pscala-2.12 -DskipTests clean deploy -f pom.xml
-    - name: Maven Deploy to Bintray for Scala 2.10
-      env:
-        BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
-      run: |
-        mkdir -p ~/.m2
-        echo "<settings><servers><server><id>bintray-zach-zzeekk-release</id><username>zach</username><password>${BINTRAY_API_KEY}</password></server></servers></settings>" > ~/.m2/settings.xml
-        mvn  -Pscala-2.10 -DskipTests clean deploy -f pom.xml
+
+    - name: Maven deploy to sonatype for Scala 2.11
+      uses: samuelmeuli/action-maven-publish@v1
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
+        nexus_username: ${{ secrets.SONATYPE_USERNAME }}
+        nexus_password: ${{ secrets.SONATYPE_PASSWORD }}
+        maven_profiles: scala-2.11,release-sonatype
+        maven_args: -B -f pom.xml
+
+    - name: Maven deploy to sonatype for Scala 2.12
+      uses: samuelmeuli/action-maven-publish@v1
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
+        nexus_username: ${{ secrets.SONATYPE_USERNAME }}
+        nexus_password: ${{ secrets.SONATYPE_PASSWORD }}
+        maven_profiles: scala-2.12,release-sonatype
+        maven_args: -B -f pom.xml
 
     - name: Git Commit and Tag Release
       run: |
