@@ -26,12 +26,12 @@ object IntervalQueryImpl extends Logging {
   /**
    * Search for alias in DataFrame's logical plan.
    */
-  private def getAlias(df: DataFrame): Option[String] = getAliasFromPlan(df.queryExecution.analyzed)
+  def getAlias(df: DataFrame): Option[String] = getAliasFromPlan(df.queryExecution.analyzed)
 
   /**
    * Keep Dataframe Alias over any given transform.
    */
-  private[temporalquery] def keepAlias(df: DataFrame, transform: (DataFrame) => DataFrame): DataFrame = {
+  def keepAlias(df: DataFrame, transform: (DataFrame) => DataFrame): DataFrame = {
     getAlias(df).map(transform(df).alias).getOrElse(transform(df))
   }
 
@@ -45,9 +45,22 @@ object IntervalQueryImpl extends Logging {
   /**
    * Create key condition. If possible use alias to reduce ambiguous column errors.
    */
-  private[temporalquery] def createKeyCondition( df1:DataFrame, df2:DataFrame, keys:Seq[String] ) : Column = {
+  private[temporalquery] def createAliasKeyCondition( df1:DataFrame, df2:DataFrame, keys:Seq[String] ) : Column = {
     keys.foldLeft(lit(true)){ case (cond,key) => cond and getColumnRef(df1,key)===getColumnRef(df2,key) }
   }
+
+  /**
+   * Create key condition using renamed columns to avoid ambiguous column errors.
+   * DataFrame df1 and df2 must be prepared with `<key>__1` and `<key>__2` columns for each key.
+   */
+  private def createRenamedKeyCondition( df1:DataFrame, df2:DataFrame, keys:Seq[String] ) : Column = {
+    keys.foldLeft(lit(true)){ case (cond,key) => cond and col(s"$key$joinColPostFix1")===col(s"$key$joinColPostFix2") }
+  }
+  private def renameKeys(df: DataFrame, keys:Seq[String], postFix: String): DataFrame = keys.foldLeft(df){
+    case (df, key) => df.withColumnRenamed(key, s"$key$postFix")
+  }
+  private val joinColPostFix1 = "__1"
+  private val joinColPostFix2 = "__2"
 
   private[temporalquery] def roundIntervalsToDiscreteTime[T: Ordering: TypeTag](df: DataFrame)
                                                                                (implicit tc: ClosedIntervalQueryConfig[T]): DataFrame= {
@@ -69,23 +82,26 @@ object IntervalQueryImpl extends Logging {
 
   /**
    * join two interval data frames
-   * colsToConsolidate must occur in both data frames df1 and df2 and are consolidated in the result frame with df1 precedence over df2 using coalesce.
+   * keys must occur in both data frames df1 and df2 and are consolidated in the result frame with df1 precedence over df2 using coalesce.
    * This is used to implement "natural join" and "join using" sql behaviour.
    */
-  private[temporalquery] def joinIntervals[T: Ordering: TypeTag](df1:DataFrame, df2:DataFrame, keyCondition:Column, joinType:String = "inner", colsToConsolidate: Seq[String] = Seq())
+  private[temporalquery] def joinIntervals[T: Ordering: TypeTag](df1: DataFrame, df2: DataFrame, keys: Seq[String], joinType:String = "inner", additionalJoinCondition: Column = lit(true))
                                                                 (implicit ss:SparkSession, tc:IntervalQueryConfig[T,_]) : DataFrame = {
     require(!(df2.columns.contains(tc.fromColName2) || df2.columns.contains(tc.toColName2)),
       s"(joinIntervals) Your right-dataframe must not contain columns named ${tc.fromColName2} or ${tc.toColName2}! df.columns = ${df2.columns.mkString(",")}")
-    require(colsToConsolidate.diff(df1.columns).isEmpty, s"(temporalJoinImpl) Your left-dataframe doesn't contain column to consolidate ${colsToConsolidate.diff(df1.columns).mkString(" and ")}")
-    require(colsToConsolidate.diff(df2.columns).isEmpty, s"(temporalJoinImpl) Your right-dataframe doesn't contain column to consolidate ${colsToConsolidate.diff(df2.columns).mkString(" and ")}")
+    require(keys.diff(df1.columns).isEmpty, s"(joinIntervals) Your left-dataframe doesn't contain column to consolidate ${keys.diff(df1.columns).mkString(" and ")}")
+    require(keys.diff(df2.columns).isEmpty, s"(joinIntervals) Your right-dataframe doesn't contain column to consolidate ${keys.diff(df2.columns).mkString(" and ")}")
 
-    // temporal join
-    val df2Renamed = renameIntervalCols2nd(df2)
-    val dfJoined = df1.join( df2Renamed, keyCondition and tc.joinIntervalExpr2(df1, df2Renamed), joinType)
+    // interval join
+    // rename keys to avoid column ambiguous errors
+    val df1Renamed = renameKeys(df1,keys,joinColPostFix1)
+    val df2Renamed = renameKeys(renameIntervalCols2nd(df2),keys,joinColPostFix2)
+    val keyCondition = createRenamedKeyCondition(df1Renamed, df2Renamed, keys)
+    val dfJoined = df1Renamed.join( df2Renamed, keyCondition and additionalJoinCondition and tc.joinIntervalExpr2(df1Renamed, df2Renamed), joinType)
 
     // select final schema
-    val commonColNames = colsToConsolidate
-    val commonCols = colsToConsolidate.map(colName => coalesce(df1(colName),df2(colName)).as(colName))
+    val commonColNames = keys
+    val commonCols = keys.map(key => coalesce(df1Renamed(s"$key$joinColPostFix1"),df2Renamed(s"$key$joinColPostFix2")).as(key))
     val colsDf1 = df1.columns.diff(commonColNames ++ tc.technicalColNames).map(df1(_))
     val colsDf2 = df2.columns.diff(commonColNames ++ tc.technicalColNames).map(df2(_))
     val timeColumns = Seq(greatest(tc.fromCol, tc.fromCol2).as(tc.fromColName),least(tc.toCol, tc.toCol2).as(tc.toColName))
@@ -94,7 +110,7 @@ object IntervalQueryImpl extends Logging {
   }
   private[temporalquery] def joinIntervalsWithKeysImpl[T: Ordering: TypeTag](df1:DataFrame, df2:DataFrame, keys:Seq[String], joinType:String = "inner" )
                                                                             (implicit ss:SparkSession, tc:IntervalQueryConfig[T,_]) : DataFrame = {
-    joinIntervals( df1, df2, createKeyCondition(df1, df2, keys), joinType, keys )
+    joinIntervals(df1, df2, keys, joinType)
   }
 
   /**
@@ -179,20 +195,19 @@ object IntervalQueryImpl extends Logging {
     val df1Extended = if (joinType=="full" || joinType=="right") cleanupExtendIntervals( df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Seq(), rnkFilter=true ).drop(tc.definedColName) else df1
     val df2Extended = if (joinType=="full" || joinType=="left") cleanupExtendIntervals( df2, keys, rnkExpressions.intersect(df2.columns.map(col)), Seq(), rnkFilter=true ).drop(tc.definedColName) else df2
     // join df1 & df2
-    joinIntervals( df1Extended, df2Extended, createKeyCondition(df1, df2, keys) and additionalJoinFilterCondition, joinType, keys )
+    joinIntervals(df1Extended, df2Extended, keys, joinType, additionalJoinFilterCondition)
   }
 
   /**
-   * left outer join
+   * left anti join
    */
-  private[temporalquery] def leftAntiJoinIntervals[T: Ordering: TypeTag](df1:DataFrame, df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column )
+  private[temporalquery] def leftAntiJoinIntervals[T: Ordering: TypeTag](df1:DataFrame, df2:DataFrame, keys:Seq[String], additionalJoinFilterCondition:Column )
                                                   (implicit ss:SparkSession, tc:IntervalQueryConfig[T,ClosedInterval[T]]): DataFrame = {
-    logger.debug(s"leftAntiJoinIntervals START: joinColumns = ${joinColumns.mkString(", ")}")
-    val resultColumns = df1.columns
-    val resultColumnsDf1 = df1.columns.map(df1(_))
+    logger.debug(s"leftAntiJoinIntervals START: keys = ${keys.mkString(", ")}")
+    val df1Cols = df1.columns.map(df1(_))
     val df2Renamed = renameIntervalCols2nd(df2)
 
-    val joinCondition: Column = createKeyCondition(df1, df2Renamed, joinColumns)
+    val joinCondition: Column = createAliasKeyCondition(df1, df2Renamed, keys)
       .and(tc.joinIntervalExpr2(df1, df2Renamed))
       .and(additionalJoinFilterCondition)
 
@@ -202,18 +217,18 @@ object IntervalQueryImpl extends Logging {
     val df1ExceptAntiJoin = df1.except(dfAntiJoin)
     // We need to combine df2 but without the columns which are used in additionalJoinFilterCondition
     val dfJoin = df1ExceptAntiJoin.join(df2Renamed, joinCondition, "inner")
-      .select(resultColumnsDf1 :+ tc.fromCol2 :+ tc.toCol2 :_*)
+      .select(df1Cols :+ tc.fromCol2 :+ tc.toCol2 :_*)
     logger.debug(s"leftAntiJoinIntervals: dfJoin.schema = ${dfJoin.schema.treeString}")
-    val df2Combined = combineIntervals(dfJoin.select(tc.fromColName2, tc.toColName2 +: joinColumns :_*), Seq())(implicitly[Ordering[T]], implicitly[TypeTag[T]], ss, tc.config2)
+    val df2Combined = combineIntervals(dfJoin.select(tc.fromColName2, tc.toColName2 +: keys :_*), Seq())(implicitly[Ordering[T]], implicitly[TypeTag[T]], ss, tc.config2)
     logger.debug(s"leftAntiJoinIntervals: df2Combined.schema = ${df2Combined.schema.treeString}")
 
-    val dfComplementJoin = if (joinColumns.isEmpty) df1ExceptAntiJoin.crossJoin(df2Combined)
-    else df1ExceptAntiJoin.join(df2Combined, joinColumns, "inner")
+    val dfComplementJoin = if (keys.isEmpty) df1ExceptAntiJoin.crossJoin(df2Combined)
+    else df1ExceptAntiJoin.join(df2Combined, keys, "inner")
     logger.debug(s"leftAntiJoinIntervals: dfComplementJoin.schema = ${dfComplementJoin.schema.treeString}")
 
     val udfIntervalComplement = getUdfIntervalComplement[T]
     val dfComplementJoin_complementArray = dfComplementJoin
-      .groupBy(resultColumnsDf1:_*)
+      .groupBy(df1Cols:_*)
       .agg(collect_set(struct(tc.fromCol2.as("_1"), tc.toCol2.as("_2"))).as("subtrahend"))
       .withColumn("complement_array", udfIntervalComplement(tc.fromCol, tc.toCol, col("subtrahend")))
       .cache()
@@ -224,7 +239,7 @@ object IntervalQueryImpl extends Logging {
       .drop("subtrahend",tc.fromColName,tc.toColName)
       .withColumn(tc.fromColName,col("complements._1"))
       .withColumn(tc.toColName,col("complements._2"))
-      .select(resultColumns.head, resultColumns.tail :_*)
+      .select(df1.columns.head, df1.columns.tail:_*)
     logger.debug(s"leftAntiJoinIntervals: dfComplement.schema = ${dfComplement.schema.treeString}")
 
     dfAntiJoin.union(dfComplement)
@@ -259,13 +274,15 @@ object IntervalQueryImpl extends Logging {
                                                 (implicit ss:SparkSession, tc:IntervalQueryConfig[T,_]) = {
     keepAlias(df, df => {
       // get ranges
-      val dfRanges = renameIntervalCols2nd(buildIntervalRanges(df, keys, extend)).as("ranges")
-      val keyCondition = createKeyCondition(df, dfRanges, keys)
+      val df1Renamed = renameKeys(df, keys, joinColPostFix1)
+      val df2Ranges = renameKeys(renameIntervalCols2nd(buildIntervalRanges(df, keys, extend)).as("ranges"), keys, joinColPostFix2)
+      val keyCondition = createRenamedKeyCondition(df1Renamed, df2Ranges, keys)
       // join back on input df
       val joinType = if (fillGapsWithNull) "left" else "inner"
-      val dfJoin = dfRanges.join(df, keyCondition and tc.isInIntervalExpr(tc.fromCol2), joinType)
+      val dfJoin = df2Ranges.join(df1Renamed, keyCondition and tc.isInIntervalExpr(tc.fromCol2), joinType)
       // select result
-      val selCols = keys.map(dfRanges(_)) ++ df.columns.diff(keys ++ tc.technicalColNames).map(dfJoin(_)) :+
+      val selCols = keys.map(key => col(s"$key$joinColPostFix2").as(key)) ++
+        df.columns.diff(keys ++ tc.technicalColNames).map(dfJoin(_)) :+
         tc.fromCol2.as(tc.fromColName) :+ tc.toCol2.as(tc.toColName)
       dfJoin.select(selCols: _*)
     })

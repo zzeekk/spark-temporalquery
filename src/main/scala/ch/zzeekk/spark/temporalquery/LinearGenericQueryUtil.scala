@@ -98,7 +98,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
      */
     def linearInnerJoin( df2:DataFrame, keyCondition:Column )
                        (implicit ss:SparkSession, tc:LinearQueryConfig) : DataFrame =
-      IntervalQueryImpl.joinIntervals( df1, df2, keyCondition )
+      IntervalQueryImpl.joinIntervals(df1, df2, keys = Seq(), joinType = "inner", keyCondition)
 
     /**
      * Implementiert ein full-outer-join von linearen Daten über eine Liste von gleichbenannten Spalten

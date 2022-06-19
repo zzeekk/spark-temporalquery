@@ -84,7 +84,7 @@ object TemporalQueryUtil extends Serializable with Logging {
      */
     def temporalInnerJoin( df2:DataFrame, keyCondition:Column )
                          (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame =
-      IntervalQueryImpl.joinIntervals( df1, df2, keyCondition )
+      IntervalQueryImpl.joinIntervals(df1, df2, keys = Seq(), joinType = "inner", keyCondition)
 
     /**
      * Implementiert ein full-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
