@@ -134,3 +134,11 @@ You can then use the following additional functions on Dataset/DataFrame
 - `temporalRoundDiscreteTime`
   sets the discreteness of the time scale to the discrete step size chosen in TemporalQueryConfig
   Note: this function only works on intervalDef's of type ClosedInterval. 
+
+## Troubleshooting
+
+### AnalysisException: Column ... is ambigous
+On exception `org.apache.spark.sql.AnalysisException: Column ... are ambiguous. It's probably because you joined several Datasets together, and some of these Datasets are the same. ...` when using temporal*Join methods, try to use df.alias on both DataFrames before joining.
+If temporal-query finds aliases it will use them in the join conditions.
+
+The exception might remain. In these cases you can disable the check by setting Spark property `spark.sql.analyzer.failAmbiguousSelfJoin = false`.
