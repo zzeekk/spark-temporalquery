@@ -137,7 +137,7 @@ You can then use the following additional functions on Dataset/DataFrame
 
 ## Troubleshooting
 
-### AnalysisException: Column ... is ambigous
+### AnalysisException: Column ... is ambiguous.
 On exception `org.apache.spark.sql.AnalysisException: Column ... are ambiguous. It's probably because you joined several Datasets together, and some of these Datasets are the same. ...` when using temporal*Join methods, try to use df.alias on both DataFrames before joining.
 If temporal-query finds aliases it will use them in the join conditions.
 
