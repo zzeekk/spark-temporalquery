@@ -40,7 +40,7 @@ trait TestUtils extends Logging {
   }
 
   def schemaEqual(df1: DataFrame, df2: DataFrame): Boolean = {
-    df1.schema.toDDL == df2.schema.toDDL // ignore nullability in comparision
+    df1.schema.sql == df2.schema.sql // ignore nullability in comparison
   }
 
   def dfEqual(df1: DataFrame, df2: DataFrame): Boolean = {
