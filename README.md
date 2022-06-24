@@ -7,7 +7,7 @@ Features:
 Breaking changes in version 2.x:
 - temporalRoundDiscreteTime is no longer included in temporalCleanupExtend. Add it separately if needed.
 - temporalCombine is no longer included in temporalCleanupExtend. Add it separately if needed. Note that this affects also temporal*Join methods.
-- superfluous parameter `keys:Seq[String] = Seq()` is removed from temporalCleanupExtend
+- superfluous parameter `keys:Seq[String] = Seq()` is removed from temporalCombine
 
 ## Usage
 - add maven dependency to project (hosted on maven central repository)
@@ -131,7 +131,7 @@ You can then use the following additional functions on Dataset/DataFrame
   - extend: If true and fillGapsWithNull=true, every key is extended with additional records with null values, so that for every key the whole timeline [minDate , maxDate] is covered (default=extend=true)
   - fillGapsWithNull: If true, gaps in history are filled with records with null values for every key (default=fillGapsWithNull=true)
   - Note: extend=true needs fillGapsWithNull=true in order to work
-- `temporalCombine( keys:Seq[String] = Seq(), ignoreColNames:Seq[String] = Seq() )`
+- `temporalCombine(ignoreColNames:Seq[String] = Seq() )`
   Combines successive records if there are no changes on the non-technical attributes.
   - ignoreColName: A list of columns to be ignored in change detection
 - `temporalUnifyRanges( keys:Seq[String] )`
