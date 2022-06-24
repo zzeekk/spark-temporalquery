@@ -10,9 +10,15 @@ Breaking changes in version 2.x:
 - superfluous parameter `keys:Seq[String] = Seq()` is removed from temporalCleanupExtend
 
 ## Usage
-- add maven dependency to project
-  repo: https://dl.bintray.com/zach/zzeekk-release
-  artifact: ch.zzeekk, spark-temporalquery, 2.0.0
+- add maven dependency to project (hosted on maven central repository)
+  repo: maven central repository
+```
+<dependency>
+  <groupId>ch.zzeekk.spark</groupId>
+  <artifactId>spark-temporalquery_2.12</artifactId>
+  <version>2.0.0</version>
+</dependency>
+```
 
 ### temporal queries
 TemporalQueryUtil provides implicit function on DataFrame to query temporal data with timestamp interval axis datatype.
