@@ -26,6 +26,9 @@ TemporalQueryUtil provides implicit function on DataFrame to query temporal data
 ```scala
   // this imports temporal* implicit functions on DataFrame
   import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
+  import ch.zzeekk.spark.temporalquery.{ClosedInterval, DiscreteTimeAxis}
+  import java.sql.Timestamp
+  import java.time.temporal.ChronoUnit
   // configure options for temporal query operations
   val intervalDef = ClosedInterval(Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS))
   implicit val tqc = TemporalClosedIntervalQueryConfig( fromColName="valid_from", toColName="valid_to", intervalDef = intervalDef)
@@ -50,6 +53,7 @@ The following shortcuts exists to use it with predefined datatypes:
 ```scala
   // this imports linear* implicit functions on DataFrame
   import ch.zzeekk.spark.temporalquery.LinearDoubleQueryUtil._
+  import ch.zzeekk.spark.temporalquery.HalfOpenInterval
   // configure options for linear query operations
   val intervalDef = HalfOpenInterval(0d, Double.MaxValue)
   implicit val lqc: LinearQueryConfig = LinearHalfOpenIntervalQueryConfig(fromColName="pos_from", toColName="pos_to", intervalDef = intervalDef)
