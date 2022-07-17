@@ -88,46 +88,49 @@ object TemporalQueryUtil extends Serializable with Logging {
 
     /**
      * Implementiert ein full-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-     * - rnkExpressions: Für den Fall, dass df1 oder df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     * @param rnkExpressions: Für den Fall, dass df1 oder df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
      *   wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt. Dies entspricht also ein join
      *   mit der Einschränkung, dass kein Muliplikation der Records im anderen frame stattfinden kann.
      *   Soll df1 oder df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
      *   Records aus df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet.
-     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * @param additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den full-join
+     * @param doCleanupExtend Kann auf false gesetzt werden, falls cleanupExtend Operation auf beiden Input-DataFrames bereits ausgeführt wurde (default = true)
      */
-    def temporalFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
+    def temporalFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true), doCleanupExtend: Boolean = true)
                         (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame =
-      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full" )
+      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend )
 
     /**
      * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-     * - rnkExpressions: Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     * @param rnkExpressions: Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
      *   wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt. Dies entspricht also ein join
      *   mit der Einschränkung, dass kein Muliplikation der Records in df1 stattfinden kann.
      *   Soll df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
      *   Records aus df1 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet.
-     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * @param additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * @param doCleanupExtend Kann auf false gesetzt werden, falls cleanupExtend Operation auf Input-DataFrame dfRight bereits ausgeführt wurde (default = true)
      */
-    def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
+    def temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true), doCleanupExtend: Boolean = true)
                         (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame =
-      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "left" )
+      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "left", doCleanupExtend )
 
     /**
      * Implementiert ein righ-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-     * - rnkExpressions: Für den Fall, dass df1 oder df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     * @param rnkExpressions: Für den Fall, dass df1 oder df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
      *   wird mit Hilfe des rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt. Dies entspricht also ein join
      *   mit der Einschränkung, dass kein Muliplikation der Records im anderen frame stattfinden kann.
      *   Soll df1 oder df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
      *   Records aus df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet.
-     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * @param additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den right-join
+     * @param doCleanupExtend Kann auf false gesetzt werden, falls cleanupExtend Operation auf Input-DataFrame dfLeft bereits ausgeführt wurde (default = true)
      */
-    def temporalRightJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
+    def temporalRightJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true), doCleanupExtend: Boolean = true)
                         (implicit ss:SparkSession, tc:TemporalQueryConfig) : DataFrame =
-      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right" )
+      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend )
 
     /**
      * Implementiert ein left-anti-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-anti-join
+     * @param additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-anti-join
      *
      * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
@@ -137,12 +140,12 @@ object TemporalQueryUtil extends Serializable with Logging {
 
     /**
      * Löst zeitliche Überlappungen
-     * - rnkExpressions: Priorität zum Bereinigen
-     * - aggExpressions: Beim Bereinigen zu erstellende Aggregationen
-     * - rnkFilter: Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
-     * - extend: Wenn true und fillGapsWithNull=true, dann werden für jeden key Zeilen mit Null-werten hinzugefügt,
+     * @param rnkExpressions: Priorität zum Bereinigen
+     * @param aggExpressions: Beim Bereinigen zu erstellende Aggregationen
+     * @param rnkFilter: Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
+     * @param extend: Wenn true und fillGapsWithNull=true, dann werden für jeden key Zeilen mit Null-werten hinzugefügt,
      *           sodass die ganze Zeitachse [minDate , maxDate] von allen keys abgedeckt wird
-     * - fillGapsWithNull: Wenn true, dann werden Lücken in der Historie mit Nullzeilen geschlossen.
+     * @param fillGapsWithNull: Wenn true, dann werden Lücken in der Historie mit Nullzeilen geschlossen.
      *   ! fillGapsWithNull muss auf true gesetzt werden, damit extend=true etwas bewirkt !
      */
     def temporalCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Seq()

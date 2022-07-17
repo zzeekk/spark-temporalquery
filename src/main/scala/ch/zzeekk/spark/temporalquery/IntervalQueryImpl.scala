@@ -188,12 +188,13 @@ object IntervalQueryImpl extends Logging {
 
   /**
    * outer join
+   * @param doCleanupExtend set to false if cleanupExtendsIntervals is already executed on the input DataFrames.
    */
-  private[temporalquery] def outerJoinIntervalsWithKey[T: Ordering: TypeTag](df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column, joinType:String)
+  private[temporalquery] def outerJoinIntervalsWithKey[T: Ordering: TypeTag](df1:DataFrame, df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column], additionalJoinFilterCondition:Column, joinType:String, doCleanupExtend: Boolean)
                                                       (implicit ss:SparkSession, tc:IntervalQueryConfig[T,_]): DataFrame = {
     // extend data frames
-    val df1Extended = if (joinType=="full" || joinType=="right") cleanupExtendIntervals( df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Seq(), rnkFilter=true ).drop(tc.definedColName) else df1
-    val df2Extended = if (joinType=="full" || joinType=="left") cleanupExtendIntervals( df2, keys, rnkExpressions.intersect(df2.columns.map(col)), Seq(), rnkFilter=true ).drop(tc.definedColName) else df2
+    val df1Extended = if ((joinType=="full" || joinType=="right") && doCleanupExtend) cleanupExtendIntervals( df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Seq(), rnkFilter=true ).drop(tc.definedColName) else df1
+    val df2Extended = if ((joinType=="full" || joinType=="left") && doCleanupExtend) cleanupExtendIntervals( df2, keys, rnkExpressions.intersect(df2.columns.map(col)), Seq(), rnkFilter=true ).drop(tc.definedColName) else df2
     // join df1 & df2
     joinIntervals(df1Extended, df2Extended, keys, joinType, additionalJoinFilterCondition)
   }

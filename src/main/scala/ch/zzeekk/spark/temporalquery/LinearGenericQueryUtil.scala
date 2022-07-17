@@ -102,46 +102,49 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
 
     /**
      * Implementiert ein full-outer-join von linearen Daten über eine Liste von gleichbenannten Spalten
-     * - rnkExpressions: Für den Fall, dass df1 oder df2 kein lineares 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     * @param rnkExpressions: Für den Fall, dass df1 oder df2 kein lineares 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
      *   wird mit Hilfe der rnkExpressions für jeden Wert genau eine Zeile ausgewählt. Dies entspricht also einem join
      *   mit der Einschränkung, dass keine Muliplikation der Records im anderen DataFrame stattfinden kann.
      *   Soll df1 oder df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
      *   Records aus df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet werden.
-     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * @param additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * @param doCleanupExtend Kann auf false gesetzt werden, falls cleanupExtend Operation auf beiden Input-DataFrames bereits ausgeführt wurde (default = true)
      */
-    def linearFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
+    def linearFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true), doCleanupExtend: Boolean = true )
                       (implicit ss:SparkSession, tc:LinearQueryConfig) : DataFrame =
-      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full" )
+      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend )
 
     /**
      * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleichbenannten Spalten
-     * - rnkExpressions: Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     * @param rnkExpressions: Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
      *   wird mit Hilfe der rnkExpressions für jeden Wert genau eine Zeile ausgewählt. Dies entspricht also einem join
      *   mit der Einschränkung, dass keine Muliplikation der Records in df1 stattfinden kann.
      *   Soll df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
      *   Records aus df1 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet werden.
-     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * @param additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * @param doCleanupExtend Kann auf false gesetzt werden, falls cleanupExtend Operation auf Input-DataFrame dfRight bereits ausgeführt wurde (default = true)
      */
-    def linearLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
+    def linearLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true), doCleanupExtend: Boolean = true )
                       (implicit ss:SparkSession, tc:LinearQueryConfig) : DataFrame =
-      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "left" )
+      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "left", doCleanupExtend )
 
     /**
-     * Implementiert ein righ-outer-join von linearen Daten über eine Liste von gleichbenannten Spalten
-     * - rnkExpressions: Für den Fall, dass df1 oder df2 kein lineares 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
+     * Implementiert ein right-outer-join von linearen Daten über eine Liste von gleichbenannten Spalten
+     * @param rnkExpressions: Für den Fall, dass df1 oder df2 kein lineares 1-1-mapping ist, also keys :+ fromColName nicht eindeutig sind,
      *   wird mit Hilfe der rnkExpressions für jeden Zeitpunkt genau eine Zeile ausgewählt. Dies entspricht also einem join
      *   mit der Einschränkung, dass keine Muliplikation der Records im anderen DataFrame stattfinden kann.
      *   Soll df1 oder df2 aber als eine one-to-many Relation gejoined werden und damit auch die Multiplikation von
      *   Records aus df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet werden.
-     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * @param additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-join
+     * @param doCleanupExtend Kann auf false gesetzt werden, falls cleanupExtend Operation auf Input-DataFrame dfLeft bereits ausgeführt wurde (default = true)
      */
-    def linearRightJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )
+    def linearRightJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true), doCleanupExtend: Boolean = true )
                        (implicit ss:SparkSession, tc:LinearQueryConfig) : DataFrame =
-      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right" )
+      IntervalQueryImpl.outerJoinIntervalsWithKey( df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend )
 
     /**
      * Implementiert einen left-anti-join von linearen Daten über eine Liste von gleichbenannten Spalten
-     * - additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-anti-join
+     * @param additionalJoinFilterCondition: zusätzliche non-equi-join Bedingungen für den left-anti-join
      *
      * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
@@ -153,12 +156,12 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
 
     /**
      * Löst lineare Überlappungen
-     * - rnkExpressions: Priorität zum Bereinigen
-     * - aggExpressions: Beim Bereinigen zu erstellende Aggregationen
-     * - rnkFilter: Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
-     * - extend: Wenn true und fillGapsWithNull=true, dann werden für jeden key Zeilen mit Null-werten hinzugefügt,
+     * @param rnkExpressions: Priorität zum Bereinigen
+     * @param aggExpressions: Beim Bereinigen zu erstellende Aggregationen
+     * @param rnkFilter: Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
+     * @param extend: Wenn true und fillGapsWithNull=true, dann werden für jeden key Zeilen mit Null-werten hinzugefügt,
      *           sodass die ganze lineare Achse [lowerHorizon , upperHorizon] von allen keys abgedeckt wird
-     * - fillGapsWithNull: Wenn true, dann werden Lücken in der linearen Achse mit Nullzeilen geschlossen.
+     * @param fillGapsWithNull: Wenn true, dann werden Lücken in der linearen Achse mit Nullzeilen geschlossen.
      *   ! fillGapsWithNull muss auf true gesetzt werden, damit extend=true etwas bewirkt !
      */
     def linearCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Seq()
