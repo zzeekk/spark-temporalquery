@@ -1,10 +1,9 @@
 package ch.zzeekk.spark.temporalquery
 
-import java.sql.Timestamp
-
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{col, lit, when}
-import org.apache.spark.sql.types.{DataType, DataTypes, StructType}
+
+import java.sql.Timestamp
 
 trait TestUtils extends Logging {
 

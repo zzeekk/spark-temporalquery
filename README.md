@@ -10,15 +10,16 @@ Breaking changes in version 2.x:
 - superfluous parameter `keys:Seq[String] = Seq()` is removed from temporalCombine
 
 ## Usage
-- add maven dependency to project (hosted on maven central repository)
-  repo: maven central repository
+Spark-temporalquery releases are published on maven central.
+To use it just add the following maven dependency for your Scala version to the project: 
 ```
 <dependency>
   <groupId>ch.zzeekk.spark</groupId>
   <artifactId>spark-temporalquery_2.12</artifactId>
-  <version>2.0.0</version>
+  <version>2.0.1</version>
 </dependency>
 ```
+See also [Builds](#builds) to review compatibility between Spark, Scala and Java.
 
 ### temporal queries
 TemporalQueryUtil provides implicit function on DataFrame to query temporal data with timestamp interval axis datatype.
@@ -144,6 +145,13 @@ You can then use the following additional functions on Dataset/DataFrame
 - `temporalRoundDiscreteTime`
   sets the discreteness of the time scale to the discrete step size chosen in TemporalQueryConfig
   Note: this function only works on intervalDef's of type ClosedInterval. 
+
+## Builds
+Spark-temporalquery is built and released for Scala 2.11 with Spark 2.4.x and Scala 2.12 with Spark 3.x.
+Spark 3.x does not support Scala 2.11. Newer versions of Spark 2.4.x would support Scala 2.12, but there is no spark-temporalquery release for this combination.
+
+Note that Spark 2.4 needs Java version 8, whereas Spark 3.x is compatible with Java 8/11/17.
+See also https://spark.apache.org/docs/latest/#downloading. 
 
 ## Troubleshooting
 
