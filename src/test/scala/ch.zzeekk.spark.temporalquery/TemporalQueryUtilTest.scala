@@ -668,6 +668,15 @@ class TemporalQueryUtilTest extends FunSuite with Logging {
     assert(resultat)
   }
 
+  test("temporalLeftJoin_dfEmpty") {
+    val dfEmpty = dfRight.where(lit(false))
+    val actual = dfLeft.temporalLeftJoin(dfEmpty,Seq("id"))
+    val expected = dfLeft.withColumn("wert_r", lit(null).cast("double"))
+    val resultat = dfEqual(actual,expected)
+    if (!resultat) printFailedTestResult("temporalLeftJoin_dfEmpty",Seq(dfLeft,dfEmpty))(actual,expected)
+    assert(resultat)
+  }
+
   test("temporalLeftJoin_rightMap") {
     // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.temporalLeftJoin(df2=dfMap, keys=Seq("id"))

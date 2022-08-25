@@ -26,7 +26,7 @@ class LinearDoubleQueryUtilTest extends FunSuite with Logging {
       (0, Some(4.2), true ,  171210.000000  ,  181209.0),
       (0, None     , false,  181209.000000  , intervalMaxValue)
     ).toDF("id","wert_l",defaultConfig.definedColName,defaultConfig.fromColName,defaultConfig.toColName)
-    val resultat = dfEqual(reorderCols(actual,expected), expected)
+    val resultat = dfEqual(actual, expected)
     
     if (!resultat) printFailedTestResult("temporalCleanupExtend_dfLeft",dfLeft)(reorderCols(actual,expected),expected)
     assert(resultat)

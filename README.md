@@ -7,12 +7,19 @@ Features:
 Breaking changes in version 2.x:
 - temporalRoundDiscreteTime is no longer included in temporalCleanupExtend. Add it separately if needed.
 - temporalCombine is no longer included in temporalCleanupExtend. Add it separately if needed. Note that this affects also temporal*Join methods.
-- superfluous parameter `keys:Seq[String] = Seq()` is removed from temporalCleanupExtend
+- superfluous parameter `keys:Seq[String] = Seq()` is removed from temporalCombine
 
 ## Usage
-- add maven dependency to project
-  repo: https://dl.bintray.com/zach/zzeekk-release
-  artifact: ch.zzeekk, spark-temporalquery, 2.0.0
+Spark-temporalquery releases are published on maven central.
+To use it just add the following maven dependency for your Scala version to the project: 
+```
+<dependency>
+  <groupId>ch.zzeekk.spark</groupId>
+  <artifactId>spark-temporalquery_2.12</artifactId>
+  <version>2.0.1</version>
+</dependency>
+```
+See also [Builds](#builds) to review compatibility between Spark, Scala and Java.
 
 ### temporal queries
 TemporalQueryUtil provides implicit function on DataFrame to query temporal data with timestamp interval axis datatype.
@@ -20,6 +27,9 @@ TemporalQueryUtil provides implicit function on DataFrame to query temporal data
 ```scala
   // this imports temporal* implicit functions on DataFrame
   import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
+  import ch.zzeekk.spark.temporalquery.{ClosedInterval, DiscreteTimeAxis}
+  import java.sql.Timestamp
+  import java.time.temporal.ChronoUnit
   // configure options for temporal query operations
   val intervalDef = ClosedInterval(Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS))
   implicit val tqc = TemporalClosedIntervalQueryConfig( fromColName="valid_from", toColName="valid_to", intervalDef = intervalDef)
@@ -44,6 +54,7 @@ The following shortcuts exists to use it with predefined datatypes:
 ```scala
   // this imports linear* implicit functions on DataFrame
   import ch.zzeekk.spark.temporalquery.LinearDoubleQueryUtil._
+  import ch.zzeekk.spark.temporalquery.HalfOpenInterval
   // configure options for linear query operations
   val intervalDef = HalfOpenInterval(0d, Double.MaxValue)
   implicit val lqc: LinearQueryConfig = LinearHalfOpenIntervalQueryConfig(fromColName="pos_from", toColName="pos_to", intervalDef = intervalDef)
@@ -121,7 +132,7 @@ You can then use the following additional functions on Dataset/DataFrame
   - extend: If true and fillGapsWithNull=true, every key is extended with additional records with null values, so that for every key the whole timeline [minDate , maxDate] is covered (default=extend=true)
   - fillGapsWithNull: If true, gaps in history are filled with records with null values for every key (default=fillGapsWithNull=true)
   - Note: extend=true needs fillGapsWithNull=true in order to work
-- `temporalCombine( keys:Seq[String] = Seq(), ignoreColNames:Seq[String] = Seq() )`
+- `temporalCombine(ignoreColNames:Seq[String] = Seq() )`
   Combines successive records if there are no changes on the non-technical attributes.
   - ignoreColName: A list of columns to be ignored in change detection
 - `temporalUnifyRanges( keys:Seq[String] )`
@@ -134,3 +145,18 @@ You can then use the following additional functions on Dataset/DataFrame
 - `temporalRoundDiscreteTime`
   sets the discreteness of the time scale to the discrete step size chosen in TemporalQueryConfig
   Note: this function only works on intervalDef's of type ClosedInterval. 
+
+## Builds
+Spark-temporalquery is built and released for Scala 2.11 with Spark 2.4.x and Scala 2.12 with Spark 3.x.
+Spark 3.x does not support Scala 2.11. Newer versions of Spark 2.4.x would support Scala 2.12, but there is no spark-temporalquery release for this combination.
+
+Note that Spark 2.4 needs Java version 8, whereas Spark 3.x is compatible with Java 8/11/17.
+See also https://spark.apache.org/docs/latest/#downloading. 
+
+## Troubleshooting
+
+### AnalysisException: Column ... is ambiguous.
+On exception `org.apache.spark.sql.AnalysisException: Column ... are ambiguous. It's probably because you joined several Datasets together, and some of these Datasets are the same. ...` when using temporal*Join methods, try to use df.alias on both DataFrames before joining.
+If temporal-query finds aliases it will use them in the join conditions.
+
+The exception might remain. In these cases you can disable the check by setting Spark property `spark.sql.analyzer.failAmbiguousSelfJoin = false`.

@@ -1,10 +1,9 @@
 package ch.zzeekk.spark.temporalquery
 
-import java.sql.Timestamp
-
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{col, lit, when}
-import org.apache.spark.sql.types.{DataType, DataTypes, StructType}
+
+import java.sql.Timestamp
 
 trait TestUtils extends Logging {
 
@@ -40,7 +39,7 @@ trait TestUtils extends Logging {
   }
 
   def schemaEqual(df1: DataFrame, df2: DataFrame): Boolean = {
-    df1.schema.toDDL == df2.schema.toDDL // ignore nullability in comparision
+    df1.schema.sql == df2.schema.sql // ignore nullability in comparison
   }
 
   def dfEqual(df1: DataFrame, df2: DataFrame): Boolean = {
