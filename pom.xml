@@ -33,6 +33,12 @@
             <url>https://github.com/zzeekk</url>
             <id>zzeekk</id>
         </developer>
+        <developer>
+            <email>klt@fsfe.org</email>
+            <name>Nikolaus Thiel</name>
+            <url>https://github.com/kaelte</url>
+            <id>kaelte</id>
+        </developer>
     </developers>
 
     <profiles>
