@@ -20,51 +20,45 @@ jobs:
         ref: master
         persist-credentials: false
     - name: JDK 8 Set
-      uses: actions/setup-java@v1.3.0
+      uses: actions/setup-java@v1
       with: 
         java-version: 1.8
     - name: Maven Cache
-      uses: actions/cache@v1.1.2
+      uses: actions/cache@v2
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-maven-
         
     - name: Maven Get Version
-      run: |
-        echo ::set-env name=MVN_CURRENT_VERSION::$(mvn -B -f /home/runner/work/spark-temporalquery/spark-temporalquery/pom.xml -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive exec:exec)
+      run: echo MVN_CURRENT_VERSION=$(mvn -B -f /home/runner/work/spark-temporalquery/spark-temporalquery/pom.xml -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive exec:exec) >> $GITHUB_ENV
     - name: Set Release Version
-      run: |
-        echo ::set-env name=MVN_RELEASE_VERSION::$(mvn -B -f /home/runner/work/spark-temporalquery/spark-temporalquery/pom.xml -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive exec:exec | sed 's/-SNAPSHOT//g')
+      run: echo MVN_RELEASE_VERSION=${MVN_CURRENT_VERSION/-SNAPSHOT/} >> $GITHUB_ENV
     #- name: Printenv
     #  run: |
-    #    echo "MVN_CURRENT_VERSION=${MVN_CURRENT_VERSION}
-    #    echo "MVN_RELEASE_VERSION=${MVN_RELEASE_VERSION}
     #    printenv
     - name: Maven Set Release Version
       run: sed -i "/${MVN_CURRENT_VERSION}/{s//${MVN_RELEASE_VERSION}/;:p;n;bp}" pom.xml
-      
-    - name: Maven Deploy to Bintray for Scala 2.11
-      env:
-        BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
-      run: |
-        mkdir -p ~/.m2
-        echo "<settings><servers><server><id>bintray-zach-zzeekk-release</id><username>zach</username><password>${BINTRAY_API_KEY}</password></server></servers></settings>" > ~/.m2/settings.xml
-        mvn -Pscala-2.11 -DskipTests clean deploy -f pom.xml
-    - name: Maven Deploy to Bintray for Scala 2.12
-      env:
-        BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
-      run: |
-        mkdir -p ~/.m2
-        echo "<settings><servers><server><id>bintray-zach-zzeekk-release</id><username>zach</username><password>${BINTRAY_API_KEY}</password></server></servers></settings>" > ~/.m2/settings.xml
-        mvn -Pscala-2.12 -DskipTests clean deploy -f pom.xml
-    - name: Maven Deploy to Bintray for Scala 2.10
-      env:
-        BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
-      run: |
-        mkdir -p ~/.m2
-        echo "<settings><servers><server><id>bintray-zach-zzeekk-release</id><username>zach</username><password>${BINTRAY_API_KEY}</password></server></servers></settings>" > ~/.m2/settings.xml
-        mvn  -Pscala-2.10 -DskipTests clean deploy -f pom.xml
+
+    - name: Maven deploy to sonatype for Scala 2.11
+      uses: samuelmeuli/action-maven-publish@v1
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
+        nexus_username: ${{ secrets.SONATYPE_USERNAME }}
+        nexus_password: ${{ secrets.SONATYPE_PASSWORD }}
+        maven_profiles: scala-2.11,release-sonatype
+        maven_args: -B -f pom.xml
+
+    - name: Maven deploy to sonatype for Scala 2.12
+      uses: samuelmeuli/action-maven-publish@v1
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
+        nexus_username: ${{ secrets.SONATYPE_USERNAME }}
+        nexus_password: ${{ secrets.SONATYPE_PASSWORD }}
+        maven_profiles: scala-2.12,release-sonatype
+        maven_args: -B -f pom.xml
 
     - name: Git Commit and Tag Release
       run: |
@@ -81,7 +75,7 @@ jobs:
     - name: Git Push Master
       uses: ad-m/github-push-action@master
       with:
-        github_token: ${{ secrets.PAT_ACTIONS }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
         
                   
     # DEVELOP BRANCH
@@ -106,7 +100,7 @@ jobs:
       uses: ad-m/github-push-action@master
       with:
         branch: develop
-        github_token: ${{ secrets.PAT_ACTIONS }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Develop Get Next Version
       id: bump_version
@@ -125,4 +119,4 @@ jobs:
       uses: ad-m/github-push-action@master
       with:
         branch: develop
-        github_token: ${{ secrets.PAT_ACTIONS }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}

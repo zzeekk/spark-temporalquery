@@ -12,6 +12,9 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    env:
+      # avoid "BindException: Cannot assign requested address" caused by non-unique hosts file of ubuntu-latest
+      SPARK_LOCAL_IP: 127.0.0.1
 
     steps:
     - uses: actions/checkout@v2
@@ -20,7 +23,7 @@ jobs:
       with:
         java-version: 1.8
     - name: Cache Maven
-      uses: actions/cache@v1.1.2
+      uses: actions/cache@v2
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
