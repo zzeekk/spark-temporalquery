@@ -1,24 +1,26 @@
 package ch.zzeekk.spark.temporalquery
 
-import java.sql.Timestamp
-
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{col, lit, when}
-import org.apache.spark.sql.types.{DataType, DataTypes, StructType}
+
+import java.sql.Timestamp
 
 trait TestUtils extends Logging {
 
   implicit val session: SparkSession = SparkSession.builder
     .config("spark.port.maxRetries", 100)
-    .config("spark.ui.enabled", false)
+    .config("spark.ui.enabled", value = false)
     .config("spark.sql.shuffle.partitions", 1)
     .config("spark.task.maxFailures", 1)
     .master("local").appName("TemporalQueryUtilTest").getOrCreate()
+
   import session.implicits._
+
+  loggEnv
 
   def symmetricDifference(df1: DataFrame, df2: DataFrame): DataFrame = {
     // attention, "except" works on Dataset and not on DataFrame. We need to check that schema is equal.
-    require(df1.columns.toSeq==df2.columns.toSeq,
+    require(df1.columns.toSeq == df2.columns.toSeq,
       s"""Cannot calculate symmetric difference for DataFrames with different schema.
          |schema of df1: ${df1.columns.toSeq.mkString(",")}
          |${df1.schema.treeString}

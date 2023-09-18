@@ -75,7 +75,7 @@ jobs:
     - name: Git Push Master
       uses: ad-m/github-push-action@master
       with:
-        github_token: ${{ secrets.PAT_ACTIONS }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
         
                   
     # DEVELOP BRANCH
@@ -100,7 +100,7 @@ jobs:
       uses: ad-m/github-push-action@master
       with:
         branch: develop
-        github_token: ${{ secrets.PAT_ACTIONS }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Develop Get Next Version
       id: bump_version
@@ -119,4 +119,4 @@ jobs:
       uses: ad-m/github-push-action@master
       with:
         branch: develop
-        github_token: ${{ secrets.PAT_ACTIONS }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}

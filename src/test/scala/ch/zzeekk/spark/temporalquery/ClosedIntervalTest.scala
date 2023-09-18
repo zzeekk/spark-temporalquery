@@ -1,12 +1,12 @@
 package ch.zzeekk.spark.temporalquery
 
-import java.sql.Timestamp
-import java.time.temporal.ChronoUnit
-
 import ch.zzeekk.spark.temporalquery.TemporalHelpers.intervalComplement
-import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.{TemporalClosedIntervalQueryConfig, TemporalQueryConfig}
+import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalClosedIntervalQueryConfig
 import org.apache.spark.sql.Row
 import org.scalatest.FunSuite
+
+import java.sql.Timestamp
+import java.time.temporal.ChronoUnit
 
 class ClosedIntervalTest extends FunSuite with TestUtils {
 
