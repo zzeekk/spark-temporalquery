@@ -104,13 +104,7 @@ jobs:
         git branch
         git checkout develop
         git merge origin/master
-        git diff-index --quiet HEAD || git commit -m "Release version ${MVN_RELEASE_VERSION}" # only if there is something to committ
-    
-    - name: Develop Git Push Release
-      uses: ad-m/github-push-action@master
-      with:
-        branch: develop
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        git diff-index --quiet HEAD || git commit -m "Release version ${MVN_RELEASE_VERSION}" # only if there is something to commit
     
     - name: Develop Get Next Version
       id: bump_version
