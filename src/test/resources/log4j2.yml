@@ -1,0 +1,27 @@
+Configuration:
+  name: Spark
+
+  appenders:
+    Console:
+      name: STDOUT
+      target: SYSTEM_OUT
+      PatternLayout:
+        Pattern: "%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1} - %m [%t]%n"
+
+  Loggers:
+
+    # default is WARN
+    Root:
+      level: WARN
+      AppenderRef:
+        - ref: STDOUT
+
+    logger:
+
+      # INFO:
+      - name: ch.zzeekk
+        level: INFO
+
+      # ERROR:
+      - name: org.apache.spark
+        level: ERROR

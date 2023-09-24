@@ -60,6 +60,16 @@ jobs:
         maven_profiles: scala-2.12,release-sonatype
         maven_args: -B -f pom.xml
 
+    - name: Maven deploy to sonatype for Scala 2.13
+      uses: samuelmeuli/action-maven-publish@v1
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
+        nexus_username: ${{ secrets.SONATYPE_USERNAME }}
+        nexus_password: ${{ secrets.SONATYPE_PASSWORD }}
+        maven_profiles: scala-2.13,release-sonatype
+        maven_args: -B -f pom.xml
+
     - name: Git Commit and Tag Release
       run: |
         git config --local user.email "action@github.com"
@@ -94,13 +104,7 @@ jobs:
         git branch
         git checkout develop
         git merge origin/master
-        git diff-index --quiet HEAD || git commit -m "Release version ${MVN_RELEASE_VERSION}" # only if there is something to committ
-    
-    - name: Develop Git Push Release
-      uses: ad-m/github-push-action@master
-      with:
-        branch: develop
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        git diff-index --quiet HEAD || git commit -m "Release version ${MVN_RELEASE_VERSION}" # only if there is something to commit
     
     - name: Develop Get Next Version
       id: bump_version
