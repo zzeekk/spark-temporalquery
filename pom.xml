@@ -48,6 +48,7 @@
                 <scala.minor.version>2.12</scala.minor.version>
                 <scala.version>${scala.minor.version}.15</scala.version>
                 <spark.version>3.3.3</spark.version>
+                <fasterxml.jackson.version>2.14.2</fasterxml.jackson.version>
             </properties>
         </profile>
         <profile>
@@ -59,33 +60,35 @@
                 <scala.minor.version>2.11</scala.minor.version>
                 <scala.version>${scala.minor.version}.12</scala.version>
                 <spark.version>2.4.7</spark.version>
+                <fasterxml.jackson.version>2.13.4</fasterxml.jackson.version>
+                <fasterxml.jackson-databind.version>2.13.4.2</fasterxml.jackson-databind.version>
             </properties>
             <dependencyManagement>
                 <dependencies>
                     <dependency>
                         <groupId>com.fasterxml.jackson.core</groupId>
                         <artifactId>jackson-databind</artifactId>
-                        <version>2.13.4.2</version>
+                        <version>${fasterxml.jackson-databind.version}</version>
                     </dependency>
                     <dependency>
                         <groupId>com.fasterxml.jackson.core</groupId>
                         <artifactId>jackson-core</artifactId>
-                        <version>2.13.4</version>
+                        <version>${fasterxml.jackson.version}</version>
                     </dependency>
                     <dependency>
                         <groupId>com.fasterxml.jackson.core</groupId>
                         <artifactId>jackson-core-asl</artifactId>
-                        <version>2.13.4</version>
+                        <version>${fasterxml.jackson.version}</version>
                     </dependency>
                     <dependency>
                         <groupId>com.fasterxml.jackson.core</groupId>
                         <artifactId>jackson-annotations</artifactId>
-                        <version>2.13.4</version>
+                        <version>${fasterxml.jackson.version}</version>
                     </dependency>
                     <dependency>
                         <groupId>com.fasterxml.jackson.module</groupId>
                         <artifactId>jackson-module-scala_${scala.minor.version}</artifactId>
-                        <version>2.13.4</version>
+                        <version>${fasterxml.jackson.version}</version>
                     </dependency>
                 </dependencies>
             </dependencyManagement>
@@ -203,6 +206,13 @@
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.minor.version}</artifactId>
             <version>3.0.9</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Log4j2 needs this to read configuration in yaml format -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+            <version>${fasterxml.jackson.version}</version>
             <scope>test</scope>
         </dependency>
 
