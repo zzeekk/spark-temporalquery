@@ -43,6 +43,15 @@
 
     <profiles>
         <profile>
+            <id>scala-2.13</id>
+            <properties>
+                <scala.minor.version>2.13</scala.minor.version>
+                <scala.version>${scala.minor.version}.12</scala.version>
+                <spark.version>3.4.1</spark.version>
+                <fasterxml.jackson.version>2.14.2</fasterxml.jackson.version>
+            </properties>
+        </profile>
+        <profile>
             <id>scala-2.12</id>
             <properties>
                 <scala.minor.version>2.12</scala.minor.version>
