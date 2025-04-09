@@ -27,18 +27,18 @@ trait TestUtils extends Logging {
          |schema of df2: ${df2.columns.toSeq.mkString(",")}
          |${df2.schema.treeString}
          |""".stripMargin)
-    df1.except(df2).withColumn("_in_first_df",lit(true))
-      .union(df2.except(df1).withColumn("_row_in_first_df",lit(false)))
+    df1.except(df2).withColumn("_in_first_df", lit(true))
+      .union(df2.except(df1).withColumn("_row_in_first_df", lit(false)))
   }
 
   def reorderCols(dfToReorder: DataFrame, dfRef: DataFrame): DataFrame = {
     require(dfRef.columns.toSet == dfToReorder.columns.toSet,
       s"""Cannot reorder columns for DataFrames with different columns.
-       |columns of dfRef: ${dfRef.columns.toSeq.mkString(",")}
-       |columns of dfToReorder: ${dfToReorder.columns.toSeq.mkString(",")}
-       |""".stripMargin)
+         |columns of dfRef: ${dfRef.columns.toSeq.mkString(",")}
+         |columns of dfToReorder: ${dfToReorder.columns.toSeq.mkString(",")}
+         |""".stripMargin)
     if (dfRef.columns.toSet.size < dfRef.columns.length) dfToReorder // cannot reorder DataFrames with schemas that have duplicate column names
-    else dfToReorder.select(dfRef.columns.map(col):_*)
+    else dfToReorder.select(dfRef.columns.map(col): _*)
   }
 
   def schemaEqual(df1: DataFrame, df2: DataFrame): Boolean = {
@@ -51,11 +51,12 @@ trait TestUtils extends Logging {
     (0 == symmetricDifference(df1reordered, df2).count) && (df1reordered.count == df2.count) && schemaEqual(df1reordered, df2)
   }
 
-  def printFailedTestResult(testName: String, arguments: Seq[DataFrame])(actual: DataFrame,expected: DataFrame): Unit = {
+  def printFailedTestResult(testName: String, arguments: Seq[DataFrame])(actual: DataFrame, expected: DataFrame): Unit = {
     def printDf(df: DataFrame): Unit = {
       println(df.schema.simpleString)
       df.show(false)
     }
+
     val actualReordered = reorderCols(actual, expected)
 
     println(s"!!!! Test $testName Failed !!!")
@@ -73,23 +74,24 @@ trait TestUtils extends Logging {
       println(s"expected.schema:${expected.schema.treeString}")
     }
     println("   symmetric Difference ")
-    printDf(symmetricDifference(actualReordered,expected)
-      .withColumn("_df", when($"_in_first_df","actual").otherwise("expected"))
+    printDf(symmetricDifference(actualReordered, expected)
+      .withColumn("_df", when($"_in_first_df", "actual").otherwise("expected"))
       .drop($"_in_first_df"))
   }
 
   def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame, expected: DataFrame): Unit =
-    printFailedTestResult(testName, Seq(argument))(actual,expected)
+    printFailedTestResult(testName, Seq(argument))(actual, expected)
 
-  def testArgumentExpectedMapWithComment[K,V](experiendum: K=>V, argExpMapComm: Map[(String,K),V]): Unit = {
-    def logFailure(argument: K, actual:V, expected: V, comment: String): Unit = {
+  def testArgumentExpectedMapWithComment[K, V](experiendum: K => V, argExpMapComm: Map[(String, K), V]): Set[Boolean] = {
+    def logFailure(argument: K, actual: V, expected: V, comment: String): Unit = {
       logger.error("Test case failed !")
       logger.error(s"   argument = $argument")
       logger.error(s"   actual   = $actual")
       logger.error(s"   expected = $expected")
       logger.error(s"   comment  = $comment")
     }
-    def checkKey(x: (String,K)): Boolean = x match {
+
+    def checkKey(x: (String, K)): Boolean = x match {
       case (comment, argument) =>
         val actual = experiendum(argument)
         val expected = argExpMapComm(x)
@@ -98,19 +100,25 @@ trait TestUtils extends Logging {
         resultat
       case _ => throw new Exception(s"Something went wrong: checkKey called with parameter x=$x")
     }
-    val results: Set[Boolean] = argExpMapComm.keySet.map(checkKey)
-    assert(results.forall(p=>p))
+
+    argExpMapComm.keySet.map(checkKey)
   }
 
-  def testArgumentExpectedMap[K,V](experiendum: K=>V, argExpMap: Map[K,V]): Unit = {
-    def addEmptyComment(x : (K,V)): ((String,K),V) = x match {case (k,v) => (("",k),v)}
-    val argExpMapWithReason: Map[(String,K),V] = argExpMap.map(addEmptyComment)
+  def testArgumentExpectedMap[K, V](experiendum: K => V, argExpMap: Map[K, V]): Set[Boolean] = {
+    def addEmptyComment(x: (K, V)): ((String, K), V) = x match {
+      case (k, v) => (("", k), v)
+    }
+
+    val argExpMapWithReason: Map[(String, K), V] = argExpMap.map(addEmptyComment)
     testArgumentExpectedMapWithComment(experiendum, argExpMapWithReason)
   }
 
-  def makeRowsWithTimeRange[A,B](zeile: (A, String, String, B)): (A, Timestamp, Timestamp, B) = (zeile._1,Timestamp.valueOf(zeile._2),Timestamp.valueOf(zeile._3),zeile._4)
-  def makeRowsWithTimeRangeEnd[A,B](zeile: (A, B, String, String)): (A, B, Timestamp, Timestamp) = (zeile._1,zeile._2,Timestamp.valueOf(zeile._3),Timestamp.valueOf(zeile._4))
-  def makeRowsWithTimeRangeEnd[A,B,C](zeile: (A, B, C, String, String)): (A, B, C, Timestamp, Timestamp) = (zeile._1,zeile._2,zeile._3,Timestamp.valueOf(zeile._4),Timestamp.valueOf(zeile._5))
-  def makeRowsWithTimeRangeEnd[A,B,C,D](zeile: (A, B, C, D, String, String)): (A, B, C, D, Timestamp, Timestamp) = (zeile._1,zeile._2,zeile._3,zeile._4,Timestamp.valueOf(zeile._5),Timestamp.valueOf(zeile._6))
+  def makeRowsWithTimeRange[A, B](zeile: (A, String, String, B)): (A, Timestamp, Timestamp, B) = (zeile._1, Timestamp.valueOf(zeile._2), Timestamp.valueOf(zeile._3), zeile._4)
+
+  def makeRowsWithTimeRangeEnd[A, B](zeile: (A, B, String, String)): (A, B, Timestamp, Timestamp) = (zeile._1, zeile._2, Timestamp.valueOf(zeile._3), Timestamp.valueOf(zeile._4))
+
+  def makeRowsWithTimeRangeEnd[A, B, C](zeile: (A, B, C, String, String)): (A, B, C, Timestamp, Timestamp) = (zeile._1, zeile._2, zeile._3, Timestamp.valueOf(zeile._4), Timestamp.valueOf(zeile._5))
+
+  def makeRowsWithTimeRangeEnd[A, B, C, D](zeile: (A, B, C, D, String, String)): (A, B, C, D, Timestamp, Timestamp) = (zeile._1, zeile._2, zeile._3, zeile._4, Timestamp.valueOf(zeile._5), Timestamp.valueOf(zeile._6))
 
 }
