@@ -28,7 +28,7 @@ object TemporalQueryUtil extends Serializable with Logging {
                                                 override val toColName: String      = "gueltig_bis",
                                                 override val additionalTechnicalColNames: Seq[String] = Seq(),
                                                 override val intervalDef: ClosedInterval[Timestamp] = ClosedInterval(
-                                                  Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)
+                                                  Timestamp.valueOf("1970-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)
                                                 )
                                  ) extends ClosedIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
     @deprecated("use lowerHorizon instead")
@@ -45,7 +45,7 @@ object TemporalQueryUtil extends Serializable with Logging {
                                                  override val toColName: String      = "gueltig_bis",
                                                  override val additionalTechnicalColNames: Seq[String] = Seq(),
                                                  override val intervalDef: HalfOpenInterval[Timestamp] = HalfOpenInterval(
-                                                    Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00")
+                                                    Timestamp.valueOf("1970-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00")
                                                   )
                                                 ) extends HalfOpenIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
     @deprecated("use intervalDef.lowerHorizon instead")

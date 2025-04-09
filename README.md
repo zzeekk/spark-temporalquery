@@ -31,7 +31,7 @@ TemporalQueryUtil provides implicit function on DataFrame to query temporal data
   import java.sql.Timestamp
   import java.time.temporal.ChronoUnit
   // configure options for temporal query operations
-  val intervalDef = ClosedInterval(Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS))
+  val intervalDef = ClosedInterval(Timestamp.valueOf("1970-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS))
   implicit val tqc = TemporalClosedIntervalQueryConfig( fromColName="valid_from", toColName="valid_to", intervalDef = intervalDef)
   // make SparkSession implicitly available
   implicit val sss = spark
