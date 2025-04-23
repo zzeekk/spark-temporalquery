@@ -1,23 +1,25 @@
 package ch.zzeekk.spark.temporalquery
 
-import org.scalatest.FunSuite
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class HalfOpenIntervalTest extends FunSuite with TestUtils{
+class HalfOpenIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
 
   private val floatIntervalDef = HalfOpenInterval[Float](lowerHorizon = 0f, upperHorizon = Float.MaxValue)
   private val limitedIntervalDef = HalfOpenInterval[Float](lowerHorizon = 23.34f, upperHorizon = 45.32f)
 
-  test("cut off at boundaries)") {
+  "cut off at boundaries" should "return expected results" in {
     val argExpMap = Map(
-      ("cut off lower boundary",10f) -> limitedIntervalDef.lowerHorizon,
-      ("cut off upper boundary",999f) -> limitedIntervalDef.upperHorizon
+      ("cut off lower boundary", 10f) -> limitedIntervalDef.lowerHorizon,
+      ("cut off upper boundary", 999f) -> limitedIntervalDef.upperHorizon
     )
-    testArgumentExpectedMapWithComment[Float, Float](limitedIntervalDef.fitToHorizon, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[Float, Float](limitedIntervalDef.fitToHorizon, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
   // TODO: adapt intervalComplement for HalfOpenInterval
   /*
-  test("intervalComplement") {
+  "intervalComplement" should "return expected results" in {
     val subtrahends = Seq(
       ("2020-01-01 00:04:4","2020-01-01 00:05:0"),
       ("2020-01-01 00:00:1","2020-01-01 00:01:0"),
@@ -61,7 +63,9 @@ class HalfOpenIntervalTest extends FunSuite with TestUtils{
       .toMap
 
     val intervalConfig = TemporalQueryConfig(intervalDef = millisIntervalDef)
-    testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends, intervalConfig), argExpMap)
+
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends, intervalConfig), argExpMap)
+    results.forall(p => p) shouldBe true
   }
   */
 }
