@@ -43,14 +43,14 @@ jobs:
         restore-keys: ${{ runner.os }}-maven-
         
     - name: Maven Get Version
-      run: echo MVN_CURRENT_VERSION=$(mvn -B -f /home/runner/work/spark-temporalquery/spark-temporalquery/pom.xml -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive exec:exec) >> $GITHUB_ENV
+      run: echo MVN_CURRENT_VERSION=$(mvn -B -P scala-2.13 -f /home/runner/work/spark-temporalquery/spark-temporalquery/pom.xml -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive exec:exec) >> $GITHUB_ENV
     - name: Set Release Version
       run: echo MVN_RELEASE_VERSION=${MVN_CURRENT_VERSION/-SNAPSHOT/} >> $GITHUB_ENV
-    - name: Printenv
-      run: |
-        printenv
+    #- name: Printenv
+    #  run: |
+    #    printenv
     - name: Maven Set Release Version
-      run: mvn versions:set -B -DnewVersion=${MVN_RELEASE_VERSION} -f pom.xml
+      run: mvn versions:set -B -P scala-2.13 -DnewVersion=${MVN_RELEASE_VERSION} -f pom.xml
 
     - name: Maven deploy to sonatype for Scala 2.12
       uses: samuelmeuli/action-maven-publish@v1
@@ -116,7 +116,7 @@ jobs:
         current-version: ${{ env.MVN_RELEASE_VERSION }}
         version-fragment: bug
     - name: Develop Set Next Snapshot version
-      run: mvn versions:set -B -DnewVersion=${{ steps.bump_version.outputs.next-version }}-SNAPSHOT -f pom.xml
+      run: mvn versions:set -B -P scala-2.13 -DnewVersion=${{ steps.bump_version.outputs.next-version }}-SNAPSHOT -f pom.xml
     - name: Develop Git Commit Snapshot
       run: |
         git commit -m "Increment to next SNAPSHOT release" -a
