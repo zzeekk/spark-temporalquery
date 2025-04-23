@@ -4,6 +4,12 @@ Features:
 - support for closed interval and half open intervals (closed-from, open-to)
 - support for discrete (timestamp, integer) and continuous (double, float) interval axis datatype
 
+Breaking changes in version 3.x:
+- Default lower horizon of TemporalClosedIntervalQueryConfig set to 1970-01-01 instead of 0001-01-01 for better compatibility.
+  To instantiate the previous configuration use `TemporalClosedIntervalQueryConfig(intervalDef = ClosedInterval(Timestamp.valueOf("1970-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)))`
+- Removed deprecated fields `TemporalClosedIntervalQueryConfig.min/maxDate` and `TemporalHalfOpenIntervalQueryConfig.min/maxDate`.
+  Use `intervalDef.lower/upperHorizon` instead.
+
 Breaking changes in version 2.x:
 - temporalRoundDiscreteTime is no longer included in temporalCleanupExtend. Add it separately if needed.
 - temporalCombine is no longer included in temporalCleanupExtend. Add it separately if needed. Note that this affects also temporal*Join methods.
@@ -31,7 +37,7 @@ TemporalQueryUtil provides implicit function on DataFrame to query temporal data
   import java.sql.Timestamp
   import java.time.temporal.ChronoUnit
   // configure options for temporal query operations
-  val intervalDef = ClosedInterval(Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS))
+  val intervalDef = ClosedInterval(Timestamp.valueOf("1970-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS))
   implicit val tqc = TemporalClosedIntervalQueryConfig( fromColName="valid_from", toColName="valid_to", intervalDef = intervalDef)
   // make SparkSession implicitly available
   implicit val sss = spark

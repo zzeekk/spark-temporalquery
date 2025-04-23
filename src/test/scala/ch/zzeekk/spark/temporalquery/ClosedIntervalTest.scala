@@ -3,14 +3,15 @@ package ch.zzeekk.spark.temporalquery
 import ch.zzeekk.spark.temporalquery.TemporalHelpers.intervalComplement
 import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalClosedIntervalQueryConfig
 import org.apache.spark.sql.Row
-import org.scalatest.FunSuite
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
 
-class ClosedIntervalTest extends FunSuite with TestUtils {
+class ClosedIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
 
-  implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a,b) => a.before(b))
+  implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a, b) => a.before(b))
   private val millisIntervalDef = ClosedInterval(
     Timestamp.valueOf("0001-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)
   )
@@ -21,94 +22,103 @@ class ClosedIntervalTest extends FunSuite with TestUtils {
     Timestamp.valueOf("1900-01-01 00:00:00"), Timestamp.valueOf("2999-12-31 59:59:59"), DiscreteTimeAxis(ChronoUnit.SECONDS)
   )
   private val longStep2IntervalDef = ClosedInterval(
-    0L, Long.MaxValue -1, DiscreteNumericAxis[Long](2L)
+    0L, Long.MaxValue - 1, DiscreteNumericAxis[Long](2L)
   )
 
 
-  test("ceil timestamp millis") {
-    val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("round up to next millisecond"           ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
-      ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
+  "ceil timestamp millis" should "return expected results" in {
+    val argExpMap: Map[(String, Timestamp), Timestamp] = Map(
+      ("round up to next millisecond", Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
+      ("no change as no fraction of millisecond", Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](millisIntervalDef.ceil, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[Timestamp, Timestamp](millisIntervalDef.ceil, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("floor timestamp millis") {
-    val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
-      ("no change as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
+  "floor timestamp millis" should "return expected results" in {
+    val argExpMap: Map[(String, Timestamp), Timestamp] = Map(
+      ("cut of fraction of millisecond", Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
+      ("no change as no fraction of millisecond", Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](millisIntervalDef.floor, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[Timestamp, Timestamp](millisIntervalDef.floor, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("predecessor millis") {
-    val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
-      ("subtract a millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59.999")
+  "predecessor millis" should "return expected results" in {
+    val argExpMap: Map[(String, Timestamp), Timestamp] = Map(
+      ("cut of fraction of millisecond", Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.123"),
+      ("subtract a millisecond as no fraction of millisecond", Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59.999")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](millisIntervalDef.predecessor, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[Timestamp, Timestamp](millisIntervalDef.predecessor, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("successor millis") {
-    val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("cut of fraction of millisecond"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
-      ("add millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:59:59.999")) -> Timestamp.valueOf("2019-03-03 01:00:0"),
-      ("add a millisecond as no fraction of millisecond",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0.001")
+  "successor millis" should "return expected results" in {
+    val argExpMap: Map[(String, Timestamp), Timestamp] = Map(
+      ("cut of fraction of millisecond", Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56.124"),
+      ("add millisecond as no fraction of millisecond", Timestamp.valueOf("2019-03-03 00:59:59.999")) -> Timestamp.valueOf("2019-03-03 01:00:0"),
+      ("add a millisecond as no fraction of millisecond", Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0.001")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](millisIntervalDef.successor, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[Timestamp, Timestamp](millisIntervalDef.successor, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("ceil timestamp second") {
-    val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("round up to next second"                ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:57"),
-      ("no change as no fraction of second"     ,Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
+  "ceil timestamp second" should "return expected results" in {
+    val argExpMap: Map[(String, Timestamp), Timestamp] = Map(
+      ("round up to next second", Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:57"),
+      ("no change as no fraction of second", Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.ceil, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.ceil, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("floor timestamp second") {
-    val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("cut of fraction of second"         ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56"),
-      ("no change as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
+  "floor timestamp second" should "return expected results" in {
+    val argExpMap: Map[(String, Timestamp), Timestamp] = Map(
+      ("cut of fraction of second", Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56"),
+      ("no change as no fraction of second", Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:0")
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.floor, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.floor, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("predecessor second") {
-    val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("cut of fraction of second"                      ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56"),
-      ("subtract a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59"),
-      ("max value has no predecessor"                     ,secondIntervalDef.upperHorizon) -> secondIntervalDef.upperHorizon
+  "predecessor second" should "return expected results" in {
+    val argExpMap: Map[(String, Timestamp), Timestamp] = Map(
+      ("cut of fraction of second", Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:56"),
+      ("subtract a millisecond as no fraction of second", Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-02 23:59:59"),
+      ("max value has no predecessor", secondIntervalDef.upperHorizon) -> secondIntervalDef.upperHorizon
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.predecessor, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.predecessor, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("successor second") {
-    val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("cut of fraction of second"                 ,Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:57"),
-      ("add a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:59:59")) -> Timestamp.valueOf("2019-03-03 01:00:0"),
-      ("add a millisecond as no fraction of second",Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:1"),
-      ("min value has no successor"                ,secondIntervalDef.lowerHorizon) -> secondIntervalDef.lowerHorizon
+  "successor second" should "return expected results" in {
+    val argExpMap: Map[(String, Timestamp), Timestamp] = Map(
+      ("cut of fraction of second", Timestamp.valueOf("1998-09-05 14:34:56.123456789")) -> Timestamp.valueOf("1998-09-05 14:34:57"),
+      ("add a millisecond as no fraction of second", Timestamp.valueOf("2019-03-03 00:59:59")) -> Timestamp.valueOf("2019-03-03 01:00:0"),
+      ("add a millisecond as no fraction of second", Timestamp.valueOf("2019-03-03 00:00:0")) -> Timestamp.valueOf("2019-03-03 00:00:1"),
+      ("min value has no successor", secondIntervalDef.lowerHorizon) -> secondIntervalDef.lowerHorizon
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.successor, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[Timestamp, Timestamp](secondIntervalDef.successor, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("cut off at boundaries") {
-    val argExpMap: Map[(String,Timestamp),Timestamp] = Map(
-      ("cut off lower boundary",Timestamp.valueOf("1234-09-05 14:34:56.123456789")) -> limitedIntervalDef.lowerHorizon,
-      ("cut off upper boundary",Timestamp.valueOf("3456-03-03 00:59:59")) -> limitedIntervalDef.upperHorizon
+  "cut off at boundaries" should "return expected results" in {
+    val argExpMap: Map[(String, Timestamp), Timestamp] = Map(
+      ("cut off lower boundary", Timestamp.valueOf("1234-09-05 14:34:56.123456789")) -> limitedIntervalDef.lowerHorizon,
+      ("cut off upper boundary", Timestamp.valueOf("3456-03-03 00:59:59")) -> limitedIntervalDef.upperHorizon
     )
-    testArgumentExpectedMapWithComment[Timestamp, Timestamp](limitedIntervalDef.successor, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[Timestamp, Timestamp](limitedIntervalDef.successor, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("intervalComplement") {
+  "intervalComplement" should "return expected results" in {
     val subtrahends = Seq(
-      ("2020-01-01 00:04:4","2020-01-01 00:05:0"),
-      ("2020-01-01 00:00:1","2020-01-01 00:01:0"),
-      ("2020-01-01 00:03:3","2020-01-01 00:04:0"),
-      ("2020-01-01 00:05:5","2020-01-01 00:06:0"),
-      ("2020-01-01 00:02:2","2020-01-01 00:03:0")
-    ).map(x => Row(Timestamp.valueOf(x._1),Timestamp.valueOf(x._2)))
+      ("2020-01-01 00:04:4", "2020-01-01 00:05:0"),
+      ("2020-01-01 00:00:1", "2020-01-01 00:01:0"),
+      ("2020-01-01 00:03:3", "2020-01-01 00:04:0"),
+      ("2020-01-01 00:05:5", "2020-01-01 00:06:0"),
+      ("2020-01-01 00:02:2", "2020-01-01 00:03:0")
+    ).map(x => Row(Timestamp.valueOf(x._1), Timestamp.valueOf(x._2)))
     val argExpMap = Seq(
       ("no intersection => no change",
         "2019-01-01 00:00:0", "2020-01-01 00:00:0",
@@ -145,38 +155,43 @@ class ClosedIntervalTest extends FunSuite with TestUtils {
       .toMap
 
     implicit val intervalConfig: TemporalClosedIntervalQueryConfig = TemporalClosedIntervalQueryConfig(intervalDef = millisIntervalDef)
-    testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends), argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment[(Timestamp, Timestamp), Seq[(Timestamp, Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends), argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("ceil long step2") {
+  "ceil long step2" should "return expected results" in {
     val argExpMap = Map(
-      ("round up",35L) -> 36L,
-      ("no change",36L) -> 36L
+      ("round up", 35L) -> 36L,
+      ("no change", 36L) -> 36L
     )
-    testArgumentExpectedMapWithComment(longStep2IntervalDef.ceil, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment(longStep2IntervalDef.ceil, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("floor long step2") {
+  "floor long step2" should "return expected results" in {
     val argExpMap = Map(
-      ("round down",35L) -> 34L,
-      ("no change",36L) -> 36L
+      ("round down", 35L) -> 34L,
+      ("no change", 36L) -> 36L
     )
-    testArgumentExpectedMapWithComment(longStep2IntervalDef.floor, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment(longStep2IntervalDef.floor, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("predecessor long step2") {
+  "predecessor long step2" should "return expected results" in {
     val argExpMap = Map(
-      ("round down",35L) -> 34L,
-      ("remove one step",36L) -> 34L
+      ("round down", 35L) -> 34L,
+      ("remove one step", 36L) -> 34L
     )
-    testArgumentExpectedMapWithComment(longStep2IntervalDef.predecessor, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment(longStep2IntervalDef.predecessor, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 
-  test("successor long step2") {
+  "successor long step2" should "return expected results" in {
     val argExpMap = Map(
-      ("round up",35L) -> 36L,
-      ("add one step",36L) -> 38L
+      ("round up", 35L) -> 36L,
+      ("add one step", 36L) -> 38L
     )
-    testArgumentExpectedMapWithComment(longStep2IntervalDef.successor, argExpMap)
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment(longStep2IntervalDef.successor, argExpMap)
+    results.forall(p => p) shouldBe true
   }
 }
