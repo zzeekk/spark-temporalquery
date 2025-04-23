@@ -31,10 +31,6 @@ object TemporalQueryUtil extends Serializable with Logging {
                                                   Timestamp.valueOf("1970-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)
                                                 )
                                  ) extends ClosedIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
-    @deprecated("use lowerHorizon instead")
-    val minDate: Timestamp = intervalDef.lowerHorizon
-    @deprecated("use upperHorizon instead")
-    val maxDate: Timestamp = intervalDef.upperHorizon
     override lazy val config2: TemporalClosedIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
@@ -48,10 +44,6 @@ object TemporalQueryUtil extends Serializable with Logging {
                                                     Timestamp.valueOf("1970-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00")
                                                   )
                                                 ) extends HalfOpenIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
-    @deprecated("use intervalDef.lowerHorizon instead")
-    val minDate: Timestamp = intervalDef.lowerHorizon
-    @deprecated("use intervalDef.upperHorizon instead")
-    val maxDate: Timestamp = intervalDef.upperHorizon
     override lazy val config2: TemporalHalfOpenIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
   }
 
