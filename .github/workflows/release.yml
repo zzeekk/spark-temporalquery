@@ -14,17 +14,18 @@ jobs:
 
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         ref: master
         persist-credentials: false
-    - name: JDK 8 Set
-      uses: actions/setup-java@v1
-      with: 
-        java-version: 1.8
-    - name: Maven Cache
-      uses: actions/cache@v2
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    - name: Cache Maven
+      uses: actions/cache@v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -39,16 +40,6 @@ jobs:
     #    printenv
     - name: Maven Set Release Version
       run: sed -i "/${MVN_CURRENT_VERSION}/{s//${MVN_RELEASE_VERSION}/;:p;n;bp}" pom.xml
-
-    - name: Maven deploy to sonatype for Scala 2.11
-      uses: samuelmeuli/action-maven-publish@v1
-      with:
-        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-        gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
-        nexus_username: ${{ secrets.SONATYPE_USERNAME }}
-        nexus_password: ${{ secrets.SONATYPE_PASSWORD }}
-        maven_profiles: scala-2.11,release-sonatype
-        maven_args: -B -f pom.xml
 
     - name: Maven deploy to sonatype for Scala 2.12
       uses: samuelmeuli/action-maven-publish@v1
