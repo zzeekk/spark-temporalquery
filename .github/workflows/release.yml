@@ -5,10 +5,17 @@ on:
     branches: 
       - master
     types: [closed]
+    
+  # allow for manual releases from hotfix branches
+  # the version to create needs to be set correctly in all pom.xml files, e.g. by using `mvn versions:set -DnewVersion=x.y.z`
+  # then a normal release is created including tag, but without increasing version number on original branch
+  workflow_dispatch:
+    branches:
+      - 'hotfix/*'
 
 jobs:
-  build-release:
-    if: github.event.pull_request.merged == true
+  deploy-release:
+    if: ${{ github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch' }}
 
     runs-on: ubuntu-latest
 
@@ -19,6 +26,10 @@ jobs:
         fetch-depth: 0
         ref: master
         persist-credentials: false
+    - name: Git Config
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"        
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
@@ -39,7 +50,7 @@ jobs:
     #  run: |
     #    printenv
     - name: Maven Set Release Version
-      run: sed -i "/${MVN_CURRENT_VERSION}/{s//${MVN_RELEASE_VERSION}/;:p;n;bp}" pom.xml
+      run: mvn versions:set -B -DnewVersion=${MVN_RELEASE_VERSION} -f pom.xml
 
     - name: Maven deploy to sonatype for Scala 2.12
       uses: samuelmeuli/action-maven-publish@v1
@@ -63,33 +74,34 @@ jobs:
 
     - name: Git Commit and Tag Release
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
         git add -A
         git diff-index --quiet HEAD || git commit -m "Release version ${MVN_RELEASE_VERSION}" # only if there is something to commit
-        git tag -f ${MVN_RELEASE_VERSION} -m "Release ${MVN_RELEASE_VERSION}"
-    - name: Git Pull Master
+    - name: Git Pull, Tag and Push
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git pull
-    - name: Git Push Master
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        
-                  
-    # DEVELOP BRANCH
+        git pull --rebase
+        git push origin # push commits
+        git tag -f ${MVN_RELEASE_VERSION} -m "Release ${MVN_RELEASE_VERSION}"
+        git push origin ${MVN_RELEASE_VERSION} # push tag
+       
+  update-snapshot-version:
+    needs: deploy-release
+    if: github.event_name != 'workflow_dispatch'
+
+    runs-on: ubuntu-latest
+
+    steps:    
     - name: Develop Git Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         ref: develop
         fetch-depth: 0
         persist-credentials: false
-    - name: Git Merge to develop
+    - name: Git Config
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+    - name: Git Merge to develop
+      run: |
         git branch
         git fetch --all
         git branch
@@ -104,14 +116,10 @@ jobs:
         current-version: ${{ env.MVN_RELEASE_VERSION }}
         version-fragment: bug
     - name: Develop Set Next Snapshot version
-      run: sed -i "/${MVN_RELEASE_VERSION}/{s//${{ steps.bump_version.outputs.next-version }}-SNAPSHOT/;:p;n;bp}" pom.xml
+      run: mvn versions:set -B -DnewVersion=${{ steps.bump_version.outputs.next-version }}-SNAPSHOT -f pom.xml
     - name: Develop Git Commit Snapshot
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
         git commit -m "Increment to next SNAPSHOT release" -a
-    - name: Develop Git Push Snapshot
-      uses: ad-m/github-push-action@master
-      with:
-        branch: develop
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Develop Git Push
+      run: |
+        git push
