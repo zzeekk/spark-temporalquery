@@ -13,10 +13,12 @@ on:
     branches:
       - 'hotfix/*'
 
+permissions: 
+  contents: write
+
 jobs:
   deploy-release:
     if: ${{ github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch' }}
-
     runs-on: ubuntu-latest
 
     steps:
@@ -26,7 +28,6 @@ jobs:
         fetch-depth: 0
         ref: master
         persist-credentials: false
-        token: ${{ secrets.PAT_ACTIONS }}
     - name: Git Config
       run: |
         git config user.email "action@github.com"
@@ -96,7 +97,6 @@ jobs:
         ref: develop
         fetch-depth: 0
         persist-credentials: false
-        token: ${{ secrets.PAT_ACTIONS }}
     - name: Git Config
       run: |
         git config user.email "action@github.com"
