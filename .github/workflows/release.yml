@@ -46,9 +46,9 @@ jobs:
       run: echo MVN_CURRENT_VERSION=$(mvn -B -P scala-2.13 -f /home/runner/work/spark-temporalquery/spark-temporalquery/pom.xml -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive exec:exec) >> $GITHUB_ENV
     - name: Set Release Version
       run: echo MVN_RELEASE_VERSION=${MVN_CURRENT_VERSION/-SNAPSHOT/} >> $GITHUB_ENV
-    - name: Printenv
-      run: |
-        printenv
+    #- name: Printenv
+    #  run: |
+    #    printenv
     - name: Maven Set Release Version
       run: mvn versions:set -B -P scala-2.13 -DnewVersion=${MVN_RELEASE_VERSION} -f pom.xml
 
