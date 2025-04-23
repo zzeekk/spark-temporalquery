@@ -131,7 +131,7 @@
                         <configuration>
                             <publishingServerId>central</publishingServerId>
                             <tokenAuth>true</tokenAuth>
-                            <autoPublish>true</autoPublish>     
+                            <autoPublish>false</autoPublish>     
                         </configuration>
                     </plugin>
                 </plugins>
