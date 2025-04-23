@@ -35,6 +35,11 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
+        server-id: central
+        server-username: MAVEN_USERNAME
+        server-password: MAVEN_PASSWORD
+        gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+        gpg-passphrase: MAVEN_GPG_PASSPHRASE        
     - name: Cache Maven
       uses: actions/cache@v4
       with:
@@ -53,24 +58,18 @@ jobs:
       run: mvn versions:set -B -P scala-2.13 -DnewVersion=${MVN_RELEASE_VERSION} -f pom.xml
 
     - name: Maven deploy to sonatype for Scala 2.12
-      uses: samuelmeuli/action-maven-publish@v1
-      with:
-        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-        gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
-        nexus_username: ${{ secrets.SONATYPE_USERNAME }}
-        nexus_password: ${{ secrets.SONATYPE_PASSWORD }}
-        maven_profiles: scala-2.12,release-sonatype
-        maven_args: -B -f pom.xml
+      run: mvn -P scala-2.12,release-sonatype -B -f pom.xml --batch-mode deploy
+      env:
+        MAVEN_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.SONATYPE_TOKEN_PASSWORD }}
+        MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
     - name: Maven deploy to sonatype for Scala 2.13
-      uses: samuelmeuli/action-maven-publish@v1
-      with:
-        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-        gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
-        nexus_username: ${{ secrets.SONATYPE_USERNAME }}
-        nexus_password: ${{ secrets.SONATYPE_PASSWORD }}
-        maven_profiles: scala-2.13,release-sonatype
-        maven_args: -B -f pom.xml
+      run: mvn -P scala-2.13,release-sonatype -B -f pom.xml --batch-mode deploy
+      env:
+        MAVEN_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.SONATYPE_TOKEN_PASSWORD }}
+        MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}        
 
     - name: Git Commit and Tag Release
       run: |
