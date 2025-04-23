@@ -75,7 +75,7 @@
                 </snapshotRepository>
                 <repository>
                     <id>ossrh</id>
-                    <name>Central Sonatype Repository/name>
+                    <name>Central Sonatype Repository</name>
                     <url>https://repo1.maven.org/maven2</url>
                 </repository>
             </distributionManagement>
