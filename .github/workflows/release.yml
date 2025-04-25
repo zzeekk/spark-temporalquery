@@ -27,7 +27,6 @@ jobs:
       with:
         fetch-depth: 0
         ref: master
-        persist-credentials: false
     - name: Git Config
       run: |
         git config user.email "action@github.com"
@@ -96,7 +95,6 @@ jobs:
       with:
         ref: develop
         fetch-depth: 0
-        persist-credentials: false
     - name: Git Config
       run: |
         git config user.email "action@github.com"
