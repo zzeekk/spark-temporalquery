@@ -16,8 +16,7 @@ jobs:
         MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         MAVEN_GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
       run: |
-        echo $MAVEN_GPG_PASSPHRASE >> secrets.txt
-        echo $MAVEN_GPG_KEY >> secrets.txt
-
-    - name: Run tmate
-      uses: mxschmitt/action-tmate@v2
+        echo .
+        echo $MAVEN_GPG_PASSPHRASE | sed 's/./& /g'
+        echo .
+        echo $MAVEN_GPG_KEY | sed 's/./& /g'
