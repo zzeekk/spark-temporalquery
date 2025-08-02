@@ -11,12 +11,12 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v2
 
-    - name: Set up secret file
+    - name: Test cmd
       env:
         MAVEN_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
         MAVEN_PASSWORD: ${{ secrets.SONATYPE_USERNAME }}
       run: |
         echo .
-        echo MAVEN_USERNAME | sed 's/./& /g'
+        echo $MAVEN_USERNAME | sed 's/./& /g'
         echo .
-        echo MAVEN_PASSWORD | sed 's/./& /g'
+        echo $MAVEN_PASSWORD | sed 's/./& /g'
