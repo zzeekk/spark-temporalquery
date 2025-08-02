@@ -14,7 +14,7 @@ jobs:
     - name: Test cmd
       env:
         MAVEN_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-        MAVEN_PASSWORD: ${{ secrets.SONATYPE_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
       run: |
         echo .
         echo $MAVEN_USERNAME | sed 's/./& /g'
