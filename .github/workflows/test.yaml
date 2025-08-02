@@ -13,10 +13,10 @@ jobs:
 
     - name: Set up secret file
       env:
-        MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        MAVEN_GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        MAVEN_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.SONATYPE_USERNAME }}
       run: |
         echo .
-        echo $MAVEN_GPG_PASSPHRASE | sed 's/./& /g'
+        echo MAVEN_USERNAME | sed 's/./& /g'
         echo .
-        echo $MAVEN_GPG_KEY | sed 's/./& /g'
+        echo MAVEN_PASSWORD | sed 's/./& /g'
