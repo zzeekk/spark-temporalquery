@@ -166,3 +166,4 @@ On exception `org.apache.spark.sql.AnalysisException: Column ... are ambiguous. 
 If temporal-query finds aliases it will use them in the join conditions.
 
 The exception might remain. In these cases you can disable the check by setting Spark property `spark.sql.analyzer.failAmbiguousSelfJoin = false`.
+
