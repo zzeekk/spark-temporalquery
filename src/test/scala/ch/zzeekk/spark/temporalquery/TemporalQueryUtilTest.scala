@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.sql.Timestamp
 
-class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with Logging {
+class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
 
   import session.implicits._
 
