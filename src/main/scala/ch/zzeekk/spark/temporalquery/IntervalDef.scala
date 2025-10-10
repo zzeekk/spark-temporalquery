@@ -63,9 +63,10 @@ abstract class IntervalDef[T: Ordering : TypeTag] extends Serializable {
  * @param upperHorizon positive infinity value of the interval axis. This value is used to denote intervals which have no upper bound.
  * @tparam T : scala type for discrete interval axis, e.g. Timestamp, Integer, ...
  */
-case class ClosedInterval[T: Ordering : TypeTag](override val lowerHorizon: T, override val upperHorizon: T, discreteAxisDef: DiscreteAxisDef[T]) extends IntervalDef[T] {
-  assert(lowerHorizon == floor(lowerHorizon), s"lowerHorizon $lowerHorizon is not discrete value of the axis")
-  assert(upperHorizon == floor(upperHorizon), s"upperHorizon $upperHorizon is not discrete value of the axis")
+case class ClosedInterval[T: Ordering : TypeTag]
+(override val lowerHorizon: T, override val upperHorizon: T, discreteAxisDef: DiscreteAxisDef[T]) extends IntervalDef[T] {
+  require(lowerHorizon == floor(lowerHorizon), s"lowerHorizon $lowerHorizon is not discrete value of the axis")
+  require(upperHorizon == floor(upperHorizon), s"upperHorizon $upperHorizon is not discrete value of the axis")
 
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
     fromCol <= valueCol && valueCol <= toCol
@@ -130,7 +131,8 @@ case class ClosedInterval[T: Ordering : TypeTag](override val lowerHorizon: T, o
  * @param upperHorizon positive infinity value of the interval axis. This value is used to denote intervals which have no upper bound.
  * @tparam T : scala type for continuous interval axis, e.g. Float, Double...
  */
-case class HalfOpenInterval[T: Ordering : TypeTag](override val lowerHorizon: T, override val upperHorizon: T) extends IntervalDef[T] {
+case class HalfOpenInterval[T: Ordering : TypeTag]
+(override val lowerHorizon: T, override val upperHorizon: T) extends IntervalDef[T] {
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column = {
     fromCol <= valueCol && valueCol < toCol
   }
