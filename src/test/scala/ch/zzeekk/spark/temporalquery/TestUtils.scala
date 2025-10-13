@@ -2,12 +2,14 @@ package ch.zzeekk.spark.temporalquery
 
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{col, lit, when}
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.sql.Timestamp
 
 trait TestUtils extends Logging {
 
-  implicit val session: SparkSession = SparkSession.builder
+  override protected implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass.getName)
+  protected implicit val session: SparkSession = SparkSession.builder
     .config("spark.port.maxRetries", 100)
     .config("spark.ui.enabled", value = false)
     .config("spark.sql.shuffle.partitions", 1)

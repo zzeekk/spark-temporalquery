@@ -6,7 +6,7 @@ import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with Logging {
+class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
 
   import session.implicits._
 
