@@ -43,36 +43,20 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
     }
   }
 
-  val fromColNames2: Seq[String] = fromColNames.map(increaseColNameNb)
-  val toColNames2: Seq[String] = toColNames.map(increaseColNameNb)
-
   // technical column names to be excluded in some operations
   val technicalColNames: Seq[String] = fromColNames ++ toColNames ++ additionalTechnicalColNames
 
   // helper column names
   val definedColName: String = "_defined"
 
-  // prepared column objects (implemented as methods as Column is not serializable)
-  def fromCols: Seq[Column] = fromColNames.map(col)
-
-  def toCols: Seq[Column] = toColNames.map(col)
-
-  def fromCols2: Seq[Column] = fromColNames2.map(col)
-
-  def toCols2: Seq[Column] = toColNames2.map(col)
-
   def definedCol: Column = col(definedColName)
 
-  def lowerHorizons: Seq[T] = intervalDefs.map(_.lowerHorizon)
-
-  def upperHorizons: Seq[T] = intervalDefs.map(_.upperHorizon)
-
-  def intervalDimensions: scala.collection.immutable.IndexedSeq[IntervalQueryDimension[T, D]] = 0 until numDimensions map { n =>
+  val intervalDimensions: scala.collection.immutable.IndexedSeq[IntervalQueryDimension[T, D]] = 0 until numDimensions map { n =>
     IntervalQueryDimension(fromColName = fromColNames(n), toColName = toColNames(n),
-      fromCol2Name = fromColNames2(n), toCol2Name = toColNames2(n),
+      fromCol2Name = fromColNames.map(increaseColNameNb)(n), toCol2Name = toColNames.map(increaseColNameNb)(n),
       fromCol = fromColNames.map(col)(n), toCol = toColNames.map(col)(n),
-      fromCol2 = fromColNames2.map(col)(n), toCol2 = toColNames2.map(col)(n),
-      lowerHorizon = lowerHorizons(n), upperHorizon = upperHorizons(n),
+      fromCol2 = fromColNames.map(increaseColNameNb).map(col)(n), toCol2 = toColNames.map(increaseColNameNb).map(col)(n),
+      lowerHorizon = intervalDefs.map(_.lowerHorizon)(n), upperHorizon = intervalDefs.map(_.upperHorizon)(n),
       intDef = intervalDefs(n))
   }
 
