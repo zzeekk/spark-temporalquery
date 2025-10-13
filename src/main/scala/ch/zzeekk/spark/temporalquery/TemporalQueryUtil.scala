@@ -30,8 +30,8 @@ object TemporalQueryUtil extends Serializable with Logging {
   (override val fromColName: String = "gueltig_ab",
    override val toColName: String = "gueltig_bis",
    override val additionalTechnicalColNames: Seq[String] = Seq(),
-   override val intervalDef: ClosedInterval[Timestamp] = ClosedInterval(bigBangDay, doomsDay, DiscreteTimeAxis(ChronoUnit.MILLIS)
-   )
+   override val intervalDef: ClosedInterval[Timestamp] = ClosedInterval(
+     bigBangDay, doomsDay, DiscreteTimeAxis(ChronoUnit.MILLIS))
   ) extends ClosedIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
     override lazy val config2: TemporalClosedIntervalQueryConfig = this
       .copy(fromColName = fromColName2, toColName = toColName2)

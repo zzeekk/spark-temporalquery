@@ -292,7 +292,7 @@ object IntervalQueryImpl extends Logging {
    */
   private[temporalquery] def unifyIntervalRanges[T: Ordering : TypeTag]
   (df: DataFrame, keys: Seq[String], extend: Boolean = false, fillGapsWithNull: Boolean = false)
-  (implicit ss: SparkSession, tc: IntervalQueryConfig[T, _]) = {
+  (implicit ss: SparkSession, tc: IntervalQueryConfig[T, _]): DataFrame = {
     keepAlias(df, df => {
       // get ranges
       val df1Renamed = renameKeys(df, keys, joinColPostFix1)
