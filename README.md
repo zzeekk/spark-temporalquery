@@ -153,10 +153,9 @@ You can then use the following additional functions on Dataset/DataFrame
   Note: this function only works on intervalDef's of type ClosedInterval. 
 
 ## Builds
-Spark-temporalquery is built and released for Scala 2.11 with Spark 2.4.x and Scala 2.12 with Spark 3.x.
-Spark 3.x does not support Scala 2.11. Newer versions of Spark 2.4.x would support Scala 2.12, but there is no spark-temporalquery release for this combination.
+Spark-temporalquery is built and released for Scala 2.12 and Scala 2.13 with Spark 3.x.
 
-Note that Spark 2.4 needs Java version 8, whereas Spark 3.x is compatible with Java 8/11/17.
+Newest Spark 3.x versions are compatible with Java 11/17.
 See also https://spark.apache.org/docs/latest/#downloading. 
 
 ## Troubleshooting
