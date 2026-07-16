@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery
 
 import ch.zzeekk.spark.temporalquery.TemporalHelpers.intervalComplement
-import ch.zzeekk.spark.temporalquery.TemporalQueryUtil.TemporalClosedIntervalQueryConfig
+import ch.zzeekk.spark.temporalquery.util.TemporalQueryUtil.TemporalClosedIntervalQueryConfig
 import org.apache.spark.sql.Row
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

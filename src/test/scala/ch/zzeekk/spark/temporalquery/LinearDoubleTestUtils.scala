@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery
 
+import ch.zzeekk.spark.temporalquery.util.LinearDoubleQueryUtil._
 import org.apache.spark.sql.DataFrame
-import ch.zzeekk.spark.temporalquery.LinearDoubleQueryUtil._
 
 object LinearDoubleTestUtils extends TestUtils {
 

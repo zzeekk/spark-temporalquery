@@ -2,38 +2,13 @@
  * Copyright (c) 2017 Zacharias Kull under MIT Licence
  */
 
-package ch.zzeekk.spark.temporalquery
+package ch.zzeekk.spark.temporalquery.util
 
+import ch.zzeekk.spark.temporalquery._
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 
 import scala.reflect.runtime.universe._
-
-/**
- * Linear query utils for interval axis of type Float
- *
- * Usage: import ch.zzeekk.spark.temporalquery.LinearFloatQueryUtil._ // this imports linear*
- * implicit functions on DataFrame & Columns implicit val tqc =
- * LinearHalfOpenIntervalQueryConfig.withDefaultIntervalDef() // configure options for linear query
- * operations if needed implicit val sss = ss // make SparkSession implicitly available val
- * df_joined = df1.linearJoin(df2) // use linear query functions with Spark
- */
-object LinearFloatQueryUtil extends LinearGenericQueryUtil[Float] {
-  implicit val defaultHalfOpenIntervalDef: HalfOpenInterval[Float] = HalfOpenInterval(Float.NegativeInfinity, Float.PositiveInfinity)
-}
-
-/**
- * Linear query utils for interval axis of type Double
- *
- * Usage: import ch.zzeekk.spark.temporalquery.LinearDoubleQueryUtil._ // this imports linear*
- * implicit functions on DataFrame & Columns implicit val tqc =
- * LinearHalfOpenIntervalQueryConfig.withDefaultIntervalDef() // configure options for linear query
- * operations if needed implicit val sss = ss // make SparkSession implicitly available val
- * df_joined = df1.linearJoin(df2) // use linear query functions with Spark
- */
-object LinearDoubleQueryUtil extends LinearGenericQueryUtil[Double] {
-  implicit val defaultHalfOpenIntervalDef: HalfOpenInterval[Double] = HalfOpenInterval(Double.NegativeInfinity, Double.PositiveInfinity)
-}
 
 /**
  * Generic class to provide linear query utils for different interval axis types
@@ -90,7 +65,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   /**
    * Type which includes LinearClosedIntervalQueryConfig and LinearHalfOpenIntervalQueryConfig
    */
-  type LinearQueryConfig = IntervalQueryConfig[T, _] with LinearQueryConfigMarker
+  private type LinearQueryConfig = IntervalQueryConfig[T, _] with LinearQueryConfigMarker
 
   /**
    * Pimp-my-library pattern für's DataFrame

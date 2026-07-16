@@ -32,23 +32,27 @@ TemporalQueryUtil provides implicit function on DataFrame to query temporal data
 
 ```scala
   // this imports temporal* implicit functions on DataFrame
-  import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
-  import ch.zzeekk.spark.temporalquery.{ClosedInterval, DiscreteTimeAxis}
-  import java.sql.Timestamp
-  import java.time.temporal.ChronoUnit
-  // configure options for temporal query operations
-  val intervalDef = ClosedInterval(Timestamp.valueOf("1970-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS))
-  implicit val tqc = TemporalClosedIntervalQueryConfig( fromColName="valid_from", toColName="valid_to", intervalDef = intervalDef)
-  // make SparkSession implicitly available
-  implicit val sss = spark
-  import sss.implicits._
-  // prepare some DataFrames
-  val dfLeft = Seq((0, Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999"), 4.2))
-    .toDF("id", "valid_from", "valid_to","value_l")
-  val dfRight = Seq((0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), 5))
-    .toDF("id", "valid_from", "valid_to","value_r")
-  // use temporal* functions
-  dfLeft.temporalInnerJoin(dfRight, Seq("id"))
+
+import ch.zzeekk.spark.temporalquery.util.TemporalQueryUtil._
+import ch.zzeekk.spark.temporalquery.{ClosedInterval, DiscreteTimeAxis}
+import java.sql.Timestamp
+import java.time.temporal.ChronoUnit
+
+// configure options for temporal query operations
+val intervalDef = ClosedInterval(Timestamp.valueOf("1970-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS))
+implicit val tqc = TemporalClosedIntervalQueryConfig(fromColName = "valid_from", toColName = "valid_to", intervalDef = intervalDef)
+// make SparkSession implicitly available
+implicit val sss = spark
+
+import sss.implicits._
+
+// prepare some DataFrames
+val dfLeft = Seq((0, Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999"), 4.2))
+        .toDF("id", "valid_from", "valid_to", "value_l")
+val dfRight = Seq((0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), 5))
+        .toDF("id", "valid_from", "valid_to", "value_r")
+// use temporal* functions
+dfLeft.temporalInnerJoin(dfRight, Seq("id"))
 ```
 
 ### linear queries
@@ -58,8 +62,10 @@ The following shortcuts exists to use it with predefined datatypes:
 - LinearDoubleQueryUtil
 
 ```scala
+  /
+```scala
   // this imports linear* implicit functions on DataFrame
-  import ch.zzeekk.spark.temporalquery.LinearDoubleQueryUtil._
+  import ch.zzeekk.spark.temporalquery.util.LinearDoubleQueryUtil._
   import ch.zzeekk.spark.temporalquery.HalfOpenInterval
   // configure options for linear query operations
   val intervalDef = HalfOpenInterval(0d, Double.MaxValue)
@@ -74,9 +80,7 @@ The following shortcuts exists to use it with predefined datatypes:
     .toDF("id", "pos_from", "pos_to","value_r")
   // use linear* functions
   dfLeft.linearInnerJoin(dfRight, Seq("id"))
-```
-
-The following sections are written for temporal queries, but the library works in the same way with linear queries by exchanging temporal* vs. linear* in function names.
+```ng sections are written for temporal queries, but the library works in the same way with linear queries by exchanging temporal* vs. linear* in function names.
 
 ## Precondition
 

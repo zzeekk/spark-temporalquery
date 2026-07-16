@@ -2,8 +2,9 @@
  * Copyright (c) 2017 Zacharias Kull under MIT Licence
  */
 
-package ch.zzeekk.spark.temporalquery
+package ch.zzeekk.spark.temporalquery.util
 
+import ch.zzeekk.spark.temporalquery._
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 

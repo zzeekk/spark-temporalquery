@@ -1,8 +1,9 @@
-package ch.zzeekk.spark.temporalquery
+package ch.zzeekk.spark.temporalquery.util
 
 import ch.zzeekk.spark.temporalquery.TemporalHelpers._
-import ch.zzeekk.spark.temporalquery.TemporalQueryUtil._
 import ch.zzeekk.spark.temporalquery.TemporalTestUtils._
+import ch.zzeekk.spark.temporalquery.TestUtils
+import ch.zzeekk.spark.temporalquery.util.TemporalQueryUtil._
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
