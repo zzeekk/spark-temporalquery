@@ -34,13 +34,13 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
   require(dimensionMap.nonEmpty, "at least one fromCol name must be specified")
   val numDimensions: Int = dimensionMap.size
 
-  def additionalTechnicalColNames: List[String]
+  def additionalTechnicalColNames: Seq[String]
 
   // copy of configuration with 2nd pair of from/to column names used as main column pair
   def config2: IntervalMultidimQueryConfig[T, D] // hint: implement with case class copy constructor in subclass
 
   // 2nd pair of from/to column names
-  private def increaseColNameNb(colName: String): String = {
+  protected def increaseColNameNb(colName: String): String = {
     val regexColNameNb = "(.*)([0-9]+)$".r
     colName match {
       case regexColNameNb(name, nb) => name + (nb.toInt + 1).toString
@@ -107,9 +107,4 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
     dim.intDef.intervalJoinExpr(df1(dim.fromColName), df1(dim.toColName), df2(dim.fromCol2Name), df2(dim.toCol2Name))
   )
 
-  // TODO: Not sure how this can be useful in multidimensional intervals
-  def getPredecessorIntervalEndExpr(startValue: Column): Seq[Column]
-
-  // TODO: Not sure how this can be useful in multidimensional intervals
-  def getSuccessorIntervalStartExpr(endValue: Column): Seq[Column]
 }

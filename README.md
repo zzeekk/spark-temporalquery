@@ -13,7 +13,7 @@ Breaking changes in version 3.x:
 Breaking changes in version 2.x:
 - temporalRoundDiscreteTime is no longer included in temporalCleanupExtend. Add it separately if needed.
 - temporalCombine is no longer included in temporalCleanupExtend. Add it separately if needed. Note that this affects also temporal*Join methods.
-- superfluous parameter `keys:Seq[String] = Seq()` is removed from temporalCombine
+- superfluous parameter `keys:Seq[String] = Nil` is removed from temporalCombine
 
 ## Usage
 Spark-temporalquery releases are published on maven central.
@@ -112,17 +112,17 @@ You can then use the following additional functions on Dataset/DataFrame
   Inner Join of two temporal datasets using a list of key-columns named the same as condition (using-join). "Inner join" means that the result for a given key contains only periods which are defined in both DataFrames.
 - `temporalInnerJoin( df2:DataFrame, keyCondition:Column )`
   Inner Join of two temporal datasets using a given expression as join condition
-- `temporalFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )`
+- `temporalFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Nil, additionalJoinFilterCondition:Column = lit(true) )`
   Full Outer Join of two temporal datasets using a list of key-columns named the same as condition (using-join). "Outer join" means that the result for a given key contains all periods from DataFrame 1, 2 respectively, with null values for attributes of DataFrame 2, 1 respectively, where the period is missing from Data Frame 2, 1 respectively.
   - rnkExpressions: In case df1 or df2 are not a temporal 1-to-1 or many-to-1 mapping, this parameter is used to select a sub-dataFrame which constitutes a temporal 1-1 mapping:
    by ordering for each key according to rnkExpressions and selecting the first row. In case df1 or df2 are a to-many relation you need to skip this cleaning by not setting the parameter rnkExpressions or by setting it to the empty sequence.  
   - additionalJoinFilterCondition: you can provide additional non-equi-join conditions which will be combined with the conditions generated from the list of keys.
-- `temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )`
+- `temporalLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Nil, additionalJoinFilterCondition:Column = lit(true) )`
   Left Outer Join of two temporal datasets using a list of key-columns named the same as condition (using-join). "Left join" means that the result for a given key contains all periods from DataFrame 1 with null values for attributes of DataFrame 2 where the period is missing from Data Frame 2.
   - rnkExpressions: In case df2 is not a temporal 1-to-1 or many-to-1 mapping, this parameter is used to select a sub-dataFrame which constitutes a temporal 1-1 mapping:
    by ordering for each key according to rnkExpressions and selecting the first row. In case df2 is a to-many relation you need to skip this cleaning by not setting the parameter rnkExpressions or by setting it to the empty sequence.  
   - additionalJoinFilterCondition: you can provide additional non-equi-join conditions which will be combined with the conditions generated from the list of keys.
-- `temporalRightJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Seq(), additionalJoinFilterCondition:Column = lit(true) )`
+- `temporalRightJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Nil, additionalJoinFilterCondition:Column = lit(true) )`
   Right Outer Join of two temporal datasets using a list of key-columns named the same as condition (using-join). "Right join" means that the result for a given key contains all periods from DataFrame 2 with null values for attributes of DataFrame 1 where the period is missing from Data Frame 1.
   - rnkExpressions: In case df1 is not a temporal 1-to-1 or many-to-1 mapping, this parameter is used to select a sub-dataFrame which constitutes a temporal 1-1 mapping:
    by ordering for each key according to rnkExpressions and selecting the first row. In case df1 is a to-many relation you need to skip this cleaning by not setting the parameter rnkExpressions or by setting it to the empty sequence.  
@@ -138,7 +138,7 @@ You can then use the following additional functions on Dataset/DataFrame
   - extend: If true and fillGapsWithNull=true, every key is extended with additional records with null values, so that for every key the whole timeline [minDate , maxDate] is covered (default=extend=true)
   - fillGapsWithNull: If true, gaps in history are filled with records with null values for every key (default=fillGapsWithNull=true)
   - Note: extend=true needs fillGapsWithNull=true in order to work
-- `temporalCombine(ignoreColNames:Seq[String] = Seq() )`
+- `temporalCombine(ignoreColNames:Seq[String] = Nil )`
   Combines successive records if there are no changes on the non-technical attributes.
   - ignoreColName: A list of columns to be ignored in change detection
 - `temporalUnifyRanges( keys:Seq[String] )`

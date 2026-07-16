@@ -40,7 +40,7 @@ object LinearDoubleQueryUtil extends LinearGenericQueryUtil[Double] {
  * @tparam T:
  *   scala type for interval axis
  */
-class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with Logging {
+class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Logging {
 
   /**
    * Configuration Parameters for operations on closed intervals. An instance of this class is
@@ -49,7 +49,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
   case class LinearClosedIntervalQueryConfig(
       override val fromColName: String = "position_von",
       override val toColName: String = "position_bis",
-      override val additionalTechnicalColNames: Seq[String] = Seq(),
+      override val additionalTechnicalColNames: Seq[String] = Nil,
       override val intervalDef: ClosedInterval[T]
   ) extends ClosedIntervalQueryConfig[T] with LinearQueryConfigMarker {
     override lazy val config2: LinearClosedIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
@@ -62,7 +62,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
   case class LinearHalfOpenIntervalQueryConfig(
       override val fromColName: String = "position_von",
       override val toColName: String = "position_bis",
-      override val additionalTechnicalColNames: Seq[String] = Seq(),
+      override val additionalTechnicalColNames: Seq[String] = Nil,
       override val intervalDef: HalfOpenInterval[T]
   ) extends HalfOpenIntervalQueryConfig[T] with LinearQueryConfigMarker {
     override lazy val config2: LinearHalfOpenIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
@@ -76,9 +76,9 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
     def withDefaultIntervalDef(
         fromColName: String = "position_von",
         toColName: String = "position_bis",
-        additionalTechnicalColNames: Seq[String] = Seq()
+        additionalTechnicalColNames: Seq[String] = Nil
     )(implicit intervalDef: HalfOpenInterval[T]): LinearHalfOpenIntervalQueryConfig =
-      LinearHalfOpenIntervalQueryConfig(fromColName, toColName, Seq(), intervalDef = intervalDef)
+      LinearHalfOpenIntervalQueryConfig(fromColName, toColName, Nil, intervalDef = intervalDef)
   }
 
   /**
@@ -98,7 +98,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
   implicit class LinearDataFrameExtensions(df1: DataFrame) {
 
     /**
-     * Implementiert ein inner-join von linearen Daten über eine Liste von gleichbenannten Spalten
+     * Implementiert ein inner-join von linearen Daten über eine Liste von gleich benannten Spalten
      */
     def linearInnerJoin(df2: DataFrame, keys: Seq[String])(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
       IntervalQueryImpl.joinIntervalsWithKeysImpl(df1, df2, keys)
@@ -107,10 +107,10 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
      * Implementiert ein inner-join von historisierten Daten über eine ausformulierte Join-Bedingung
      */
     def linearInnerJoin(df2: DataFrame, keyCondition: Column)(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
-      IntervalQueryImpl.joinIntervals(df1, df2, keys = Seq(), joinType = "inner", keyCondition)
+      IntervalQueryImpl.joinIntervals(df1, df2, keys = Nil, joinType = "inner", keyCondition)
 
     /**
-     * Implementiert ein full-outer-join von linearen Daten über eine Liste von gleichbenannten
+     * Implementiert ein full-outer-join von linearen Daten über eine Liste von gleich benannten
      * Spalten
      * @param rnkExpressions:
      *   Für den Fall, dass df1 oder df2 kein lineares 1-1-mapping ist, also keys :+ fromColName
@@ -118,7 +118,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
      *   ausgewählt. Dies entspricht also einem join mit der Einschränkung, dass keine Muliplikation
      *   der Records im anderen DataFrame stattfinden kann. Soll df1 oder df2 aber als eine
      *   one-to-many Relation gejoined werden und damit auch die Multiplikation von Records aus
-     *   df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung
+     *   df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Nil diese Bereinigung
      *   ausgeschaltet werden.
      * @param additionalJoinFilterCondition:
      *   zusätzliche non-equi-join Bedingungen für den left-join
@@ -129,22 +129,22 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
     def linearFullJoin(
         df2: DataFrame,
         keys: Seq[String],
-        rnkExpressions: Seq[Column] = Seq(),
+        rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
     )(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend)
 
     /**
-     * Implementiert ein left-outer-join von historisierten Daten über eine Liste von
-     * gleichbenannten Spalten
+     * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleich
+     * benannten Spalten
      * @param rnkExpressions:
      *   Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht
      *   eindeutig sind, wird mit Hilfe der rnkExpressions für jeden Wert genau eine Zeile
      *   ausgewählt. Dies entspricht also einem join mit der Einschränkung, dass keine Muliplikation
      *   der Records in df1 stattfinden kann. Soll df2 aber als eine one-to-many Relation gejoined
      *   werden und damit auch die Multiplikation von Records aus df1 möglich sein, so kann durch
-     *   setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet werden.
+     *   setzen von rnkExpressions = Nil diese Bereinigung ausgeschaltet werden.
      * @param additionalJoinFilterCondition:
      *   zusätzliche non-equi-join Bedingungen für den left-join
      * @param doCleanupExtend
@@ -154,14 +154,14 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
     def linearLeftJoin(
         df2: DataFrame,
         keys: Seq[String],
-        rnkExpressions: Seq[Column] = Seq(),
+        rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
     )(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "left", doCleanupExtend)
 
     /**
-     * Implementiert ein right-outer-join von linearen Daten über eine Liste von gleichbenannten
+     * Implementiert ein right-outer-join von linearen Daten über eine Liste von gleich benannten
      * Spalten
      * @param rnkExpressions:
      *   Für den Fall, dass df1 oder df2 kein lineares 1-1-mapping ist, also keys :+ fromColName
@@ -169,7 +169,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
      *   Zeile ausgewählt. Dies entspricht also einem join mit der Einschränkung, dass keine
      *   Muliplikation der Records im anderen DataFrame stattfinden kann. Soll df1 oder df2 aber als
      *   eine one-to-many Relation gejoined werden und damit auch die Multiplikation von Records aus
-     *   df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung
+     *   df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Nil diese Bereinigung
      *   ausgeschaltet werden.
      * @param additionalJoinFilterCondition:
      *   zusätzliche non-equi-join Bedingungen für den left-join
@@ -180,14 +180,14 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
     def linearRightJoin(
         df2: DataFrame,
         keys: Seq[String],
-        rnkExpressions: Seq[Column] = Seq(),
+        rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
     )(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend)
 
     /**
-     * Implementiert einen left-anti-join von linearen Daten über eine Liste von gleichbenannten
+     * Implementiert einen left-anti-join von linearen Daten über eine Liste von gleich benannten
      * Spalten
      * @param additionalJoinFilterCondition:
      *   zusätzliche non-equi-join Bedingungen für den left-anti-join
@@ -222,7 +222,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
     def linearCleanupExtend(
         keys: Seq[String],
         rnkExpressions: Seq[Column],
-        aggExpressions: Seq[(String, Column)] = Seq(),
+        aggExpressions: Seq[(String, Column)] = Nil,
         rnkFilter: Boolean = true,
         extend: Boolean = true,
         fillGapsWithNull: Boolean = true
@@ -233,7 +233,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
      * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung
      * gibt.
      */
-    def linearCombine(keys: Seq[String] = Seq(), ignoreColNames: Seq[String] = Seq())(implicit
+    def linearCombine(keys: Seq[String] = Nil, ignoreColNames: Seq[String] = Nil)(implicit
         ss: SparkSession,
         tc: LinearQueryConfig
     ): DataFrame = {
@@ -252,7 +252,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag]() extends Serializable with L
     /**
      * Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
      */
-    def linearExtendRange(keys: Seq[String] = Seq(), extendMin: Boolean = true, extendMax: Boolean = true)(implicit
+    def linearExtendRange(keys: Seq[String] = Nil, extendMin: Boolean = true, extendMax: Boolean = true)(implicit
         ss: SparkSession,
         tc: LinearQueryConfig
     ): DataFrame =

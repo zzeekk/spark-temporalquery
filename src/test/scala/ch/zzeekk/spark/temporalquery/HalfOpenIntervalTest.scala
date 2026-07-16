@@ -58,7 +58,7 @@ class HalfOpenIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
           , ("2019-01-01 00:00:0", "2020-01-01 00:00:0.999")
         )
       ),
-      ("subset => empty result", "2020-01-01 00:05:6", "2020-01-01 00:05:9", Seq())
+      ("subset => empty result", "2020-01-01 00:05:6", "2020-01-01 00:05:9", Nil)
     ).map { case (comment, validFrom, validTo, resultSeq) => ((comment, (Timestamp.valueOf(validFrom), Timestamp.valueOf(validTo))), resultSeq.map(y => (Timestamp.valueOf(y._1), Timestamp.valueOf(y._2)))) }
       .toMap
 

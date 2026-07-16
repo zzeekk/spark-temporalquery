@@ -6,10 +6,4 @@ abstract class ClosedIntervalMultidimQueryConfig[T: Ordering] extends IntervalMu
   def getFloorExpr(value: Column): List[Column] = intervalDimensions.map(_.intDef.getFloorExpr(value))
 
   def getCeilExpr(value: Column): List[Column] = intervalDimensions.map(_.intDef.getCeilExpr(value))
-
-  def getPredecessorIntervalEndExpr(startValue: Column): List[Column] = intervalDimensions
-    .map(_.intDef.getPredecessorExpr(startValue))
-
-  def getSuccessorIntervalStartExpr(endValue: Column): List[Column] = intervalDimensions
-    .map(_.intDef.getSuccessorExpr(endValue))
 }

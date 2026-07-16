@@ -28,7 +28,7 @@ object TemporalQueryUtil extends Serializable with Logging {
   case class TemporalClosedIntervalQueryConfig(
       override val fromColName: String = "gueltig_ab",
       override val toColName: String = "gueltig_bis",
-      override val additionalTechnicalColNames: Seq[String] = Seq(),
+      override val additionalTechnicalColNames: Seq[String] = Nil,
       override val intervalDef: ClosedInterval[Timestamp] = ClosedInterval(
         bigBangDay,
         doomsDay,
@@ -46,7 +46,7 @@ object TemporalQueryUtil extends Serializable with Logging {
   case class TemporalHalfOpenIntervalQueryConfig(
       override val fromColName: String = "gueltig_ab",
       override val toColName: String = "gueltig_bis",
-      override val additionalTechnicalColNames: Seq[String] = Seq(),
+      override val additionalTechnicalColNames: Seq[String] = Nil,
       override val intervalDef: HalfOpenInterval[Timestamp] = HalfOpenInterval(bigBangDay, doomsDay)
   ) extends HalfOpenIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
     override lazy val config2: TemporalHalfOpenIntervalQueryConfig = this
@@ -72,7 +72,7 @@ object TemporalQueryUtil extends Serializable with Logging {
   implicit class TemporalDataFrameExtensions(df1: DataFrame) {
 
     /**
-     * Implementiert ein inner-join von historisierten Daten über eine Liste von gleichbenannten
+     * Implementiert ein inner-join von historisierten Daten über eine Liste von gleich benannten
      * Spalten
      */
     def temporalInnerJoin(df2: DataFrame, keys: Seq[String])(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame =
@@ -84,11 +84,11 @@ object TemporalQueryUtil extends Serializable with Logging {
      */
     def temporalInnerJoin(df2: DataFrame, keyCondition: Column)(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame =
       IntervalQueryImpl
-        .joinIntervals(df1, df2, keys = Seq(), joinType = "inner", keyCondition)
+        .joinIntervals(df1, df2, keys = Nil, joinType = "inner", keyCondition)
 
     /**
-     * Implementiert ein full-outer-join von historisierten Daten über eine Liste von
-     * gleichbenannten Spalten
+     * Implementiert ein full-outer-join von historisierten Daten über eine Liste von gleich
+     * benannten Spalten
      *
      * @param rnkExpressions
      *   : Für den Fall, dass df1 oder df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName
@@ -96,7 +96,7 @@ object TemporalQueryUtil extends Serializable with Logging {
      *   Zeile ausgewählt. Dies entspricht also ein join mit der Einschränkung, dass kein
      *   Muliplikation der Records im anderen frame stattfinden kann. Soll df1 oder df2 aber als
      *   eine one-to-many Relation gejoined werden und damit auch die Multiplikation von Records aus
-     *   df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung
+     *   df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Nil diese Bereinigung
      *   ausgeschaltet.
      * @param additionalJoinFilterCondition
      *   : zusätzliche non-equi-join Bedingungen für den full-join
@@ -107,15 +107,15 @@ object TemporalQueryUtil extends Serializable with Logging {
     def temporalFullJoin(
         df2: DataFrame,
         keys: Seq[String],
-        rnkExpressions: Seq[Column] = Seq(),
+        rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
     )(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame = IntervalQueryImpl
       .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend)
 
     /**
-     * Implementiert ein left-outer-join von historisierten Daten über eine Liste von
-     * gleichbenannten Spalten
+     * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleich
+     * benannten Spalten
      *
      * @param rnkExpressions
      *   : Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht
@@ -123,7 +123,7 @@ object TemporalQueryUtil extends Serializable with Logging {
      *   ausgewählt. Dies entspricht also ein join mit der Einschränkung, dass kein Muliplikation
      *   der Records in df1 stattfinden kann. Soll df2 aber als eine one-to-many Relation gejoined
      *   werden und damit auch die Multiplikation von Records aus df1 möglich sein, so kann durch
-     *   setzen von rnkExpressions = Seq() diese Bereinigung ausgeschaltet.
+     *   setzen von rnkExpressions = Nil diese Bereinigung ausgeschaltet.
      * @param additionalJoinFilterCondition
      *   : zusätzliche non-equi-join Bedingungen für den left-join
      * @param doCleanupExtend
@@ -133,7 +133,7 @@ object TemporalQueryUtil extends Serializable with Logging {
     def temporalLeftJoin(
         df2: DataFrame,
         keys: Seq[String],
-        rnkExpressions: Seq[Column] = Seq(),
+        rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
     )(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame = IntervalQueryImpl
@@ -141,8 +141,8 @@ object TemporalQueryUtil extends Serializable with Logging {
         additionalJoinFilterCondition, "left", doCleanupExtend)
 
     /**
-     * Implementiert ein righ-outer-join von historisierten Daten über eine Liste von
-     * gleichbenannten Spalten
+     * Implementiert ein righ-outer-join von historisierten Daten über eine Liste von gleich
+     * benannten Spalten
      *
      * @param rnkExpressions
      *   : Für den Fall, dass df1 oder df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName
@@ -150,7 +150,7 @@ object TemporalQueryUtil extends Serializable with Logging {
      *   Zeile ausgewählt. Dies entspricht also ein join mit der Einschränkung, dass kein
      *   Muliplikation der Records im anderen frame stattfinden kann. Soll df1 oder df2 aber als
      *   eine one-to-many Relation gejoined werden und damit auch die Multiplikation von Records aus
-     *   df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Seq() diese Bereinigung
+     *   df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Nil diese Bereinigung
      *   ausgeschaltet.
      * @param additionalJoinFilterCondition
      *   : zusätzliche non-equi-join Bedingungen für den right-join
@@ -161,15 +161,15 @@ object TemporalQueryUtil extends Serializable with Logging {
     def temporalRightJoin(
         df2: DataFrame,
         keys: Seq[String],
-        rnkExpressions: Seq[Column] = Seq(),
+        rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
     )(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame = IntervalQueryImpl
       .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend)
 
     /**
-     * Implementiert ein left-anti-join von historisierten Daten über eine Liste von gleichbenannten
-     * Spalten
+     * Implementiert ein left-anti-join von historisierten Daten über eine Liste von gleich
+     * benannten Spalten
      *
      * @param additionalJoinFilterCondition
      *   : zusätzliche non-equi-join Bedingungen für den left-anti-join
@@ -201,7 +201,7 @@ object TemporalQueryUtil extends Serializable with Logging {
     def temporalCleanupExtend(
         keys: Seq[String],
         rnkExpressions: Seq[Column],
-        aggExpressions: Seq[(String, Column)] = Seq(),
+        aggExpressions: Seq[(String, Column)] = Nil,
         rnkFilter: Boolean = true,
         extend: Boolean = true,
         fillGapsWithNull: Boolean = true
@@ -213,7 +213,7 @@ object TemporalQueryUtil extends Serializable with Logging {
      * gibt. Zuerst wird der Dataframe mittels [[temporalRoundDiscreteTime]] etwas bereinigt, siehe
      * Beschreibung dort
      */
-    def temporalCombine(ignoreColNames: Seq[String] = Seq())(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame =
+    def temporalCombine(ignoreColNames: Seq[String] = Nil)(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame =
       IntervalQueryImpl
         .combineIntervals(df1, ignoreColNames)
 
@@ -227,7 +227,7 @@ object TemporalQueryUtil extends Serializable with Logging {
     /**
      * Erweitert die Historie des kleinsten Werts pro Key auf minDate
      */
-    def temporalExtendRange(keys: Seq[String] = Seq(), extendMin: Boolean = true, extendMax: Boolean = true)(implicit
+    def temporalExtendRange(keys: Seq[String] = Nil, extendMin: Boolean = true, extendMax: Boolean = true)(implicit
         ss: SparkSession,
         tc: TemporalQueryConfig
     ): DataFrame = IntervalQueryImpl

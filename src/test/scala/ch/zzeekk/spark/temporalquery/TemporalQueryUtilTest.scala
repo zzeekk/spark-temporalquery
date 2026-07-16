@@ -384,7 +384,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
 
   "temporalInnerJoin dfRight 'on' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").temporalInnerJoin(dfRight.as("dfR"), $"dfL.id" === $"dfR.id")
-    assert(actual.columns.count(_ == "id") == 2)
+    actual.columns.count(_ == "id") shouldBe 2
     val expected = Seq(
       (0, 4.2, 0, Some(97.15), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
       (0, 4.2, 0, Some(97.15), "2018-06-01 05:24:11", "2018-10-23 03:50:09.999"),
@@ -535,7 +535,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
     ).map(x => (0, Timestamp.valueOf(x._1), Timestamp.valueOf(x._2)))
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName)
 
-    val actual = minuend.temporalLeftAntiJoin(subtrahend, Seq())
+    val actual = minuend.temporalLeftAntiJoin(subtrahend, Nil)
     val expected = Seq(
       (1, "2019-01-01 00:00:0",     "2020-01-01 00:00:0"),
       (2, "2019-01-01 00:00:0",     "2020-01-01 00:00:0.999"),

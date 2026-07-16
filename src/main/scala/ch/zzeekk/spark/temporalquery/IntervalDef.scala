@@ -213,7 +213,7 @@ case class DiscreteTimeAxis(timeUnit: ChronoUnit) extends DiscreteAxisDef[Timest
  * @tparam T
  *   : scala type for interval axis
  */
-case class DiscreteNumericAxis[T: Integral](step: T)(implicit f: Integral[T]) extends DiscreteAxisDef[T] {
+case class DiscreteNumericAxis[T](step: T)(implicit f: Integral[T]) extends DiscreteAxisDef[T] {
   implicit private def ops(lhs: T): f.IntegralOps = f.mkNumericOps(lhs)
 
   override def floor(value: T): T = (value / step) * step // round down to next step

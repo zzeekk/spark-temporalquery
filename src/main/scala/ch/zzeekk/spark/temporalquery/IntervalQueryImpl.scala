@@ -164,8 +164,10 @@ object IntervalQueryImpl extends Logging {
     // build ranges
     dfPointsExt
       .withColumnRenamed(ptColName, tc.fromColName)
-      .withColumn(tc.toColName,
-        tc.getPredecessorIntervalEndExpr(lead(tc.fromCol, 1).over(Window.partitionBy(keys.map(col): _*).orderBy(tc.fromCol))))
+      .withColumn(
+        tc.toColName,
+        tc.getPredecessorIntervalEndExpr(lead(tc.fromCol, 1).over(Window.partitionBy(keys.map(col): _*).orderBy(tc.fromCol)))
+      )
       .where(tc.toCol.isNotNull)
   }
 
@@ -220,7 +222,7 @@ object IntervalQueryImpl extends Logging {
         // select final schema
         val selCols: Seq[Column] = keys.map(dfClean(_)) ++
           df.columns.diff(keys ++ tc.technicalColNames).map(dfClean(_)) ++
-          aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq(col(rnkColName)) else Seq()) :+
+          aggExpressions.map(e => col(e._1)) ++ (if (!rnkFilter && rnkExpressions.nonEmpty) Seq(col(rnkColName)) else Nil) :+
           dfClean(tc.fromColName2).as(tc.fromColName) :+ dfClean(tc.toColName2).as(tc.toColName) :+ tc.definedCol
 
         dfClean.select(selCols: _*)
@@ -245,10 +247,10 @@ object IntervalQueryImpl extends Logging {
   )(implicit ss: SparkSession, tc: IntervalQueryConfig[T, _]): DataFrame = {
     // extend data frames
     val df1Extended = if ((joinType == "full" || joinType == "right") && doCleanupExtend)
-      cleanupExtendIntervals(df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Seq(), rnkFilter = true).drop(tc.definedColName)
+      cleanupExtendIntervals(df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Nil, rnkFilter = true).drop(tc.definedColName)
     else df1
     val df2Extended = if ((joinType == "full" || joinType == "left") && doCleanupExtend)
-      cleanupExtendIntervals(df2, keys, rnkExpressions.intersect(df2.columns.map(col)), Seq(), rnkFilter = true).drop(tc.definedColName)
+      cleanupExtendIntervals(df2, keys, rnkExpressions.intersect(df2.columns.map(col)), Nil, rnkFilter = true).drop(tc.definedColName)
     else df2
     // join df1 & df2
     joinIntervals(df1Extended, df2Extended, keys, joinType, additionalJoinFilterCondition)
@@ -279,7 +281,7 @@ object IntervalQueryImpl extends Logging {
     val dfJoin = df1ExceptAntiJoin.join(df2Renamed, joinCondition, "inner")
       .select(df1Cols :+ tc.fromCol2 :+ tc.toCol2: _*)
     logger.debug(s"leftAntiJoinIntervals: dfJoin.schema = ${dfJoin.schema.treeString}")
-    val df2Combined = combineIntervals(dfJoin.select(tc.fromColName2, tc.toColName2 +: keys: _*), Seq())(implicitly[Ordering[T]],
+    val df2Combined = combineIntervals(dfJoin.select(tc.fromColName2, tc.toColName2 +: keys: _*), Nil)(implicitly[Ordering[T]],
       implicitly[TypeTag[T]], ss, tc.config2)
     logger.debug(s"leftAntiJoinIntervals: df2Combined.schema = ${df2Combined.schema.treeString}")
 

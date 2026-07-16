@@ -440,7 +440,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (0, 200101.00022, 200101.00030)
     ).toDF("id",defaultConfig.fromColName, defaultConfig.toColName)
 
-    val actual = minuend.linearLeftAntiJoin(subtrahend,Seq())
+    val actual = minuend.linearLeftAntiJoin(subtrahend,Nil)
     val expected = Seq(
       (1, 190101.00000    , 200101.00000),
       (2, 190101.00000    , 200101.000001),
