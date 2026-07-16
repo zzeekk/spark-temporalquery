@@ -25,19 +25,16 @@ case class IntervalQueryDimension[T, D <: IntervalDef[T]](
  */
 abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Serializable {
   // this is an abstract class because "traits can not have type parameters with context bounds"
-  def fromColNames: Seq[String]
 
-  val numDimensions: Int = fromColNames.length
+  /**
+   * dimensionMap assiugns to each fromColName its toCoilName and the interval definition
+   * @return
+   */
+  def dimensionMap: Map[String, (String, D)]
+  require(dimensionMap.nonEmpty, "at least one fromCol name must be specified")
+  val numDimensions: Int = dimensionMap.size
 
-  def toColNames: Seq[String]
-
-  def additionalTechnicalColNames: Seq[String]
-
-  def intervalDefs: Seq[D]
-
-  require(fromColNames.nonEmpty, "at least one fromCol name must be specified")
-  require(fromColNames.length == toColNames.length, "please provide equal number of fromCol names and toCol name")
-  require(fromColNames.length == intervalDefs.length, "please provide equal number of fromCol names and interval definitions")
+  def additionalTechnicalColNames: List[String]
 
   // copy of configuration with 2nd pair of from/to column names used as main column pair
   def config2: IntervalMultidimQueryConfig[T, D] // hint: implement with case class copy constructor in subclass
@@ -52,36 +49,39 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
   }
 
   // technical column names to be excluded in some operations
-  val technicalColNames: Seq[String] = fromColNames ++ toColNames ++ additionalTechnicalColNames
+  val technicalColNames: List[String] =
+    (dimensionMap.keys ++ dimensionMap.values.map(_._1) ++
+      additionalTechnicalColNames).toList
 
   // helper column names
   val definedColName: String = "_defined"
-
   def definedCol: Column = col(definedColName)
 
-  val intervalDimensions: scala.collection.immutable.IndexedSeq[IntervalQueryDimension[T, D]] = 0 until numDimensions map { n =>
+  val intervalDimensions: List[IntervalQueryDimension[T, D]] = dimensionMap.map { case (f, (t, i)) =>
     IntervalQueryDimension(
-      fromColName = fromColNames(n),
-      toColName = toColNames(n),
-      fromCol2Name = fromColNames.map(increaseColNameNb)(n),
-      toCol2Name = toColNames.map(increaseColNameNb)(n),
-      fromCol = fromColNames.map(col)(n),
-      toCol = toColNames.map(col)(n),
-      fromCol2 = fromColNames.map(increaseColNameNb).map(col)(n),
-      toCol2 = toColNames.map(increaseColNameNb).map(col)(n),
-      lowerHorizon = intervalDefs.map(_.lowerHorizon)(n),
-      upperHorizon = intervalDefs.map(_.upperHorizon)(n),
-      intDef = intervalDefs(n)
+      fromColName = f,
+      toColName = t,
+      fromCol2Name = increaseColNameNb(f),
+      toCol2Name = increaseColNameNb(t),
+      fromCol = col(f),
+      toCol = col(t),
+      fromCol2 = col(increaseColNameNb(f)),
+      toCol2 = col(increaseColNameNb(t)),
+      lowerHorizon = i.lowerHorizon,
+      upperHorizon = i.upperHorizon,
+      intDef = i
     )
-  }
+  }.toList
 
   // interval functions
 
+  // TODO: explain this function
   def applyBooleanColumnFunctionToIntervalDefs(boolColFun: IntervalQueryDimension[T, D] => Column): Column =
     intervalDimensions.map(boolColFun).reduce((x, y) => x and y)
 
+  // TODO: explain this function
   def checkValue(checkFun: (Column, IntervalQueryDimension[T, D]) => Column)(values: Seq[Column]): Column = {
-    require(values.length == numDimensions, "Please provide as many values as dimenions")
+    require(values.length == numDimensions, "Please provide as many values as dimensions")
     applyBooleanColumnFunctionToIntervalDefs(dim => checkFun(values(intervalDimensions.indexOf(dim)), dim))
   }
 
@@ -107,29 +107,9 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
     dim.intDef.intervalJoinExpr(df1(dim.fromColName), df1(dim.toColName), df2(dim.fromCol2Name), df2(dim.toCol2Name))
   )
 
-  // TODO: Not sure how this can be usefull in multidimensional intervals
+  // TODO: Not sure how this can be useful in multidimensional intervals
   def getPredecessorIntervalEndExpr(startValue: Column): Seq[Column]
 
-  // TODO: Not sure how this can be usefull in multidimensional intervals
+  // TODO: Not sure how this can be useful in multidimensional intervals
   def getSuccessorIntervalStartExpr(endValue: Column): Seq[Column]
-}
-
-abstract class ClosedIntervalMultidimQueryConfig[T: Ordering] extends IntervalMultidimQueryConfig[T, ClosedInterval[T]] {
-  def getFloorExpr(value: Column): Seq[Column] = intervalDimensions.map(_.intDef.getFloorExpr(value))
-
-  def getCeilExpr(value: Column): Seq[Column] = intervalDimensions.map(_.intDef.getCeilExpr(value))
-
-  def getPredecessorIntervalEndExpr(startValue: Column): Seq[Column] = intervalDimensions
-    .map(_.intDef.getPredecessorExpr(startValue))
-
-  def getSuccessorIntervalStartExpr(endValue: Column): Seq[Column] = intervalDimensions
-    .map(_.intDef.getSuccessorExpr(endValue))
-}
-
-abstract class HalfOpenIntervalMultidimQueryConfig[T: Ordering] extends IntervalMultidimQueryConfig[T, HalfOpenInterval[T]] {
-  def getPredecessorIntervalEndExpr(startValue: Column): Seq[Column] = intervalDimensions
-    .map(_.intDef.getFitToHorizonExpr(startValue))
-
-  def getSuccessorIntervalStartExpr(endValue: Column): Seq[Column] = intervalDimensions
-    .map(_.intDef.getFitToHorizonExpr(endValue))
 }
