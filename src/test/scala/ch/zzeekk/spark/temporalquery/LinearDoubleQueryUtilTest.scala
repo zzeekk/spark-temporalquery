@@ -23,9 +23,9 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       .linearCombine()
       .orderBy(defaultConfig.fromCol)
     val expected = Seq(
-      (0, None, false, intervalMinValue, 171210.0),
-      (0, Some(4.2), true, 171210.000000, 181209.0),
-      (0, None, false, 181209.000000, intervalMaxValue)
+      (0, None,      false, intervalMinValue, 171210.0),
+      (0, Some(4.2), true,  171210.000000,    181209.0),
+      (0, None,      false, 181209.000000,    intervalMaxValue)
     ).toDF("id", "wert_l", defaultConfig.definedColName, defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
 
@@ -41,12 +41,12 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       fillGapsWithNull = false
     ).linearCombine()
     val expected = Seq(
-      (0, Some(97.15), 180101.000000, 180201.0),
-      (0, Some(97.15), 180601.052411, intervalMaxValue),
-      (1, None, 180101.000000, 190101.0),
+      (0, Some(97.15),  180101.000000, 180201.0),
+      (0, Some(97.15),  180601.052411, intervalMaxValue),
+      (1, None,         180101.000000, 190101.0),
       (1, Some(2019.0), 190101.000000, 200101.0),
       (1, Some(2020.0), 200101.000000, 210101.0),
-      (1, None, 210101.000000, intervalMaxValue)
+      (1, None,         210101.000000, intervalMaxValue)
     ).toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
       .withColumn("_defined", lit(true))
     val resultat = dfEqual(actual, expected)
@@ -62,13 +62,13 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       extend = false
     ).linearCombine()
     val expected = Seq(
-      (0, Some(97.15), true, 180101.000000, 180201.0),
-      (0, None, false, 180201.000000, 180601.052411),
-      (0, Some(97.15), true, 180601.052411, intervalMaxValue),
-      (1, None, true, 180101.000000, 190101.0),
-      (1, Some(2019.0), true, 190101.000000, 200101.0),
-      (1, Some(2020.0), true, 200101.000000, 210101.0),
-      (1, None, true, 210101.000000, intervalMaxValue)
+      (0, Some(97.15),  true,  180101.000000, 180201.0),
+      (0, None,         false, 180201.000000, 180601.052411),
+      (0, Some(97.15),  true,  180601.052411, intervalMaxValue),
+      (1, None,         true,  180101.000000, 190101.0),
+      (1, Some(2019.0), true,  190101.000000, 200101.0),
+      (1, Some(2020.0), true,  200101.000000, 210101.0),
+      (1, None,         true,  210101.000000, intervalMaxValue)
     ).toDF("id", "wert_r", defaultConfig.definedColName, defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
 
@@ -83,12 +83,12 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       fillGapsWithNull = false
     ).linearCombine()
     val expected = Seq(
-      (0, Some(97.15), 180101.000000, 180201.0),
-      (0, Some(97.15), 180601.052411, intervalMaxValue),
-      (1, None, 180101.000000, 190101.0),
+      (0, Some(97.15),  180101.000000, 180201.0),
+      (0, Some(97.15),  180601.052411, intervalMaxValue),
+      (1, None,         180101.000000, 190101.0),
       (1, Some(2019.0), 190101.000000, 200101.0),
       (1, Some(2020.0), 200101.000000, 210101.0),
-      (1, None, 210101.000000, intervalMaxValue)
+      (1, None,         210101.000000, intervalMaxValue)
     ).toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
       .withColumn("_defined", lit(true))
     val resultat = dfEqual(actual, expected)
@@ -99,20 +99,20 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearCleanupExtend dfRight_extend_fillGaps" should "return expected results" in {
     val actual = dfRight.linearCleanupExtend(
-        keys = Seq("id"),
-        rnkExpressions = Seq(defaultConfig.fromCol)
-      ).linearCombine()
+      keys = Seq("id"),
+      rnkExpressions = Seq(defaultConfig.fromCol)
+    ).linearCombine()
       .orderBy($"id", defaultConfig.fromCol)
     val expected = Seq(
-      (0, None, false, intervalMinValue, 180101.0),
-      (0, Some(97.15), true, 180101.000000, 180201.0),
-      (0, None, false, 180201.000000, 180601.052411),
-      (0, Some(97.15), true, 180601.052411, intervalMaxValue),
-      (1, None, false, intervalMinValue, 180101.0),
-      (1, None, true, 180101.000000, 190101.0),
-      (1, Some(2019.0), true, 190101.000000, 200101.0),
-      (1, Some(2020.0), true, 200101.000000, 210101.0),
-      (1, None, true, 210101.000000, intervalMaxValue)
+      (0, None,         false, intervalMinValue, 180101.0),
+      (0, Some(97.15),  true,  180101.000000,    180201.0),
+      (0, None,         false, 180201.000000,    180601.052411),
+      (0, Some(97.15),  true,  180601.052411,    intervalMaxValue),
+      (1, None,         false, intervalMinValue, 180101.0),
+      (1, None,         true,  180101.000000,    190101.0),
+      (1, Some(2019.0), true,  190101.000000,    200101.0),
+      (1, Some(2020.0), true,  200101.000000,    210101.0),
+      (1, None,         true,  210101.000000,    intervalMaxValue)
     ).toDF("id", "wert_r", defaultConfig.definedColName, defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
 
@@ -124,11 +124,11 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     val actual = dfMap.linearCleanupExtend(Seq("id"), Seq($"img"))
       .linearCombine()
     val expected = Seq(
-      (0, None, false, intervalMinValue, 180101.0),
-      (0, Some("A"), true, 180101.000000, 180201.0),
-      (0, Some("B"), true, 180201.000000, 180301.0),
-      (0, Some("D"), true, 180301.000000, 180401.0),
-      (0, None, false, 180401.000000, intervalMaxValue)
+      (0, None,      false, intervalMinValue, 180101.0),
+      (0, Some("A"), true,  180101.000000,    180201.0),
+      (0, Some("B"), true,  180201.000000,    180301.0),
+      (0, Some("D"), true,  180301.000000,    180401.0),
+      (0, None,      false, 180401.000000,    intervalMaxValue)
     ).toDF("id", "img", defaultConfig.definedColName, defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
     if (!resultat) printFailedTestResult("linearCleanupExtend dfMap", dfMap)(actual, expected)
@@ -153,10 +153,10 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     val actual = dfSmallOverlap.linearCleanupExtend(Seq("id"), Seq(defaultConfig.fromCol))
       .linearCombine()
     val expected = Seq(
-      (0, None, false, intervalMinValue, 190101.0),
-      (0, Some("A"), true, 190101.000000, 190101.100001),
-      (0, Some("B"), true, 190101.100001, 190102.0),
-      (0, None, false, 190102.000000, intervalMaxValue)
+      (0, None,      false, intervalMinValue, 190101.0),
+      (0, Some("A"), true,  190101.000000,    190101.100001),
+      (0, Some("B"), true,  190101.100001,    190102.0),
+      (0, None,      false, 190102.000000,    intervalMaxValue)
     ).toDF("id", "img", defaultConfig.definedColName, defaultConfig.fromColName, defaultConfig.toColName)
 
     val resultat = dfEqual(actual, expected)
@@ -169,25 +169,25 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       .linearCombine()
       .orderBy($"id", defaultConfig.fromCol)
     val expected = Seq(
-      (0, None, false, intervalMinValue, 190101.00000012346),
-      (0, Some(3.14), true, 190101.00000012346, 190105.12345612346),
-      (0, Some(2.72), true, 190105.12345612346, 190201.0234561245),
-      (0, Some(13.0), true, 190201.0234561245, 190404.0),
-      (0, None, false, 190404.0, 190905.0234561231),
-      (0, Some(42.0), true, 190905.0234561231, 190905.0234561239),
-      (0, None, false, 190905.0234561239, 200101.01),
-      (0, Some(18.17), true, 200101.01, intervalMaxValue),
-      (1, None, false, intervalMinValue, 190101.00000012346),
-      (1, Some(-1.0), true, 190101.00000012346, 190202.0),
-      (1, None, false, 190202.0, 190301.00000),
-      (1, Some(0.1), true, 190301.00000, 190301.0000000002),
-      (1, Some(0.8), true, 190301.0000000002, 190301.000000001),
-      (1, Some(0.1), true, 190301.000000001, 190301.000000002),
-      (1, None, false, 190301.000000002, 190301.0000010009),
-      (1, Some(1.2), true, 190301.0000010009, 190301.0000010021),
-      (1, None, false, 190301.0000010021, 190303.01000),
-      (1, Some(-2.0), true, 190303.01000, 211201.0234561),
-      (1, None, false, 211201.0234561, intervalMaxValue)
+      (0, None,        false, intervalMinValue,   190101.00000012346),
+      (0, Some(3.14),  true,  190101.00000012346, 190105.12345612346),
+      (0, Some(2.72),  true,  190105.12345612346, 190201.0234561245),
+      (0, Some(13.0),  true,  190201.0234561245,  190404.0),
+      (0, None,        false, 190404.0,           190905.0234561231),
+      (0, Some(42.0),  true,  190905.0234561231,  190905.0234561239),
+      (0, None,        false, 190905.0234561239,  200101.01),
+      (0, Some(18.17), true,  200101.01,          intervalMaxValue),
+      (1, None,        false, intervalMinValue,   190101.00000012346),
+      (1, Some(-1.0),  true,  190101.00000012346, 190202.0),
+      (1, None,        false, 190202.0,           190301.00000),
+      (1, Some(0.1),   true,  190301.00000,       190301.0000000002),
+      (1, Some(0.8),   true,  190301.0000000002,  190301.000000001),
+      (1, Some(0.1),   true,  190301.000000001,   190301.000000002),
+      (1, None,        false, 190301.000000002,   190301.0000010009),
+      (1, Some(1.2),   true,  190301.0000010009,  190301.0000010021),
+      (1, None,        false, 190301.0000010021,  190303.01000),
+      (1, Some(-2.0),  true,  190303.01000,       211201.0234561),
+      (1, None,        false, 211201.0234561,     intervalMaxValue)
     ).toDF("id", "wert", defaultConfig.definedColName, defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
 
@@ -196,21 +196,22 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfDirtyIntervals_NoExtendFillgaps" should "return expected results" in {
-    val actual = dfDirtyIntervals.linearCleanupExtend(Seq("id"), Seq(defaultConfig.fromCol, $"wert"), extend = false, fillGapsWithNull = false)
-      .linearCombine()
-      .orderBy($"id", defaultConfig.fromCol)
+    val actual =
+      dfDirtyIntervals.linearCleanupExtend(Seq("id"), Seq(defaultConfig.fromCol, $"wert"), extend = false, fillGapsWithNull = false)
+        .linearCombine()
+        .orderBy($"id", defaultConfig.fromCol)
     val expected = Seq(
-      (0, 3.14, 190101.00000012346, 190105.12345612346),
-      (0, 2.72, 190105.12345612346, 190201.0234561245),
-      (0, 13.0, 190201.0234561245, 190404.00000),
-      (0, 42.0, 190905.0234561231, 190905.0234561239),
-      (0, 18.17, 200101.01000, intervalMaxValue),
-      (1, -1.0, 190101.00000012346, 190202.00000),
-      (1, 0.1, 190301.00000, 190301.0000000002),
-      (1, 0.8, 190301.0000000002, 190301.000000001),
-      (1, 0.1, 190301.000000001, 190301.000000002),
-      (1, 1.2, 190301.0000010009, 190301.0000010021),
-      (1, -2.0, 190303.01000, 211201.0234561)
+      (0, 3.14,  190101.00000012346, 190105.12345612346),
+      (0, 2.72,  190105.12345612346, 190201.0234561245),
+      (0, 13.0,  190201.0234561245,  190404.00000),
+      (0, 42.0,  190905.0234561231,  190905.0234561239),
+      (0, 18.17, 200101.01000,       intervalMaxValue),
+      (1, -1.0,  190101.00000012346, 190202.00000),
+      (1, 0.1,   190301.00000,       190301.0000000002),
+      (1, 0.8,   190301.0000000002,  190301.000000001),
+      (1, 0.1,   190301.000000001,   190301.000000002),
+      (1, 1.2,   190301.0000010009,  190301.0000010021),
+      (1, -2.0,  190303.01000,       211201.0234561)
     ).toDF("id", "wert", defaultConfig.fromColName, defaultConfig.toColName)
       .withColumn("_defined", lit(true))
     val resultat = dfEqual(actual, expected)
@@ -230,10 +231,10 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     val actual = argument.linearCleanupExtend(Seq("id"), Seq((defaultConfig.toCol - defaultConfig.fromCol).desc))
       .linearCombine()
     val expected = Seq(
-      (1, None, false, intervalMinValue, 200701.0),
-      (1, Some("A"), true, 200701.000000, 200704.0),
-      (1, Some("B"), true, 200704.000000, 200708.0),
-      (1, None, false, 200708.000000, intervalMaxValue)
+      (1, None,      false, intervalMinValue, 200701.0),
+      (1, Some("A"), true,  200701.000000,    200704.0),
+      (1, Some("B"), true,  200704.000000,    200708.0),
+      (1, None,      false, 200708.000000,    intervalMaxValue)
     ).toDF("id", "val", defaultConfig.definedColName, defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
     if (!resultat) printFailedTestResult("linearCleanupExtend validityDuration", argument)(actual, expected)
@@ -243,7 +244,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   "linearCleanupExtend rankExprFromColOnly" should "return expected results" in {
     val argument = Seq(
       (1, "S", intervalMinValue, intervalMaxValue),
-      (1, "X", 200701.000000, intervalMaxValue)
+      (1, "X", 200701.000000,    intervalMaxValue)
     ).toDF("id", "val", defaultConfig.fromColName, defaultConfig.toColName)
     val actual = argument.linearCleanupExtend(Seq("id"), Seq(defaultConfig.fromCol))
       .linearCombine()
@@ -259,16 +260,16 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   "linearCleanupExtend rankExpr2Cols" should "return expected results" in {
     val argument = Seq(
       (1, "S", intervalMinValue, 200701.000000),
-      (1, "X", 200701.000000, 200924.0),
-      (1, "B", 200803.000000, intervalMaxValue),
-      (1, "G", 200924.000000, intervalMaxValue)
+      (1, "X", 200701.000000,    200924.0),
+      (1, "B", 200803.000000,    intervalMaxValue),
+      (1, "G", 200924.000000,    intervalMaxValue)
     ).toDF("id", "val", defaultConfig.fromColName, defaultConfig.toColName)
     val actual = argument.linearCleanupExtend(Seq("id"), Seq(defaultConfig.toCol.desc, defaultConfig.fromCol.asc))(session, defaultConfig)
       .linearCombine()
     val expected = Seq(
       (1, "S", intervalMinValue, 200701.0),
-      (1, "X", 200701.000000, 200803.0),
-      (1, "B", 200803.000000, intervalMaxValue)
+      (1, "X", 200701.000000,    200803.0),
+      (1, "B", 200803.000000,    intervalMaxValue)
     ).toDF("id", "val", defaultConfig.fromColName, defaultConfig.toColName)
       .withColumn("_defined", lit(true))
     val resultat2 = dfEqual(actual, expected)
@@ -291,14 +292,14 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   "linearExtendRange dfRight_id" should "return expected results" in {
     val actual = dfRight.linearExtendRange(Seq("id"))
     val expected = Seq(
-      (0, Some(97.15), intervalMinValue, 180201.0),
-      (0, Some(97.15), 180601.0524110, 181023.035010),
-      (0, Some(97.15), 181023.035010, 200101.0),
-      (0, Some(97.15), 200101.000000, intervalMaxValue),
-      (1, None, intervalMinValue, 190101.0),
-      (1, Some(2019.0), 190101.0000000, 200101.0),
-      (1, Some(2020.0), 200101.0000000, 210101.0),
-      (1, None, 210101.0000000, intervalMaxValue)
+      (0, Some(97.15),  intervalMinValue, 180201.0),
+      (0, Some(97.15),  180601.0524110,   181023.035010),
+      (0, Some(97.15),  181023.035010,    200101.0),
+      (0, Some(97.15),  200101.000000,    intervalMaxValue),
+      (1, None,         intervalMinValue, 190101.0),
+      (1, Some(2019.0), 190101.0000000,   200101.0),
+      (1, Some(2020.0), 200101.0000000,   210101.0),
+      (1, None,         210101.0000000,   intervalMaxValue)
     ).toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val expectedWithActualColumns = expected.select(actual.columns.map(col): _*)
     val resultat = dfEqual(actual, expectedWithActualColumns)
@@ -310,14 +311,14 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     // argument: dfRight from object TestUtils
     val actual = dfRight.linearExtendRange()
     val expected = Seq(
-      (0, Some(97.15), intervalMinValue, 180201.0),
-      (0, Some(97.15), 180601.0524110, 181023.035010),
-      (0, Some(97.15), 181023.035010, 200101.0),
-      (0, Some(97.15), 200101.000000, intervalMaxValue),
-      (1, None, intervalMinValue, 190101.0),
-      (1, Some(2019.0), 190101.0000000, 200101.0),
-      (1, Some(2020.0), 200101.0000000, 210101.0),
-      (1, None, 210101.0000000, intervalMaxValue)
+      (0, Some(97.15),  intervalMinValue, 180201.0),
+      (0, Some(97.15),  180601.0524110,   181023.035010),
+      (0, Some(97.15),  181023.035010,    200101.0),
+      (0, Some(97.15),  200101.000000,    intervalMaxValue),
+      (1, None,         intervalMinValue, 190101.0),
+      (1, Some(2019.0), 190101.0000000,   200101.0),
+      (1, Some(2020.0), 200101.0000000,   210101.0),
+      (1, None,         210101.0000000,   intervalMaxValue)
     ).toDF("id", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val expectedWithActualColumns = expected.select(actual.columns.map(col): _*)
     val resultat = dfEqual(actual, expectedWithActualColumns)
@@ -459,7 +460,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     if (!resultat) printFailedTestResult("linearLeftAntiJoin segmented",Seq(minuend,subtrahend))(actual,expected)
     resultat shouldBe true
   }
-  */
+   */
 
   "linearFullJoin dfRight" should "return expected results" in {
     val actual = dfLeft.linearFullJoin(dfRight, Seq("id")).linearCombine()
@@ -467,17 +468,17 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       .orderBy($"id", defaultConfig.fromCol)
     val expected = Seq(
       // id = 0
-      (Some(0), None, None, intervalMinValue, 171210.0),
-      (Some(0), Some(4.2), None, 171210.000000, 180101.0),
-      (Some(0), Some(4.2), Some(97.15), 180101.000000, 180201.0),
-      (Some(0), Some(4.2), None, 180201.000000, 180601.052411),
-      (Some(0), Some(4.2), Some(97.15), 180601.052411, 181209.0),
-      (Some(0), None, Some(97.15), 181209.000000, intervalMaxValue),
+      (Some(0), None,      None,        intervalMinValue, 171210.0),
+      (Some(0), Some(4.2), None,        171210.000000,    180101.0),
+      (Some(0), Some(4.2), Some(97.15), 180101.000000,    180201.0),
+      (Some(0), Some(4.2), None,        180201.000000,    180601.052411),
+      (Some(0), Some(4.2), Some(97.15), 180601.052411,    181209.0),
+      (Some(0), None,      Some(97.15), 181209.000000,    intervalMaxValue),
       // id = 1
-      (Some(1), None, None, intervalMinValue, 190101.0),
-      (Some(1), None, Some(2019.0), 190101.000000, 200101.0),
-      (Some(1), None, Some(2020.0), 200101.000000, 210101.0),
-      (Some(1), None, None, 210101.000000, intervalMaxValue)
+      (Some(1), None, None,         intervalMinValue, 190101.0),
+      (Some(1), None, Some(2019.0), 190101.000000,    200101.0),
+      (Some(1), None, Some(2020.0), 200101.000000,    210101.0),
+      (Some(1), None, None,         210101.000000,    intervalMaxValue)
     ).toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
     if (!resultat) printFailedTestResult("linearFullJoin dfRight", Seq(dfLeft, dfRight))(actual, expected)
@@ -490,14 +491,14 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       .linearCombine()
     val expected = Seq(
       // img = {}
-      (Some(0), None, None, intervalMinValue, 171210.0),
-      (Some(0), Some(4.2), None, 171210.000000, 180101.0),
-      (Some(0), Some(4.2), Some("A"), 180101.000000, 180201.0),
-      (Some(0), Some(4.2), Some("B"), 180101.000000, 180301.0),
-      (Some(0), Some(4.2), Some("C"), 180201.000000, 180301.0),
-      (Some(0), Some(4.2), Some("D"), 180220.000000, 180401.0),
-      (Some(0), Some(4.2), None, 180401.000000, 181209.0),
-      (Some(0), None, None, 181209.000000, intervalMaxValue)
+      (Some(0), None,      None,      intervalMinValue, 171210.0),
+      (Some(0), Some(4.2), None,      171210.000000,    180101.0),
+      (Some(0), Some(4.2), Some("A"), 180101.000000,    180201.0),
+      (Some(0), Some(4.2), Some("B"), 180101.000000,    180301.0),
+      (Some(0), Some(4.2), Some("C"), 180201.000000,    180301.0),
+      (Some(0), Some(4.2), Some("D"), 180220.000000,    180401.0),
+      (Some(0), Some(4.2), None,      180401.000000,    181209.0),
+      (Some(0), None,      None,      181209.000000,    intervalMaxValue)
     ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
     if (!resultat) printFailedTestResult("linearFullJoin rightMap", Seq(dfLeft, dfMap))(actual, expected)
@@ -510,8 +511,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       .linearCombine()
     val expected = Seq(
       // img = {}
-      (Some(0), None, None, intervalMinValue, 171210.0),
-      (Some(0), Some(4.2), None, 171210.000000, 180101.0),
+      (Some(0), None,      None, intervalMinValue, 171210.0),
+      (Some(0), Some(4.2), None, 171210.000000,    180101.0),
       // img = {A}
       (Some(0), Some(4.2), Some("A"), 180101.000000, 180201.0),
       // img = {B}
@@ -520,7 +521,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (Some(0), Some(4.2), Some("D"), 180301.000000, 180401.0),
       // img = {}
       (Some(0), Some(4.2), None, 180401.000000, 181209.0),
-      (Some(0), None, None, 181209.000000, intervalMaxValue)
+      (Some(0), None,      None, 181209.000000, intervalMaxValue)
     ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
     if (!resultat) printFailedTestResult("linearFullJoin rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
@@ -530,18 +531,19 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   "linearFullJoin rightMapWithGapsAndRnkExpressions" should "return expected results" in {
     // Testing temporalFullJoin where the right dataFrame is not unique for join attributes
     val argumentRight = Seq(
-      (0, 180101.000000, 180201.0, "A"),
-      (0, 180101.000000, 180301.0, "B"),
-      (0, 180201.000000, 180301.0, "C"),
-      (0, 180330.000000, 180401.0, "D"),
-      (0, 180225.141516123, 180225.141516123, "X"))
+      (0, 180101.000000,    180201.0,         "A"),
+      (0, 180101.000000,    180301.0,         "B"),
+      (0, 180201.000000,    180301.0,         "C"),
+      (0, 180330.000000,    180401.0,         "D"),
+      (0, 180225.141516123, 180225.141516123, "X")
+    )
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
     val actual = dfLeft.linearFullJoin(df2 = argumentRight, keys = Seq("id"), rnkExpressions = Seq($"img", defaultConfig.fromCol))
       .linearCombine()
     val expected = Seq(
       // img = {}
-      (Some(0), None, None, intervalMinValue, 171210.0),
-      (Some(0), Some(4.2), None, 171210.000000, 180101.0),
+      (Some(0), None,      None, intervalMinValue, 171210.0),
+      (Some(0), Some(4.2), None, 171210.000000,    180101.0),
       // img = {A}
       (Some(0), Some(4.2), Some("A"), 180101.000000, 180201.0),
       // img = {B}
@@ -552,7 +554,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (Some(0), Some(4.2), Some("D"), 180330.000000, 180401.0),
       // img = {}
       (Some(0), Some(4.2), None, 180401.000000, 181209.0),
-      (Some(0), None, None, 181209.000000, intervalMaxValue)
+      (Some(0), None,      None, 181209.000000, intervalMaxValue)
     ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
     if (!resultat) printFailedTestResult("linearFullJoin rightMapWithGapsAndRnkExpressions", Seq(dfLeft, argumentRight))(actual, expected)
@@ -563,9 +565,9 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     val actual = dfLeft.linearLeftJoin(dfRight, Seq("id"))
       .linearCombine()
     val expected = Seq(
-      (0, 4.2, None, 171210.000000, 180101.0),
+      (0, 4.2, None,        171210.000000, 180101.0),
       (0, 4.2, Some(97.15), 180101.000000, 180201.0),
-      (0, 4.2, None, 180201.000000, 180601.052411),
+      (0, 4.2, None,        180201.000000, 180601.052411),
       (0, 4.2, Some(97.15), 180601.052411, 181209.0)
     ).toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
@@ -579,12 +581,12 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       .linearCombine()
     val expected = Seq(
       // img = {}
-      (0, 4.2, None, 171210.000000, 180101.0),
+      (0, 4.2, None,      171210.000000, 180101.0),
       (0, 4.2, Some("A"), 180101.000000, 180201.0),
       (0, 4.2, Some("B"), 180101.000000, 180301.0),
       (0, 4.2, Some("C"), 180201.000000, 180301.0),
       (0, 4.2, Some("D"), 180220.000000, 180401.0),
-      (0, 4.2, None, 180401.000000, 181209.0)
+      (0, 4.2, None,      180401.000000, 181209.0)
     ).toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
     if (!resultat) printFailedTestResult("linearLeftJoin rightMap", Seq(dfLeft, dfMap))(actual, expected)
@@ -616,11 +618,12 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   "linearLeftJoin rightMapWithGapsAndRnkExpressions" should "return expected results" in {
     // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
     val argumentRight = Seq(
-      (0, 180101.000000, 180201.0, "A"),
-      (0, 180101.000000, 180301.0, "B"),
-      (0, 180201.000000, 180301.0, "C"),
-      (0, 180330.000000, 180401.0, "D"),
-      (0, 180225.141516123, 180225.141516123, "X"))
+      (0, 180101.000000,    180201.0,         "A"),
+      (0, 180101.000000,    180301.0,         "B"),
+      (0, 180201.000000,    180301.0,         "C"),
+      (0, 180330.000000,    180401.0,         "D"),
+      (0, 180225.141516123, 180225.141516123, "X")
+    )
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
     val actual = dfLeft.linearLeftJoin(df2 = argumentRight, keys = Seq("id"), rnkExpressions = Seq($"img", defaultConfig.fromCol))
       .linearCombine()
@@ -636,7 +639,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       // img = {D}
       (0, 4.2, Some("D"), 180330.000000, 180401.0),
       // img = {}
-      (0, 4.2, None, 180401.000000, 181209.0))
+      (0, 4.2, None, 180401.000000, 181209.0)
+    )
       .toDF("id", "wert_l", "img", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
     if (!resultat) printFailedTestResult("linearLeftJoin rightMapWithGapsAndRnkExpressions", Seq(dfLeft, argumentRight))(actual, expected)
@@ -647,18 +651,19 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     val dfL = dfLeft.withColumnRenamed("wert_l", "wert").as("dfL")
     val dfR = dfRight.withColumnRenamed("wert_r", "wert").as("dfR")
     val actual = dfL.linearLeftJoin(dfR, Seq("id"))
-      //.linearCombine() // temporal combine not possible with equally named columns in the same DataFrame.
+      // .linearCombine() // temporal combine not possible with equally named columns in the same DataFrame.
       .orderBy($"id", defaultConfig.fromCol)
     assert(5 == actual.select($"id", $"dfL.wert", $"dfR.wert").count())
     val expected = Seq(
-      (0, 4.2, None, 171210.000000, 180101.0),
+      (0, 4.2, None,        171210.000000, 180101.0),
       (0, 4.2, Some(97.15), 180101.000000, 180201.0),
-      (0, 4.2, None, 180201.000000, 180601.052411),
+      (0, 4.2, None,        180201.000000, 180601.052411),
       (0, 4.2, Some(97.15), 180601.052411, 181023.035010),
       (0, 4.2, Some(97.15), 181023.035010, 181209.0)
     ).toDF("id", "wert", "wert", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
-    if (!resultat) printFailedTestResult("linearLeftJoin with equally named columns apart join columns", Seq(dfLeft, dfRight))(actual, expected)
+    if (!resultat)
+      printFailedTestResult("linearLeftJoin with equally named columns apart join columns", Seq(dfLeft, dfRight))(actual, expected)
     resultat shouldBe true
   }
 
@@ -669,12 +674,12 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       // id = 0
       (0, Some(4.2), Some(97.15), 180101.000000, 180201.0),
       (0, Some(4.2), Some(97.15), 180601.052411, 181209.0),
-      (0, None, Some(97.15), 181209.000000, intervalMaxValue),
+      (0, None,      Some(97.15), 181209.000000, intervalMaxValue),
       // id = 1
-      (1, None, None, 180101.000000, 190101.0),
+      (1, None, None,         180101.000000, 190101.0),
       (1, None, Some(2019.0), 190101.000000, 200101.0),
       (1, None, Some(2020.0), 200101.000000, 210101.0),
-      (1, None, None, 210101.000000, intervalMaxValue)
+      (1, None, None,         210101.000000, intervalMaxValue)
     ).toDF("id", "wert_l", "wert_r", defaultConfig.fromColName, defaultConfig.toColName)
     val resultat = dfEqual(actual, expected)
     if (!resultat) printFailedTestResult("linearRightJoin dfRight", Seq(dfLeft, dfRight))(actual, expected)
@@ -723,7 +728,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (0, 180101.000000, 180201.0, "A"),
       (0, 180101.000000, 180301.0, "B"),
       (0, 180201.000000, 180301.0, "C"),
-      (0, 180330.000000, 180401.0, "D"))
+      (0, 180330.000000, 180401.0, "D")
+    )
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
 
     val actual = dfLeft.linearRightJoin(df2 = argumentRight, keys = Seq("id"), rnkExpressions = Seq($"img", defaultConfig.fromCol))
@@ -744,11 +750,11 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   "linearCombine dfRight" should "return expected results" in {
     val actual = dfRight.linearCombine()
     val expected = Seq(
-      (0, 180101.0000000, 180201.0, Some(97.15)),
+      (0, 180101.0000000, 180201.0,         Some(97.15)),
       (0, 180601.0524110, intervalMaxValue, Some(97.15)),
-      (1, 180101.0000000, 190101.0, None),
-      (1, 190101.0000000, 200101.0, Some(2019.0)),
-      (1, 200101.0000000, 210101.0, Some(2020.0)),
+      (1, 180101.0000000, 190101.0,         None),
+      (1, 190101.0000000, 200101.0,         Some(2019.0)),
+      (1, 200101.0000000, 210101.0,         Some(2020.0)),
       (1, 210101.0000000, intervalMaxValue, None)
     ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
     val resultat = dfEqual(actual, expected)
@@ -763,11 +769,11 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       .drop("test_column")
       .linearCombine()
     val expected = Seq(
-      (0, 180101.0000000, 180201.0, Some(97.15)),
+      (0, 180101.0000000, 180201.0,         Some(97.15)),
       (0, 180601.0524110, intervalMaxValue, Some(97.15)),
-      (1, 180101.0000000, 190101.0, None),
-      (1, 190101.0000000, 200101.0, Some(2019.0)),
-      (1, 200101.0000000, 210101.0, Some(2020.0)),
+      (1, 180101.0000000, 190101.0,         None),
+      (1, 190101.0000000, 200101.0,         Some(2019.0)),
+      (1, 200101.0000000, 210101.0,         Some(2020.0)),
       (1, 210101.0000000, intervalMaxValue, None)
     ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
     val resultat = dfEqual(actual, expected)
@@ -797,16 +803,16 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     val actual = dfDirtyIntervals.linearCombine()
     val expected = Seq(
       (0, 190101.00000012346, 190105.12345612346, 3.14),
-      (0, 190105.12345612346, 190201.0234561245, 2.72),
-      (0, 190201.0234561245, 190404.00000, 13.0),
-      (0, 190905.0234561231, 190905.0234561239, 42.0),
-      (0, 200101.01000, intervalMaxValue, 18.17),
-      (1, 190101.00000012346, 190202.000000, -1.0),
-      (1, 190301.00000, 190301.0000000002, 0.1),
-      (1, 190301.0000000009, 190301.000000002, 0.1),
-      (1, 190301.0000010009, 190301.0000010021, 1.2),
-      (1, 190301.0000000001, 190301.000000001, 0.8),
-      (1, 190303.01000, 211201.0234561, -2.0)
+      (0, 190105.12345612346, 190201.0234561245,  2.72),
+      (0, 190201.0234561245,  190404.00000,       13.0),
+      (0, 190905.0234561231,  190905.0234561239,  42.0),
+      (0, 200101.01000,       intervalMaxValue,   18.17),
+      (1, 190101.00000012346, 190202.000000,      -1.0),
+      (1, 190301.00000,       190301.0000000002,  0.1),
+      (1, 190301.0000000009,  190301.000000002,   0.1),
+      (1, 190301.0000010009,  190301.0000010021,  1.2),
+      (1, 190301.0000000001,  190301.000000001,   0.8),
+      (1, 190303.01000,       211201.0234561,     -2.0)
     ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert")
     val resultat = dfEqual(actual, expected)
 
@@ -818,7 +824,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     val actual = dfDocumentation.linearCombine()
     val expected = Seq(
       (1, 190105.12345612346, 190201.0234561245, 2.72), // overlaps with previous record
-      (1, 190101.00000, 200101.0, 42.0))
+      (1, 190101.00000,       200101.0,          42.0)
+    )
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert")
     val resultat = dfEqual(actual, expected)
 

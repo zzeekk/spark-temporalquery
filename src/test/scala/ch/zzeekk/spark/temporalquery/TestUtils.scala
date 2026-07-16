@@ -5,16 +5,22 @@ import org.apache.spark.sql.functions.{col, lit, when}
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.sql.Timestamp
+import scala.util.{Failure, Success, Try}
 
 trait TestUtils extends Logging {
 
   override protected implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass.getName)
-  protected implicit val session: SparkSession = SparkSession.builder
-    .config("spark.port.maxRetries", 100)
-    .config("spark.ui.enabled", value = false)
-    .config("spark.sql.shuffle.partitions", 1)
-    .config("spark.task.maxFailures", 1)
-    .master("local").appName("TemporalQueryUtilTest").getOrCreate()
+  protected implicit val session: SparkSession = Try(SparkSession.builder
+      .config("spark.port.maxRetries", 100)
+      .config("spark.ui.enabled", value = false)
+      .config("spark.sql.shuffle.partitions", 1)
+      .config("spark.task.maxFailures", 1)
+      .master("local").appName("TemporalQueryUtilTest").getOrCreate()) match {
+    case Success(ss) => ss
+    case Failure(e)  =>
+      logger.error(s"Failed to build a Spark Session!")
+      throw e
+  }
 
   import session.implicits._
 
@@ -22,30 +28,34 @@ trait TestUtils extends Logging {
 
   def symmetricDifference(df1: DataFrame, df2: DataFrame): DataFrame = {
     // attention, "except" works on Dataset and not on DataFrame. We need to check that schema is equal.
-    require(df1.columns.toSeq == df2.columns.toSeq,
+    require(
+      df1.columns.toSeq == df2.columns.toSeq,
       s"""Cannot calculate symmetric difference for DataFrames with different schema.
          |schema of df1: ${df1.columns.toSeq.mkString(",")}
          |${df1.schema.treeString}
          |schema of df2: ${df2.columns.toSeq.mkString(",")}
          |${df2.schema.treeString}
-         |""".stripMargin)
+         |""".stripMargin
+    )
     df1.except(df2).withColumn("_in_first_df", lit(true))
       .union(df2.except(df1).withColumn("_row_in_first_df", lit(false)))
   }
 
   def reorderCols(dfToReorder: DataFrame, dfRef: DataFrame): DataFrame = {
-    require(dfRef.columns.toSet == dfToReorder.columns.toSet,
+    require(
+      dfRef.columns.toSet == dfToReorder.columns.toSet,
       s"""Cannot reorder columns for DataFrames with different columns.
          |columns of dfRef: ${dfRef.columns.toSeq.mkString(",")}
          |columns of dfToReorder: ${dfToReorder.columns.toSeq.mkString(",")}
-         |""".stripMargin)
-    if (dfRef.columns.toSet.size < dfRef.columns.length) dfToReorder // cannot reorder DataFrames with schemas that have duplicate column names
+         |""".stripMargin
+    )
+    if (dfRef.columns.toSet.size < dfRef.columns.length)
+      dfToReorder // cannot reorder DataFrames with schemas that have duplicate column names
     else dfToReorder.select(dfRef.columns.map(col): _*)
   }
 
-  def schemaEqual(df1: DataFrame, df2: DataFrame): Boolean = {
+  def schemaEqual(df1: DataFrame, df2: DataFrame): Boolean =
     df1.schema.sql == df2.schema.sql // ignore nullability in comparison
-  }
 
   def dfEqual(df1: DataFrame, df2: DataFrame): Boolean = {
     val df1reordered = reorderCols(df1, df2)
@@ -77,8 +87,8 @@ trait TestUtils extends Logging {
     }
     println("   symmetric Difference ")
     printDf(symmetricDifference(actualReordered, expected)
-      .withColumn("_df", when($"_in_first_df", "actual").otherwise("expected"))
-      .drop($"_in_first_df"))
+        .withColumn("_df", when($"_in_first_df", "actual").otherwise("expected"))
+        .drop($"_in_first_df"))
   }
 
   def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame, expected: DataFrame): Unit =
@@ -95,7 +105,12 @@ trait TestUtils extends Logging {
 
     def checkKey(x: (String, K)): Boolean = x match {
       case (comment, argument) =>
-        val actual = experiendum(argument)
+        val actual = Try(experiendum(argument)) match {
+          case Success(v) => v
+          case Failure(e) =>
+            logger.error(s"testArgumentExpectedMapWithComment.checkKey: execution of experiendum($argument) failed!")
+            throw e
+        }
         val expected = argExpMapComm(x)
         val resultat = actual == expected
         if (!resultat) logFailure(argument, actual, expected, comment)
@@ -115,12 +130,16 @@ trait TestUtils extends Logging {
     testArgumentExpectedMapWithComment(experiendum, argExpMapWithReason)
   }
 
-  def makeRowsWithTimeRange[A, B](zeile: (A, String, String, B)): (A, Timestamp, Timestamp, B) = (zeile._1, Timestamp.valueOf(zeile._2), Timestamp.valueOf(zeile._3), zeile._4)
+  def makeRowsWithTimeRange[A, B](zeile: (A, String, String, B)): (A, Timestamp, Timestamp, B) =
+    (zeile._1, Timestamp.valueOf(zeile._2), Timestamp.valueOf(zeile._3), zeile._4)
 
-  def makeRowsWithTimeRangeEnd[A, B](zeile: (A, B, String, String)): (A, B, Timestamp, Timestamp) = (zeile._1, zeile._2, Timestamp.valueOf(zeile._3), Timestamp.valueOf(zeile._4))
+  def makeRowsWithTimeRangeEnd[A, B](zeile: (A, B, String, String)): (A, B, Timestamp, Timestamp) =
+    (zeile._1, zeile._2, Timestamp.valueOf(zeile._3), Timestamp.valueOf(zeile._4))
 
-  def makeRowsWithTimeRangeEnd[A, B, C](zeile: (A, B, C, String, String)): (A, B, C, Timestamp, Timestamp) = (zeile._1, zeile._2, zeile._3, Timestamp.valueOf(zeile._4), Timestamp.valueOf(zeile._5))
+  def makeRowsWithTimeRangeEnd[A, B, C](zeile: (A, B, C, String, String)): (A, B, C, Timestamp, Timestamp) =
+    (zeile._1, zeile._2, zeile._3, Timestamp.valueOf(zeile._4), Timestamp.valueOf(zeile._5))
 
-  def makeRowsWithTimeRangeEnd[A, B, C, D](zeile: (A, B, C, D, String, String)): (A, B, C, D, Timestamp, Timestamp) = (zeile._1, zeile._2, zeile._3, zeile._4, Timestamp.valueOf(zeile._5), Timestamp.valueOf(zeile._6))
+  def makeRowsWithTimeRangeEnd[A, B, C, D](zeile: (A, B, C, D, String, String)): (A, B, C, D, Timestamp, Timestamp) =
+    (zeile._1, zeile._2, zeile._3, zeile._4, Timestamp.valueOf(zeile._5), Timestamp.valueOf(zeile._6))
 
 }

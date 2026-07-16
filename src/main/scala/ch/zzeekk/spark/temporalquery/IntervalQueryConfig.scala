@@ -6,7 +6,8 @@ import org.apache.spark.sql.{Column, DataFrame}
 /**
  * Base class defining the configuration needed for interval queries with Spark
  *
- * @tparam T : scala type for interval axis
+ * @tparam T
+ *   : scala type for interval axis
  */
 abstract class IntervalQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Serializable {
   // this is an abstract class because "traits can not have type parameters with context bounds"
@@ -26,7 +27,7 @@ abstract class IntervalQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Ser
     val regexColNameNb = "(.*)([0-9]+)$".r
     colName match {
       case regexColNameNb(name, nb) => name + (nb.toInt + 1).toString
-      case _ => colName + "2" // if no number found, start with 2
+      case _                        => colName + "2" // if no number found, start with 2
     }
   }
 

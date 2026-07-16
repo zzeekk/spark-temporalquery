@@ -10,7 +10,7 @@ class HalfOpenIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
 
   "cut off at boundaries" should "return expected results" in {
     val argExpMap = Map(
-      ("cut off lower boundary", 10f) -> limitedIntervalDef.lowerHorizon,
+      ("cut off lower boundary", 10f)  -> limitedIntervalDef.lowerHorizon,
       ("cut off upper boundary", 999f) -> limitedIntervalDef.upperHorizon
     )
     val results: Set[Boolean] = testArgumentExpectedMapWithComment[Float, Float](limitedIntervalDef.fitToHorizon, argExpMap)
@@ -67,5 +67,5 @@ class HalfOpenIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
     val results: Set[Boolean] = testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends, intervalConfig), argExpMap)
     results.forall(p => p) shouldBe true
   }
-  */
+   */
 }

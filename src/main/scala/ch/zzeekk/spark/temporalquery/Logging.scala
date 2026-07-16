@@ -9,19 +9,34 @@ trait Logging {
 
   private var _loggEnvDone: Boolean = false
 
-  protected def loggEnv(implicit session: SparkSession, logger: Logger): Unit = {
+  protected def loggEnv(implicit session: SparkSession, logger: Logger): Unit =
     if (!_loggEnvDone) {
-      val sparkConfSettings = List("spark.driver.host", "spark.driver.port", "spark.driver.cores",
-        "spark.driver.maxResultSize", "spark.driver.memory",
-        "spark.dynamicAllocation.enabled", "spark.dynamicAllocation.executorAllocationRatio",
-        "spark.dynamicAllocation.executorIdleTimeout", "spark.dynamicAllocation.maxExecutors",
-        "spark.dynamicAllocation.minExecutors", "spark.executor.cores", "spark.executor.memory",
-        "spark.executor.memoryOverhead", "spark.sql.maxPlanStringLength")
-      val runtimeConfigSettings = List("spark.sql.hive.filesourcePartitionFileCacheSize",
-        "spark.sql.hive.version", "spark.sql.mapKeyDedupPolicy",
-        "spark.sql.optimizer.maxIterations", "spark.shuffle.file.buffer",
-        "spark.sql.maxPlanStringLength", "spark.sql.shuffle.partitions",
-        "spark.sql.warehouse.dir")
+      val sparkConfSettings = List(
+        "spark.driver.host",
+        "spark.driver.port",
+        "spark.driver.cores",
+        "spark.driver.maxResultSize",
+        "spark.driver.memory",
+        "spark.dynamicAllocation.enabled",
+        "spark.dynamicAllocation.executorAllocationRatio",
+        "spark.dynamicAllocation.executorIdleTimeout",
+        "spark.dynamicAllocation.maxExecutors",
+        "spark.dynamicAllocation.minExecutors",
+        "spark.executor.cores",
+        "spark.executor.memory",
+        "spark.executor.memoryOverhead",
+        "spark.sql.maxPlanStringLength"
+      )
+      val runtimeConfigSettings = List(
+        "spark.sql.hive.filesourcePartitionFileCacheSize",
+        "spark.sql.hive.version",
+        "spark.sql.mapKeyDedupPolicy",
+        "spark.sql.optimizer.maxIterations",
+        "spark.shuffle.file.buffer",
+        "spark.sql.maxPlanStringLength",
+        "spark.sql.shuffle.partitions",
+        "spark.sql.warehouse.dir"
+      )
 
       import session.implicits._
       val javaVersion: String = System.getProperty("java.version")
@@ -53,6 +68,5 @@ trait Logging {
       logger.info(s"Documentation: https://spark.apache.org/docs/${sparkContext.version}/configuration.html")
       _loggEnvDone = true
     }
-  }
 
 }
