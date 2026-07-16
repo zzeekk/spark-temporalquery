@@ -3,20 +3,6 @@ package ch.zzeekk.spark.temporalquery
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.{Column, DataFrame}
 
-case class IntervalQueryDimension[T, D <: IntervalDef[T]](
-    fromColName: String,
-    toColName: String,
-    fromCol2Name: String,
-    toCol2Name: String,
-    fromCol: Column,
-    toCol: Column,
-    fromCol2: Column,
-    toCol2: Column,
-    lowerHorizon: T,
-    upperHorizon: T,
-    intDef: D
-)
-
 /**
  * Base class defining the configuration needed for interval queries with Spark
  *
@@ -63,10 +49,6 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
       toColName = t,
       fromCol2Name = increaseColNameNb(f),
       toCol2Name = increaseColNameNb(t),
-      fromCol = col(f),
-      toCol = col(t),
-      fromCol2 = col(increaseColNameNb(f)),
-      toCol2 = col(increaseColNameNb(t)),
       lowerHorizon = i.lowerHorizon,
       upperHorizon = i.upperHorizon,
       intDef = i

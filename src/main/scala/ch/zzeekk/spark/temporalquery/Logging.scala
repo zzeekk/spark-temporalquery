@@ -4,7 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.sql.SparkSession
 import org.slf4j.{Logger, LoggerFactory}
 
-trait Logging {
+trait Logging extends Serializable {
   @transient protected lazy val logger: Logger = LoggerFactory.getLogger(getClass.getName)
 
   private var _loggEnvDone: Boolean = false

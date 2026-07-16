@@ -57,10 +57,15 @@ trait TestUtils extends Logging {
   def schemaEqual(df1: DataFrame, df2: DataFrame): Boolean =
     df1.schema.sql == df2.schema.sql // ignore nullability in comparison
 
-  def dfEqual(df1: DataFrame, df2: DataFrame): Boolean = {
+  def dfEqual(df1: DataFrame, df2: DataFrame): Boolean = Try {
     val df1reordered = reorderCols(df1, df2)
     // symmetricDifference ignoriert Doubletten, daher Kardinalitäten vergleichen
     (0 == symmetricDifference(df1reordered, df2).count) && (df1reordered.count == df2.count) && schemaEqual(df1reordered, df2)
+  } match {
+    case Success(p) => p
+    case Failure(e) =>
+      logger.error("!!! dfEqual: Comparison of df1 and df2 failed !!!")
+      throw e
   }
 
   def printFailedTestResult(testName: String, arguments: Seq[DataFrame])(actual: DataFrame, expected: DataFrame): Unit = {
