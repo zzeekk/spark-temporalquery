@@ -1,7 +1,8 @@
-target
-.metadata
-.settings
-.classpath
-.project
-.idea
 *.iml
+.classpath
+.claude
+.idea
+.metadata
+.project
+.settings
+target
