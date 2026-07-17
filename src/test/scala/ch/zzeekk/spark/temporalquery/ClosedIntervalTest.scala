@@ -5,13 +5,14 @@ import ch.zzeekk.spark.temporalquery.util.TemporalQueryUtil.TemporalClosedInterv
 import org.apache.spark.sql.Row
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
 
 class ClosedIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
+  override protected implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass.getName)
 
-  implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a, b) => a.before(b))
   private val millisIntervalDef = ClosedInterval(
     Timestamp.valueOf("0001-01-01 00:00:00"),
     Timestamp.valueOf("9999-12-31 00:00:00"),
@@ -126,6 +127,9 @@ class ClosedIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
   }
 
   "intervalComplement" should "return expected results" in {
+    implicit val intervalConfig: TemporalClosedIntervalQueryConfig = TemporalClosedIntervalQueryConfig
+      .withDefaultIntervalDef()(intervalDef = millisIntervalDef, logger)
+
     val subtrahends = Seq(
       ("2020-01-01 00:04:4", "2020-01-01 00:05:0"),
       ("2020-01-01 00:00:1", "2020-01-01 00:01:0"),
@@ -171,8 +175,6 @@ class ClosedIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
         resultSeq.map(y => (Timestamp.valueOf(y._1), Timestamp.valueOf(y._2))))
     }
       .toMap
-
-    implicit val intervalConfig: TemporalClosedIntervalQueryConfig = TemporalClosedIntervalQueryConfig(intervalDef = millisIntervalDef)
     val results: Set[Boolean] = testArgumentExpectedMapWithComment[(Timestamp, Timestamp), Seq[(Timestamp, Timestamp)]](x =>
         intervalComplement(x._1, x._2, subtrahends), argExpMap)
     results.forall(p => p) shouldBe true

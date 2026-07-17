@@ -13,19 +13,6 @@ import org.slf4j.Logger
 abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Serializable {
   // this is an abstract class because "traits can not have type parameters with context bounds"
 
-  /**
-   * dimensionMap assiugns to each fromColName its toCoilName and the interval definition
-   * @return
-   */
-  def dimensionMap: Map[String, (String, D)]
-  require(dimensionMap.nonEmpty, "at least one fromCol name must be specified")
-  private val numDimensions: Int = dimensionMap.size
-
-  def additionalTechnicalColNames: Seq[String]
-
-  // copy of configuration with 2nd pair of from/to column names used as main column pair
-  def config2: IntervalMultidimQueryConfig[T, D] // hint: implement with case class copy constructor in subclass
-
   // 2nd pair of from/to column names
   protected def increaseColNameNb(colName: String): String = {
     val regexColNameNb = "(.*)([0-9]+)$".r
@@ -35,16 +22,33 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
     }
   }
 
+  /**
+   * dimensionMap assigns to each fromColName its toColName and the interval definition
+   * @return
+   */
+  def dimensionMap: Map[String, (String, D)]
+  require(dimensionMap.nonEmpty, "at least one fromCol name must be specified!")
+  private val numDimensions: Int = dimensionMap.size
+
+  def fromToColnames: List[String] = (dimensionMap.keys ++ dimensionMap.values.map(_._1)).toList
+  def additionalTechnicalColNames: Seq[String]
+
+  // copy of configuration with 2nd pair of from/to column names used as main column pair
+  def config2: IntervalMultidimQueryConfig[T, D] // hint: implement with case class copy constructor in subclass
+
+  // TODO: change type to SET[String] if possible
+  def fromToColnames2: List[String] = fromToColnames.map(increaseColNameNb)
+
   // technical column names to be excluded in some operations
   val technicalColNames: List[String] =
     (dimensionMap.keys ++ dimensionMap.values.map(_._1) ++
       additionalTechnicalColNames).toList
 
   // helper column names
-  val definedColName: String = "_defined"
+  def definedColName: String = "_defined"
   def definedCol: Column = col(definedColName)
 
-  val intervalDimensions: List[IntervalQueryDimension[T, D]] = dimensionMap.map { case (f, (t, i)) =>
+  def intervalDimensions: List[IntervalQueryDimension[T, D]] = dimensionMap.map { case (f, (t, i)) =>
     IntervalQueryDimension(
       fromColName = f,
       toColName = t,
@@ -55,6 +59,29 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
       intDef = i
     )
   }.toList
+
+  @deprecated("simply wrong in multi-dimension case")
+  def fromColName: String = intervalDimensions.head.fromColName
+  @deprecated("simply wrong in multi-dimension case")
+  def toColName: String = intervalDimensions.head.toColName
+  @deprecated("simply wrong in multi-dimension case")
+  def fromCol: Column = col(fromColName)
+  @deprecated("simply wrong in multi-dimension case")
+  def toCol: Column = col(toColName)
+  @deprecated("simply wrong in multi-dimension case")
+  def fromColName2: String = intervalDimensions.head.fromCol2Name
+  @deprecated("simply wrong in multi-dimension case")
+  def toColName2: String = intervalDimensions.head.toCol2Name
+  @deprecated("simply wrong in multi-dimension case")
+  def fromCol2: Column = col(fromColName2)
+  @deprecated("simply wrong in multi-dimension case")
+  def toCol2: Column = col(toColName2)
+  @deprecated("simply wrong in multi-dimension case")
+  def lowerHorizon: T = intervalDimensions.head.lowerHorizon
+  @deprecated("simply wrong in multi-dimension case")
+  def upperHorizon: T = intervalDimensions.head.upperHorizon
+  @deprecated("simply wrong in multi-dimension case")
+  def intervalDef: D = intervalDimensions.head.intDef
 
   // interval functions
 
@@ -85,5 +112,9 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
     logger.debug(s"joinIntervalExpr2: returning joinCol $joinCol")
     joinCol
   }
+
+  def getPredecessorIntervalEndExpr(endValue: Column): Column
+
+  def getSuccessorIntervalStartExpr(endValue: Column): Column
 
 }

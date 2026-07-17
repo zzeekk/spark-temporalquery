@@ -12,9 +12,9 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   import session.implicits._
 
   "linear join condition symmetricity of half-open intervals" should "return expected results" in {
-    val df1 = Seq((1, 1.0, 2.0))
+    val df1 = List((1, 1d, 2d))
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName)
-    val df2 = Seq((1, 2.0, 3.0))
+    val df2 = List((1, 2d, 3d))
       .toDF("id", defaultConfig.fromColName, defaultConfig.toColName)
     df1.linearInnerJoin(df2, Seq("id")).isEmpty && df2.linearInnerJoin(df1, Seq("id")).isEmpty shouldBe true
   }

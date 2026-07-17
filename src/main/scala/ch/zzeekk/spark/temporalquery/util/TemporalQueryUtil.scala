@@ -21,39 +21,6 @@ import java.time.temporal.ChronoUnit
  * available val df_joined = df1.temporalJoin(df2) // use temporal query functions with Spark
  */
 object TemporalQueryUtil extends Serializable with Logging {
-  val bigBangDay: Timestamp = Timestamp.valueOf("1970-01-01 00:00:00")
-  val doomsDay: Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
-
-  /**
-   * Configuration Parameters. An instance of this class is needed as implicit parameter.
-   */
-  case class TemporalClosedIntervalQueryConfig(
-      override val fromColName: String = "gueltig_ab",
-      override val toColName: String = "gueltig_bis",
-      override val additionalTechnicalColNames: Seq[String] = Nil,
-      override val intervalDef: ClosedInterval[Timestamp] = ClosedInterval(
-        bigBangDay,
-        doomsDay,
-        DiscreteTimeAxis(ChronoUnit.MILLIS)
-      )
-  ) extends ClosedIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
-    override lazy val config2: TemporalClosedIntervalQueryConfig = this
-      .copy(fromColName = fromColName2, toColName = toColName2)
-  }
-
-  /**
-   * Configuration Parameters for operations on temporal interval axis. An instance of this class is
-   * needed as implicit parameter for all temporal query functions.
-   */
-  case class TemporalHalfOpenIntervalQueryConfig(
-      override val fromColName: String = "gueltig_ab",
-      override val toColName: String = "gueltig_bis",
-      override val additionalTechnicalColNames: Seq[String] = Nil,
-      override val intervalDef: HalfOpenInterval[Timestamp] = HalfOpenInterval(bigBangDay, doomsDay)
-  ) extends HalfOpenIntervalQueryConfig[Timestamp] with TemporalQueryConfigMarker {
-    override lazy val config2: TemporalHalfOpenIntervalQueryConfig = this
-      .copy(fromColName = fromColName2, toColName = toColName2)
-  }
 
   /**
    * Trait to mark temporal query configurations to make implicit resolution unique if there is also
@@ -64,9 +31,56 @@ object TemporalQueryUtil extends Serializable with Logging {
   /**
    * Type which includes TemporalClosedIntervalQueryConfig and TemporalHalfOpenIntervalQueryConfig
    */
-  type TemporalQueryConfig = IntervalQueryConfig[Timestamp, _] with TemporalQueryConfigMarker
+  type TemporalQueryConfig = IntervalMultidimQueryConfig[Timestamp, _] with TemporalQueryConfigMarker
 
-  implicit val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a, b) => a.before(b))
+  implicit private val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a, b) => a.before(b))
+
+  /**
+   * Configuration Parameters. An instance of this class is needed as implicit parameter.
+   */
+  case class TemporalClosedIntervalQueryConfig(
+      override val dimensionMap: Map[String, (String, ClosedInterval[Timestamp])] = Map(
+        "gueltig_ab" ->
+          ("gueltig_bis",
+            ClosedInterval(
+              bigBangDay,
+              doomsDay,
+              DiscreteTimeAxis(ChronoUnit.MILLIS)
+            ))
+      ),
+      override val additionalTechnicalColNames: Seq[String] = Nil
+  ) extends ClosedIntervalMultidimQueryConfig[Timestamp] with TemporalQueryConfigMarker {
+    override lazy val config2: TemporalClosedIntervalQueryConfig = this
+      .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
+  }
+
+  object TemporalClosedIntervalQueryConfig {
+    def withDefaultIntervalDef(fromColName: String = "gueltig_ab", toColName: String = "gueltig_bis")(implicit
+        intervalDef: ClosedInterval[Timestamp],
+        logger: Logger
+    ): TemporalClosedIntervalQueryConfig = {
+      debugLog(s"(withDefaultIntervalDef) fromColName = $fromColName ; toColName = $toColName ; intervalDef = $intervalDef")
+      TemporalClosedIntervalQueryConfig(
+        dimensionMap = Map(fromColName -> (toColName, intervalDef))
+      )
+    }
+  }
+
+  /**
+   * Configuration Parameters for operations on temporal interval axis. An instance of this class is
+   * needed as implicit parameter for all temporal query functions.
+   */
+  case class TemporalHalfOpenIntervalQueryConfig(
+      override val dimensionMap: Map[String, (String, HalfOpenInterval[Timestamp])] = Map(
+        "gueltig_ab" ->
+          ("gueltig_bis",
+            HalfOpenInterval(bigBangDay, doomsDay))
+      ),
+      override val additionalTechnicalColNames: Seq[String] = Nil
+  ) extends HalfOpenIntervalMultidimQueryConfig[Timestamp] with TemporalQueryConfigMarker {
+    override lazy val config2: TemporalHalfOpenIntervalQueryConfig = this
+      .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
+  }
 
   /**
    * Pimp-my-library pattern für's DataFrame
@@ -172,7 +186,7 @@ object TemporalQueryUtil extends Serializable with Logging {
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit ss: SparkSession, tc: TemporalQueryConfig, logger: Logger): DataFrame = IntervalQueryImpl
+    )(implicit tc: TemporalQueryConfig, logger: Logger): DataFrame = IntervalQueryImpl
       .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend)
 
     /**
@@ -185,7 +199,7 @@ object TemporalQueryUtil extends Serializable with Logging {
      * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
     def temporalLeftAntiJoin(df2: DataFrame, joinColumns: Seq[String], additionalJoinFilterCondition: Column = lit(true))(implicit
-        tc: IntervalQueryConfig[Timestamp, ClosedInterval[Timestamp]],
+        tc: IntervalMultidimQueryConfig[Timestamp, ClosedInterval[Timestamp]],
         logger: Logger
     ): DataFrame =
       IntervalQueryImpl.leftAntiJoinIntervals(df1, df2, joinColumns, additionalJoinFilterCondition)
@@ -221,7 +235,7 @@ object TemporalQueryUtil extends Serializable with Logging {
      * gibt. Zuerst wird der Dataframe mittels [[temporalRoundDiscreteTime]] etwas bereinigt, siehe
      * Beschreibung dort
      */
-    def temporalCombine(ignoreColNames: Seq[String] = Nil)(implicit tc: TemporalQueryConfig, logger: Logger): DataFrame =
+    def temporalCombine(ignoreColNames: Seq[String] = Nil)(implicit tc: TemporalQueryConfig): DataFrame =
       IntervalQueryImpl
         .combineIntervals(df1, ignoreColNames)
 
@@ -236,8 +250,7 @@ object TemporalQueryUtil extends Serializable with Logging {
      * Erweitert die Historie des kleinsten Werts pro Key auf minDate
      */
     def temporalExtendRange(keys: Seq[String] = Nil, extendMin: Boolean = true, extendMax: Boolean = true)(implicit
-        tc: TemporalQueryConfig,
-        logger: Logger
+        tc: TemporalQueryConfig
     ): DataFrame = IntervalQueryImpl
       .extendIntervalRanges(df1, keys, extendMin, extendMax)
 
@@ -275,7 +288,7 @@ object TemporalQueryUtil extends Serializable with Logging {
    * Pimp-my-library pattern für Columns
    */
   implicit class TemporalColumnExtensions(value: Column) {
-    def isInTemporalInterval(implicit tc: TemporalQueryConfig): Column = tc.isInIntervalExpr(value)
+    def isInTemporalInterval(implicit tc: TemporalQueryConfig): Column = tc.isInIntervalExpr(List(value))
   }
 
 }

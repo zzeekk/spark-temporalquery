@@ -65,10 +65,10 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
   }
 
   "temporalCleanupExtend_dfLeft" should "return expected results" in {
-    val actual = dfLeft.temporalCleanupExtend(Seq("id"), Seq(defaultConfig.fromCol))
+    val actual = dfLeft.temporalCleanupExtend(keys = Seq("id"), rnkExpressions = Seq(defaultConfig.fromCol))
       .temporalCombine()
       .orderBy(defaultConfig.fromCol)
-    val expected = Seq(
+    val expected = List(
       (0, None,      false, initiumTemporisString, "2017-12-09 23:59:59.999"),
       (0, Some(4.2), true,  "2017-12-10 00:00:00", "2018-12-08 23:59:59.999"),
       (0, None,      false, "2018-12-09 00:00:00", finisTemporisString)

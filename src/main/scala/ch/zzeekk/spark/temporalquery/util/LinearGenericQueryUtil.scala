@@ -19,16 +19,30 @@ import scala.reflect.runtime.universe._
 class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Logging {
 
   /**
+   * Trait to mark linear query configurations to make implicit resolution unique if there is also
+   * an implicit temporal query configuration in scope
+   */
+  trait LinearQueryConfigMarker
+
+  /**
+   * Type which includes LinearClosedIntervalQueryConfig and LinearHalfOpenIntervalQueryConfig
+   */
+  private type LinearQueryConfig = IntervalMultidimQueryConfig[T, _] with LinearQueryConfigMarker
+
+  /**
    * Configuration Parameters for operations on closed intervals. An instance of this class is
    * needed as implicit parameter.
    */
   case class LinearClosedIntervalQueryConfig(
-      override val fromColName: String = "position_von",
-      override val toColName: String = "position_bis",
+      dimensionColNameMap: Map[String, String] = Map("position_von" -> "position_bis"),
       override val additionalTechnicalColNames: Seq[String] = Nil,
       override val intervalDef: ClosedInterval[T]
-  ) extends ClosedIntervalQueryConfig[T] with LinearQueryConfigMarker {
-    override lazy val config2: LinearClosedIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+  ) extends ClosedIntervalMultidimQueryConfig[T] with LinearQueryConfigMarker {
+    override def dimensionMap: Map[String, (String, ClosedInterval[T])] = dimensionColNameMap.map { case (f, t) =>
+      (f, (t, intervalDef))
+    }
+    override lazy val config2: LinearClosedIntervalQueryConfig = this
+      .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
   }
 
   /**
@@ -36,12 +50,14 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
    * needed as implicit parameter.
    */
   case class LinearHalfOpenIntervalQueryConfig(
-      override val fromColName: String = "position_von",
-      override val toColName: String = "position_bis",
+      dimensionColNameMap: Map[String, String] = Map("position_von" -> "position_bis"),
       override val additionalTechnicalColNames: Seq[String] = Nil,
       override val intervalDef: HalfOpenInterval[T]
-  ) extends HalfOpenIntervalQueryConfig[T] with LinearQueryConfigMarker {
-    override lazy val config2: LinearHalfOpenIntervalQueryConfig = this.copy(fromColName = fromColName2, toColName = toColName2)
+  ) extends HalfOpenIntervalMultidimQueryConfig[T] with LinearQueryConfigMarker {
+    override def dimensionMap: Map[String, (String, HalfOpenInterval[T])] = dimensionColNameMap
+      .map { case (f, t) => (f, (t, intervalDef)) }
+    override lazy val config2: LinearHalfOpenIntervalQueryConfig = this
+      .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
   }
   object LinearHalfOpenIntervalQueryConfig {
 
@@ -52,20 +68,13 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     def withDefaultIntervalDef(
         fromColName: String = "position_von",
         toColName: String = "position_bis"
-    )(implicit intervalDef: HalfOpenInterval[T]): LinearHalfOpenIntervalQueryConfig =
-      LinearHalfOpenIntervalQueryConfig(fromColName, toColName, Nil, intervalDef = intervalDef)
+    )(implicit intervalDef: HalfOpenInterval[T], logger: Logger): LinearHalfOpenIntervalQueryConfig = {
+      debugLog(s"(withDefaultIntervalDef) fromColName = $fromColName ; toColName = $toColName ; intervalDef = $intervalDef")
+      LinearHalfOpenIntervalQueryConfig(dimensionColNameMap = Map(fromColName -> toColName),
+        additionalTechnicalColNames = Nil, intervalDef = intervalDef)
+    }
+
   }
-
-  /**
-   * Trait to mark linear query configurations to make implicit resolution unique if there is also
-   * an implicit temporal query configuration in scope
-   */
-  trait LinearQueryConfigMarker
-
-  /**
-   * Type which includes LinearClosedIntervalQueryConfig and LinearHalfOpenIntervalQueryConfig
-   */
-  private type LinearQueryConfig = IntervalQueryConfig[T, _] with LinearQueryConfigMarker
 
   /**
    * Pimp-my-library pattern für's DataFrame
@@ -75,13 +84,13 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     /**
      * Implementiert ein inner-join von linearen Daten über eine Liste von gleich benannten Spalten
      */
-    def linearInnerJoin(df2: DataFrame, keys: Seq[String])(implicit tc: LinearQueryConfig, logger: Logger): DataFrame =
+    def linearInnerJoin(df2: DataFrame, keys: Seq[String])(implicit lqc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.joinIntervalsWithKeysImpl(df1, df2, keys)
 
     /**
      * Implementiert ein inner-join von historisierten Daten über eine ausformulierte Join-Bedingung
      */
-    def linearInnerJoin(df2: DataFrame, keyCondition: Column)(implicit tc: LinearQueryConfig, logger: Logger): DataFrame =
+    def linearInnerJoin(df2: DataFrame, keyCondition: Column)(implicit lqc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.joinIntervals(df1, df2, keys = Nil, joinType = "inner", keyCondition)
 
     /**
@@ -107,7 +116,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit ss: SparkSession, tc: LinearQueryConfig, logger: Logger): DataFrame =
+    )(implicit lqc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend)
 
     /**
@@ -132,7 +141,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit ss: SparkSession, tc: LinearQueryConfig, logger: Logger): DataFrame =
+    )(implicit lqc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "left", doCleanupExtend)
 
     /**
@@ -158,7 +167,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit ss: SparkSession, tc: LinearQueryConfig, logger: Logger): DataFrame =
+    )(implicit lqc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend)
 
     /**
@@ -175,10 +184,10 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         additionalJoinFilterCondition: Column = lit(true)
     )(
         implicit
-        tc: LinearClosedIntervalQueryConfig,
+        lqc: LinearClosedIntervalQueryConfig,
         logger: Logger
     ): DataFrame = {
-      assert(tc.intervalDef.isInstanceOf[ClosedInterval[_]],
+      assert(lqc.intervalDef.isInstanceOf[ClosedInterval[_]],
         "Only ClosedInterval interval definition in LinearQueryConfig supported for linearLeftAntiJoin()")
       IntervalQueryImpl.leftAntiJoinIntervals(df1, df2, joinColumns, additionalJoinFilterCondition)
     }
@@ -206,7 +215,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         rnkFilter: Boolean = true,
         extend: Boolean = true,
         fillGapsWithNull: Boolean = true
-    )(implicit tc: LinearQueryConfig, logger: Logger): DataFrame =
+    )(implicit lqc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.cleanupExtendIntervals(df1, keys, rnkExpressions, aggExpressions, rnkFilter, extend, fillGapsWithNull)
 
     /**
@@ -214,27 +223,26 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
      * gibt.
      */
     def linearCombine(keys: Seq[String] = Nil, ignoreColNames: Seq[String] = Nil)(implicit
-        tc: LinearQueryConfig,
+        lqc: LinearQueryConfig,
         logger: Logger
     ): DataFrame = {
       if (keys.nonEmpty) logger.warn("Parameter keys is superfluous and therefore ignored. Please refrain from using it!")
       IntervalQueryImpl
-        .combineIntervals(df1.where(tc.isValidIntervalExpr), ignoreColNames)
+        .combineIntervals(df1.where(lqc.isValidIntervalExpr), ignoreColNames)
     }
 
     /**
      * Schneidet bei Überlappungen die Records in Stücke, so dass beim Start der Überlappung alle
      * gültigen Records aufgeteilt werden
      */
-    def linearUnifyRanges(keys: Seq[String])(implicit tc: LinearQueryConfig, logger: Logger): DataFrame =
+    def linearUnifyRanges(keys: Seq[String])(implicit lqc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.unifyIntervalRanges(df1, keys)
 
     /**
      * Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
      */
     def linearExtendRange(keys: Seq[String] = Nil, extendMin: Boolean = true, extendMax: Boolean = true)(implicit
-        tc: LinearQueryConfig,
-        logger: Logger
+        lqc: LinearQueryConfig
     ): DataFrame =
       IntervalQueryImpl.extendIntervalRanges(df1, keys, extendMin, extendMax)
 
@@ -252,7 +260,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
      * definitions can only be created for axis with Integral-Numeric type, and not
      * Fractional-Numeric type (e.g. Float or Double dont work).
      */
-    def linearRoundClosedIntervals(implicit tc: LinearClosedIntervalQueryConfig): DataFrame =
+    def linearRoundClosedIntervals(implicit lqc: LinearClosedIntervalQueryConfig): DataFrame =
       IntervalQueryImpl.roundIntervalsToDiscreteTime(df1)
 
     /**
@@ -263,7 +271,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
      * definitions can only be created for axis with Integral-Numeric type, and not
      * Fractional-Numeric type (e.g. Float or Double dont work).
      */
-    def linearConvertToClosedIntervals(implicit tc: LinearClosedIntervalQueryConfig): DataFrame =
+    def linearConvertToClosedIntervals(implicit lqc: LinearClosedIntervalQueryConfig): DataFrame =
       IntervalQueryImpl.transformHalfOpenToClosedIntervals(df1)
 
   }
@@ -272,7 +280,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
    * Pimp-my-library pattern für Columns
    */
   implicit class LinearColumnExtensions(value: Column) {
-    def isInTemporalInterval(implicit tc: LinearQueryConfig): Column = tc.isInIntervalExpr(value)
+    def isInTemporalInterval(implicit lqc: LinearQueryConfig): Column = lqc.isInIntervalExpr(List(value))
   }
 
 }

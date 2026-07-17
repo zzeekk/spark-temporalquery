@@ -46,7 +46,7 @@ object TemporalHelpers extends Serializable with Logging {
    */
   def intervalComplement[T: Ordering](validFrom: T, validTo: T, subtrahends: Seq[Row])(implicit
       ordering: Ordering[T],
-      ic: IntervalQueryConfig[T, ClosedInterval[T]]
+      ic: IntervalMultidimQueryConfig[T, ClosedInterval[T]]
   ): Seq[(T, T)] = {
     logger.debug(s"intervalComplement: START validity = [$validFrom , $validTo]")
     val subtrahendsSorted: List[(T, T)] = subtrahends
@@ -70,7 +70,7 @@ object TemporalHelpers extends Serializable with Logging {
 
     subtrahendsSorted.foldLeft(Seq((validFrom, validTo)))(subtractOneSubtrahend)
   }
-  def getUdfIntervalComplement[T: Ordering: TypeTag](implicit hc: IntervalQueryConfig[T, ClosedInterval[T]]): UserDefinedFunction =
+  def getUdfIntervalComplement[T: Ordering: TypeTag](implicit hc: IntervalMultidimQueryConfig[T, ClosedInterval[T]]): UserDefinedFunction =
     udf(intervalComplement[T] _)
 
 }
