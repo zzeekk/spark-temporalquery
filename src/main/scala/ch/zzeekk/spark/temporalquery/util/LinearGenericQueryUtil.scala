@@ -7,6 +7,7 @@ package ch.zzeekk.spark.temporalquery.util
 import ch.zzeekk.spark.temporalquery._
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
+import org.slf4j.Logger
 
 import scala.reflect.runtime.universe._
 
@@ -50,8 +51,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
      */
     def withDefaultIntervalDef(
         fromColName: String = "position_von",
-        toColName: String = "position_bis",
-        additionalTechnicalColNames: Seq[String] = Nil
+        toColName: String = "position_bis"
     )(implicit intervalDef: HalfOpenInterval[T]): LinearHalfOpenIntervalQueryConfig =
       LinearHalfOpenIntervalQueryConfig(fromColName, toColName, Nil, intervalDef = intervalDef)
   }
@@ -75,13 +75,13 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     /**
      * Implementiert ein inner-join von linearen Daten über eine Liste von gleich benannten Spalten
      */
-    def linearInnerJoin(df2: DataFrame, keys: Seq[String])(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
+    def linearInnerJoin(df2: DataFrame, keys: Seq[String])(implicit tc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.joinIntervalsWithKeysImpl(df1, df2, keys)
 
     /**
      * Implementiert ein inner-join von historisierten Daten über eine ausformulierte Join-Bedingung
      */
-    def linearInnerJoin(df2: DataFrame, keyCondition: Column)(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
+    def linearInnerJoin(df2: DataFrame, keyCondition: Column)(implicit tc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.joinIntervals(df1, df2, keys = Nil, joinType = "inner", keyCondition)
 
     /**
@@ -107,7 +107,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
+    )(implicit ss: SparkSession, tc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend)
 
     /**
@@ -132,7 +132,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
+    )(implicit ss: SparkSession, tc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "left", doCleanupExtend)
 
     /**
@@ -158,7 +158,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
+    )(implicit ss: SparkSession, tc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend)
 
     /**
@@ -169,9 +169,14 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
      *
      * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
-    def linearLeftAntiJoin(df2: DataFrame, joinColumns: Seq[String], additionalJoinFilterCondition: Column = lit(true))(implicit
-        ss: SparkSession,
-        tc: LinearClosedIntervalQueryConfig
+    def linearLeftAntiJoin(
+        df2: DataFrame,
+        joinColumns: Seq[String],
+        additionalJoinFilterCondition: Column = lit(true)
+    )(
+        implicit
+        tc: LinearClosedIntervalQueryConfig,
+        logger: Logger
     ): DataFrame = {
       assert(tc.intervalDef.isInstanceOf[ClosedInterval[_]],
         "Only ClosedInterval interval definition in LinearQueryConfig supported for linearLeftAntiJoin()")
@@ -201,7 +206,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         rnkFilter: Boolean = true,
         extend: Boolean = true,
         fillGapsWithNull: Boolean = true
-    )(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
+    )(implicit tc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.cleanupExtendIntervals(df1, keys, rnkExpressions, aggExpressions, rnkFilter, extend, fillGapsWithNull)
 
     /**
@@ -209,8 +214,8 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
      * gibt.
      */
     def linearCombine(keys: Seq[String] = Nil, ignoreColNames: Seq[String] = Nil)(implicit
-        ss: SparkSession,
-        tc: LinearQueryConfig
+        tc: LinearQueryConfig,
+        logger: Logger
     ): DataFrame = {
       if (keys.nonEmpty) logger.warn("Parameter keys is superfluous and therefore ignored. Please refrain from using it!")
       IntervalQueryImpl
@@ -221,15 +226,15 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
      * Schneidet bei Überlappungen die Records in Stücke, so dass beim Start der Überlappung alle
      * gültigen Records aufgeteilt werden
      */
-    def linearUnifyRanges(keys: Seq[String])(implicit ss: SparkSession, tc: LinearQueryConfig): DataFrame =
+    def linearUnifyRanges(keys: Seq[String])(implicit tc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.unifyIntervalRanges(df1, keys)
 
     /**
      * Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
      */
     def linearExtendRange(keys: Seq[String] = Nil, extendMin: Boolean = true, extendMax: Boolean = true)(implicit
-        ss: SparkSession,
-        tc: LinearQueryConfig
+        tc: LinearQueryConfig,
+        logger: Logger
     ): DataFrame =
       IntervalQueryImpl.extendIntervalRanges(df1, keys, extendMin, extendMax)
 

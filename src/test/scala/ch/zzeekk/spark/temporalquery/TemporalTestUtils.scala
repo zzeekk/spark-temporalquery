@@ -1,6 +1,6 @@
 package ch.zzeekk.spark.temporalquery
 
-import ch.zzeekk.spark.temporalquery.util.TemporalQueryUtil.{TemporalClosedIntervalQueryConfig, TemporalQueryConfig}
+import ch.zzeekk.spark.temporalquery.util.TemporalQueryUtil.TemporalClosedIntervalQueryConfig
 import org.apache.spark.sql.DataFrame
 
 object TemporalTestUtils extends TestUtils {

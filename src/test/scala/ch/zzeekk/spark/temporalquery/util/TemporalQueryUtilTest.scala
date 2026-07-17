@@ -318,7 +318,8 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       (1, "G", "2020-09-24 00:00:00", finisTemporisString)
     ).map(makeRowsWithTimeRangeEnd[Int, String])
       .toDF("id", "val", defaultConfig.fromColName, defaultConfig.toColName)
-    val actual = argument.temporalCleanupExtend(Seq("id"), Seq(defaultConfig.toCol.desc, defaultConfig.fromCol.asc))(session, defaultConfig)
+    val actual = argument
+      .temporalCleanupExtend(Seq("id"), Seq(defaultConfig.toCol.desc, defaultConfig.fromCol.asc))(defaultConfig, logger)
       .temporalCombine()
     val expected = Seq(
       (1, "S", initiumTemporisString, "2020-06-30 23:59:59.999"),

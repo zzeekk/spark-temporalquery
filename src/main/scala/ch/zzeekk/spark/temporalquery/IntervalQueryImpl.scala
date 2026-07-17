@@ -4,7 +4,8 @@ import ch.zzeekk.spark.temporalquery.TemporalHelpers._
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, SubqueryAlias, UnaryNode}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{Column, DataFrame, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame}
+import org.slf4j.Logger
 
 import scala.annotation.tailrec
 import scala.reflect.runtime.universe._
@@ -91,7 +92,12 @@ object IntervalQueryImpl extends Logging {
       keys: Seq[String],
       joinType: String = "inner",
       additionalJoinCondition: Column = lit(true)
-  )(implicit tc: IntervalQueryConfig[T, _]): DataFrame = {
+  )(implicit tc: IntervalQueryConfig[T, _], logger: Logger): DataFrame = {
+    logger.debug(
+      s"joinIntervals: joinType = $joinType , additionalJoinCondition = $additionalJoinCondition , keys = (${keys.mkString(",")})"
+    )
+    logger.debug(s"joinIntervals: df1.schema = ${df1.schema.catalogString}")
+    logger.debug(s"joinIntervals: df2.schema = ${df2.schema.catalogString}")
     require(
       !(df2.columns.contains(tc.fromColName2) || df2.columns.contains(tc.toColName2)),
       s"(joinIntervals) Your right-dataframe must not contain columns named ${tc.fromColName2} or ${tc.toColName2}! df.columns = ${df2.columns.mkString(",")}"
@@ -110,8 +116,12 @@ object IntervalQueryImpl extends Logging {
     val df1Renamed = renameKeys(df1, keys, joinColPostFix1)
     val df2Renamed = renameKeys(renameIntervalCols2nd(df2), keys, joinColPostFix2)
     val keyCondition = createRenamedKeyCondition(keys)
+    logger.debug(s"joinIntervals: df1Renamed.schema = ${df1Renamed.schema.catalogString}")
+    logger.debug(s"joinIntervals: df2Renamed.schema = ${df2Renamed.schema.catalogString}")
+    logger.debug(s"joinIntervals: keyCondition      = $keyCondition")
     val dfJoined = df1Renamed
-      .join(df2Renamed, keyCondition and additionalJoinCondition and tc.joinIntervalExpr2(df1Renamed, df2Renamed), joinType)
+      .join(df2Renamed, keyCondition and additionalJoinCondition and tc.joinIntervalExpr(df1Renamed, df2Renamed), joinType)
+    logger.debug(s"joinIntervals: dfJoined.schema   = ${dfJoined.schema.catalogString}")
 
     // select final schema
     val commonColNames = keys
@@ -121,6 +131,7 @@ object IntervalQueryImpl extends Logging {
     val colsDf2 = df2.columns.diff(commonColNames ++ tc.technicalColNames).map(df2(_))
     val timeColumns = List(greatest(tc.fromCol, tc.fromCol2).as(tc.fromColName), least(tc.toCol, tc.toCol2).as(tc.toColName))
     val selCols = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
+    logger.debug(s"joinIntervals: selCols = ${selCols.mkString(",")}")
     dfJoined.select(selCols: _*)
   }
 
@@ -129,7 +140,7 @@ object IntervalQueryImpl extends Logging {
       df2: DataFrame,
       keys: Seq[String],
       joinType: String = "inner"
-  )(implicit tc: IntervalQueryConfig[T, _]): DataFrame =
+  )(implicit tc: IntervalQueryConfig[T, _], logger: Logger): DataFrame =
     joinIntervals(df1, df2, keys, joinType)
 
   /**
@@ -181,7 +192,7 @@ object IntervalQueryImpl extends Logging {
       rnkFilter: Boolean,
       extend: Boolean = true,
       fillGapsWithNull: Boolean = true
-  )(implicit ss: SparkSession, tc: IntervalQueryConfig[T, _]): DataFrame = {
+  )(implicit tc: IntervalQueryConfig[T, _], logger: Logger): DataFrame = {
     if (extend && !fillGapsWithNull) logger.warn("cleanupExtendIntervals: extend=true has no effect if fillGapsWithNull=false!")
 
     require(
@@ -197,7 +208,10 @@ object IntervalQueryImpl extends Logging {
         val fenestra = Window.partitionBy(keys.map(col) :+ tc.fromCol2: _*)
 
         val dfJoin =
-          unifyIntervalRanges(df2nd, keys, extend, fillGapsWithNull)(implicitly[Ordering[T]], implicitly[TypeTag[T]], tc.config2)
+          unifyIntervalRanges(df = df2nd,
+            keys = keys,
+            extend = extend,
+            fillGapsWithNull = fillGapsWithNull)(implicitly[Ordering[T]], implicitly[TypeTag[T]], tc.config2, logger)
             .withColumn(tc.definedColName, tc.toCol.isNotNull)
             .withColumn(tc.fromColName, coalesce(tc.fromCol, tc.fromCol2))
             .withColumn(tc.toColName, coalesce(tc.toCol, tc.toCol2))
@@ -243,7 +257,7 @@ object IntervalQueryImpl extends Logging {
       additionalJoinFilterCondition: Column,
       joinType: String,
       doCleanupExtend: Boolean
-  )(implicit ss: SparkSession, tc: IntervalQueryConfig[T, _]): DataFrame = {
+  )(implicit tc: IntervalQueryConfig[T, _], logger: Logger): DataFrame = {
     // extend data frames
     val df1Extended = if ((joinType == "full" || joinType == "right") && doCleanupExtend)
       cleanupExtendIntervals(df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Nil, rnkFilter = true).drop(tc.definedColName)
@@ -263,13 +277,13 @@ object IntervalQueryImpl extends Logging {
       df2: DataFrame,
       keys: Seq[String],
       additionalJoinFilterCondition: Column
-  )(implicit ss: SparkSession, tc: IntervalQueryConfig[T, ClosedInterval[T]]): DataFrame = {
+  )(implicit tc: IntervalQueryConfig[T, ClosedInterval[T]], logger: Logger): DataFrame = {
     logger.debug(s"leftAntiJoinIntervals START: keys = ${keys.mkString(", ")}")
     val df1Cols = df1.columns.map(df1(_))
     val df2Renamed = renameIntervalCols2nd(df2)
 
     val joinCondition: Column = createAliasKeyCondition(df1, df2Renamed, keys)
-      .and(tc.joinIntervalExpr2(df1, df2Renamed))
+      .and(tc.joinIntervalExpr(df1, df2Renamed))
       .and(additionalJoinFilterCondition)
 
     val dfAntiJoin = df1.join(df2Renamed, joinCondition, "leftanti")
@@ -301,7 +315,7 @@ object IntervalQueryImpl extends Logging {
       .drop("subtrahend", tc.fromColName, tc.toColName)
       .withColumn(tc.fromColName, col("complements._1"))
       .withColumn(tc.toColName, col("complements._2"))
-      .select(df1.columns.head, df1.columns.tail: _*)
+      .select(df1.columns.map(col): _*)
     logger.debug(s"leftAntiJoinIntervals: dfComplement.schema = ${dfComplement.schema.treeString}")
 
     dfAntiJoin.union(dfComplement)
@@ -314,12 +328,11 @@ object IntervalQueryImpl extends Logging {
       tc: IntervalQueryConfig[T, _]
   ): DataFrame =
     keepAlias(
-      df,
-      df => {
+      df = df,
+      transform = (df: DataFrame) => {
         val dfColumns = df.columns
         val compareCols = dfColumns.diff(ignoreColNames ++ tc.technicalColNames)
         val fenestra = Window.partitionBy(compareCols.map(col): _*).orderBy(tc.fromCol)
-
         val nbColName = "_nb"
         val consecutiveColName = "_consecutive"
         require(
@@ -332,7 +345,7 @@ object IntervalQueryImpl extends Logging {
           .groupBy(compareCols.map(col) :+ col(nbColName): _*)
           .agg(min(tc.fromCol).as(tc.fromColName), max(tc.toCol).as(tc.toColName))
           .drop(nbColName)
-          .select(dfColumns.head, dfColumns.tail: _*)
+          .select(dfColumns.map(col): _*)
       }
     )
 
@@ -344,7 +357,7 @@ object IntervalQueryImpl extends Logging {
       keys: Seq[String],
       extend: Boolean = false,
       fillGapsWithNull: Boolean = false
-  )(implicit tc: IntervalQueryConfig[T, _]): DataFrame =
+  )(implicit tc: IntervalQueryConfig[T, _], logger: Logger): DataFrame =
     keepAlias(
       df,
       df => {

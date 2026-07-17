@@ -2,6 +2,7 @@ package ch.zzeekk.spark.temporalquery
 
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.{Column, DataFrame}
+import org.slf4j.Logger
 
 /**
  * Base class defining the configuration needed for interval queries with Spark
@@ -18,7 +19,7 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
    */
   def dimensionMap: Map[String, (String, D)]
   require(dimensionMap.nonEmpty, "at least one fromCol name must be specified")
-  val numDimensions: Int = dimensionMap.size
+  private val numDimensions: Int = dimensionMap.size
 
   def additionalTechnicalColNames: Seq[String]
 
@@ -58,11 +59,11 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
   // interval functions
 
   // TODO: explain this function
-  def applyBooleanColumnFunctionToIntervalDefs(boolColFun: IntervalQueryDimension[T, D] => Column): Column =
+  private def applyBooleanColumnFunctionToIntervalDefs(boolColFun: IntervalQueryDimension[T, D] => Column): Column =
     intervalDimensions.map(boolColFun).reduce((x, y) => x and y)
 
   // TODO: explain this function
-  def checkValue(checkFun: (Column, IntervalQueryDimension[T, D]) => Column)(values: Seq[Column]): Column = {
+  private def checkValue(checkFun: (Column, IntervalQueryDimension[T, D]) => Column)(values: Seq[Column]): Column = {
     require(values.length == numDimensions, "Please provide as many values as dimensions")
     applyBooleanColumnFunctionToIntervalDefs(dim => checkFun(values(intervalDimensions.indexOf(dim)), dim))
   }
@@ -77,16 +78,12 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
     dim.intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)
   )
 
-  def isValidIntervalExpr2: Column = intervalDimensions.map {
-    dim => dim.intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)
-  }.reduce((x, y) => x and y)
-
-  def joinIntervalExpr(df1: DataFrame, df2: DataFrame): Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
-    dim.intDef.intervalJoinExpr(df1(dim.fromColName), df1(dim.toColName), df2(dim.fromColName), df2(dim.toColName))
-  )
-
-  def joinIntervalExpr2(df1: DataFrame, df2: DataFrame): Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
-    dim.intDef.intervalJoinExpr(df1(dim.fromColName), df1(dim.toColName), df2(dim.fromCol2Name), df2(dim.toCol2Name))
-  )
+  def joinIntervalExpr(df1: DataFrame, df2: DataFrame)(implicit logger: Logger): Column = {
+    val joinCol = applyBooleanColumnFunctionToIntervalDefs(dim =>
+      dim.intDef.intervalJoinExpr(df1(dim.fromColName), df1(dim.toColName), df2(dim.fromCol2Name), df2(dim.toCol2Name))
+    )
+    logger.debug(s"joinIntervalExpr2: returning joinCol $joinCol")
+    joinCol
+  }
 
 }

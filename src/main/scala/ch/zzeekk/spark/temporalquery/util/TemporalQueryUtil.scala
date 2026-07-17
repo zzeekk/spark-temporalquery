@@ -7,6 +7,7 @@ package ch.zzeekk.spark.temporalquery.util
 import ch.zzeekk.spark.temporalquery._
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
+import org.slf4j.Logger
 
 import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
@@ -76,14 +77,20 @@ object TemporalQueryUtil extends Serializable with Logging {
      * Implementiert ein inner-join von historisierten Daten über eine Liste von gleich benannten
      * Spalten
      */
-    def temporalInnerJoin(df2: DataFrame, keys: Seq[String])(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame =
+    def temporalInnerJoin(df2: DataFrame, keys: Seq[String])(implicit
+        tc: TemporalQueryConfig,
+        logger: Logger
+    ): DataFrame =
       IntervalQueryImpl
         .joinIntervalsWithKeysImpl(df1, df2, keys)
 
     /**
      * Implementiert ein inner-join von historisierten Daten über eine ausformulierte Join-Bedingung
      */
-    def temporalInnerJoin(df2: DataFrame, keyCondition: Column)(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame =
+    def temporalInnerJoin(df2: DataFrame, keyCondition: Column)(implicit
+        tc: TemporalQueryConfig,
+        logger: Logger
+    ): DataFrame =
       IntervalQueryImpl
         .joinIntervals(df1, df2, keys = Nil, joinType = "inner", keyCondition)
 
@@ -111,7 +118,7 @@ object TemporalQueryUtil extends Serializable with Logging {
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame = IntervalQueryImpl
+    )(implicit ss: SparkSession, tc: TemporalQueryConfig, logger: Logger): DataFrame = IntervalQueryImpl
       .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend)
 
     /**
@@ -137,7 +144,7 @@ object TemporalQueryUtil extends Serializable with Logging {
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame = IntervalQueryImpl
+    )(implicit ss: SparkSession, tc: TemporalQueryConfig, logger: Logger): DataFrame = IntervalQueryImpl
       .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions,
         additionalJoinFilterCondition, "left", doCleanupExtend)
 
@@ -165,7 +172,7 @@ object TemporalQueryUtil extends Serializable with Logging {
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame = IntervalQueryImpl
+    )(implicit ss: SparkSession, tc: TemporalQueryConfig, logger: Logger): DataFrame = IntervalQueryImpl
       .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend)
 
     /**
@@ -178,8 +185,8 @@ object TemporalQueryUtil extends Serializable with Logging {
      * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
     def temporalLeftAntiJoin(df2: DataFrame, joinColumns: Seq[String], additionalJoinFilterCondition: Column = lit(true))(implicit
-        ss: SparkSession,
-        tc: IntervalQueryConfig[Timestamp, ClosedInterval[Timestamp]]
+        tc: IntervalQueryConfig[Timestamp, ClosedInterval[Timestamp]],
+        logger: Logger
     ): DataFrame =
       IntervalQueryImpl.leftAntiJoinIntervals(df1, df2, joinColumns, additionalJoinFilterCondition)
 
@@ -206,7 +213,7 @@ object TemporalQueryUtil extends Serializable with Logging {
         rnkFilter: Boolean = true,
         extend: Boolean = true,
         fillGapsWithNull: Boolean = true
-    )(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame = IntervalQueryImpl
+    )(implicit tc: TemporalQueryConfig, logger: Logger): DataFrame = IntervalQueryImpl
       .cleanupExtendIntervals(df1, keys, rnkExpressions, aggExpressions, rnkFilter, extend, fillGapsWithNull)
 
     /**
@@ -214,7 +221,7 @@ object TemporalQueryUtil extends Serializable with Logging {
      * gibt. Zuerst wird der Dataframe mittels [[temporalRoundDiscreteTime]] etwas bereinigt, siehe
      * Beschreibung dort
      */
-    def temporalCombine(ignoreColNames: Seq[String] = Nil)(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame =
+    def temporalCombine(ignoreColNames: Seq[String] = Nil)(implicit tc: TemporalQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl
         .combineIntervals(df1, ignoreColNames)
 
@@ -222,15 +229,15 @@ object TemporalQueryUtil extends Serializable with Logging {
      * Schneidet bei Überlappungen die Records in Stücke, so dass beim Start der Überlappung alle
      * gültigen Records aufgeteilt werden
      */
-    def temporalUnifyRanges(keys: Seq[String])(implicit ss: SparkSession, tc: TemporalQueryConfig): DataFrame =
+    def temporalUnifyRanges(keys: Seq[String])(implicit tc: TemporalQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.unifyIntervalRanges(df1, keys)
 
     /**
      * Erweitert die Historie des kleinsten Werts pro Key auf minDate
      */
     def temporalExtendRange(keys: Seq[String] = Nil, extendMin: Boolean = true, extendMax: Boolean = true)(implicit
-        ss: SparkSession,
-        tc: TemporalQueryConfig
+        tc: TemporalQueryConfig,
+        logger: Logger
     ): DataFrame = IntervalQueryImpl
       .extendIntervalRanges(df1, keys, extendMin, extendMax)
 

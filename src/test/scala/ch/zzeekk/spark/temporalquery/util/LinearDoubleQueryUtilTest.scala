@@ -265,7 +265,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (1, "B", 200803.000000,    intervalMaxValue),
       (1, "G", 200924.000000,    intervalMaxValue)
     ).toDF("id", "val", defaultConfig.fromColName, defaultConfig.toColName)
-    val actual = argument.linearCleanupExtend(Seq("id"), Seq(defaultConfig.toCol.desc, defaultConfig.fromCol.asc))(session, defaultConfig)
+    val actual = argument
+      .linearCleanupExtend(Seq("id"), Seq(defaultConfig.toCol.desc, defaultConfig.fromCol.asc))(defaultConfig, logger)
       .linearCombine()
     val expected = Seq(
       (1, "S", intervalMinValue, 200701.0),

@@ -84,7 +84,7 @@ case class ClosedInterval[T: Ordering: TypeTag](
     fromCol <= toCol
 
   override def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column =
-    fromCol1 <= toCol2 and toCol1 >= fromCol2
+    fromCol1 <= toCol2 and fromCol2 <= toCol1
 
   /**
    * Round down a value to the next discrete value of the interval axis, respecting interval axis
