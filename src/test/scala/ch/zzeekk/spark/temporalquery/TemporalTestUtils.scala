@@ -14,7 +14,7 @@ object TemporalTestUtils extends TestUtils {
   // some beautiful nasty data frames for testing
 
   val dfLeft: DataFrame = Seq((0, "2017-12-10 00:00:00", "2018-12-08 23:59:59.999", 4.2))
-    .map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_l")
+    .map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value_l")
 
   val dfRight: DataFrame = Seq(
     (0, "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
@@ -26,7 +26,7 @@ object TemporalTestUtils extends TestUtils {
     (1, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
     (1, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
     (1, "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
-  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
+  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value_r")
 
   val dfRightDouble: DataFrame = Seq(
     (0.0, "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
@@ -38,11 +38,11 @@ object TemporalTestUtils extends TestUtils {
     (1.0, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
     (1.0, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
     (1.0, "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
-  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
+  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value_r")
 
   /*
    * dfMap: dfMap which maps a set of images img to id over time:
-   * e.g. 0 ↦ {A,B} in Jan 2018 ; 0 ↦ {B,C} 1.-19. Feb 2018 ; 0 ↦ {B,C,D} 20.-28. Feb 2018 ausser für eine 1ms mit 0 ↦ {B,C,D,X} ; 0 ↦ {D} in Mar 2018
+   * e.g. 0 ↦ {A,B} in Jan 2018 ; 0 ↦ {B,C} 1.-19. Feb 2018 ; 0 ↦ {B,C,D} 20.-28. Feb 2018 except for 1ms with 0 ↦ {B,C,D,X} ; 0 ↦ {D} in Mar 2018
    */
   val dfMap: DataFrame = Seq(
     (0, "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "A"),
@@ -83,7 +83,7 @@ object TemporalTestUtils extends TestUtils {
     (0, "2018-06-01 00:00:00",        "2018-06-01 09:00:00.000123", 3.14),
     (0, "2018-06-01 09:00:00.000124", "2018-06-01 09:00:00.000129", 42.0),
     (0, "2018-06-01 09:00:00.000130", "2018-06-01 17:00:00.123456", 2.72)
-  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert")
+  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value")
 
   // Data Frame dfDirtyTimeRanges
   val dfDirtyTimeRanges: DataFrame = Seq(
@@ -104,14 +104,14 @@ object TemporalTestUtils extends TestUtils {
     (1, "2019-03-01 00:00:1.0009",      "2019-03-01 00:00:01.0021", 1.2), // duration less than a millisecond
     (1, "2019-03-01 00:00:0.0001",      "2019-03-01 00:00:00.0009", 0.8), // duration less than a millisecond
     (1, "2019-03-03 01:00:0",           "2021-12-01 02:34:56.1",    -2.0)
-  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert")
+  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value")
 
   val dfDocumentation: DataFrame = Seq(
     (1, "2019-01-05 12:34:56.123456789", "2019-02-01 02:34:56.1235", 2.72),
     (1, "2019-02-01 01:00:00.0",         "2019-02-01 02:34:56.1245", 2.72), // overlaps with previous record
     (1, "2019-02-01 02:34:56.125",       "2019-02-01 02:34:56.1245", 2.72), // ends before it starts
     (1, "2019-01-01 00:00:0",            "2019-12-31 23:59:59.999",  42.0)
-  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert")
+  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value")
 
   val dfContinuousTime: DataFrame = Seq(
     (0, "2019-01-01 00:00:00.123456789", "2019-01-05 12:34:56.123456789", 3.14),
@@ -123,6 +123,6 @@ object TemporalTestUtils extends TestUtils {
     (0, "2020-01-01 01:00:0",            "9999-12-31 23:59:59.999999999", 18.17),
     (1, "2019-01-01 00:00:0.123456789",  "2019-02-02 00:00:00",           -1.0),
     (1, "2019-03-03 01:00:0",            "2021-12-01 02:34:56.1",         -2.0)
-  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert")
+  ).map(makeRowsWithTimeRange).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value")
 
 }

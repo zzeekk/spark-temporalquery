@@ -402,7 +402,7 @@ object IntervalQueryImpl extends Logging {
   }
 
   /**
-   * extend gueltig_ab/bis to min/maxDate
+   * extend valid_from/to to min/maxDate
    */
   private[temporalquery] def extendIntervalRanges[T: Ordering: TypeTag](
       df: DataFrame,

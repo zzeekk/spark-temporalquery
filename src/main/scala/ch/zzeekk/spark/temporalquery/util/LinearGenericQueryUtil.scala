@@ -34,7 +34,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
    * needed as implicit parameter.
    */
   case class LinearClosedIntervalQueryConfig(
-      dimensionColNameMap: Map[String, String] = Map("position_von" -> "position_bis"),
+      dimensionColNameMap: Map[String, String] = Map("position_from" -> "position_to"),
       override val additionalTechnicalColNames: Seq[String] = Nil,
       override val intervalDef: ClosedInterval[T]
   ) extends ClosedIntervalMultidimQueryConfig[T] with LinearQueryConfigMarker {
@@ -50,7 +50,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
    * needed as implicit parameter.
    */
   case class LinearHalfOpenIntervalQueryConfig(
-      dimensionColNameMap: Map[String, String] = Map("position_von" -> "position_bis"),
+      dimensionColNameMap: Map[String, String] = Map("position_from" -> "position_to"),
       override val additionalTechnicalColNames: Seq[String] = Nil,
       override val intervalDef: HalfOpenInterval[T]
   ) extends HalfOpenIntervalMultidimQueryConfig[T] with LinearQueryConfigMarker {
@@ -66,8 +66,8 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
      * intervalDef by an implicit parameter
      */
     def withDefaultIntervalDef(
-        fromColName: String = "position_von",
-        toColName: String = "position_bis"
+        fromColName: String = "position_from",
+        toColName: String = "position_to"
     )(implicit intervalDef: HalfOpenInterval[T], logger: Logger): LinearHalfOpenIntervalQueryConfig = {
       debugLog(s"(withDefaultIntervalDef) fromColName = $fromColName ; toColName = $toColName ; intervalDef = $intervalDef")
       LinearHalfOpenIntervalQueryConfig(dimensionColNameMap = Map(fromColName -> toColName),
@@ -77,38 +77,35 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   }
 
   /**
-   * Pimp-my-library pattern für's DataFrame
+   * Pimp-my-library pattern for DataFrame
    */
   implicit class LinearDataFrameExtensions(df1: DataFrame) {
 
     /**
-     * Implementiert ein inner-join von linearen Daten über eine Liste von gleich benannten Spalten
+     * Implements an inner join of linear data over a list of equally named columns
      */
     def linearInnerJoin(df2: DataFrame, keys: Seq[String])(implicit lqc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.joinIntervalsWithKeysImpl(df1, df2, keys)
 
     /**
-     * Implementiert ein inner-join von historisierten Daten über eine ausformulierte Join-Bedingung
+     * Implements an inner join of linear data over an explicit join condition
      */
     def linearInnerJoin(df2: DataFrame, keyCondition: Column)(implicit lqc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.joinIntervals(df1, df2, keys = Nil, joinType = "inner", keyCondition)
 
     /**
-     * Implementiert ein full-outer-join von linearen Daten über eine Liste von gleich benannten
-     * Spalten
+     * Implements a full outer join of linear data over a list of equally named columns
      * @param rnkExpressions:
-     *   Für den Fall, dass df1 oder df2 kein lineares 1-1-mapping ist, also keys :+ fromColName
-     *   nicht eindeutig sind, wird mit Hilfe der rnkExpressions für jeden Wert genau eine Zeile
-     *   ausgewählt. Dies entspricht also einem join mit der Einschränkung, dass keine Muliplikation
-     *   der Records im anderen DataFrame stattfinden kann. Soll df1 oder df2 aber als eine
-     *   one-to-many Relation gejoined werden und damit auch die Multiplikation von Records aus
-     *   df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Nil diese Bereinigung
-     *   ausgeschaltet werden.
+     *   In case df1 or df2 does not have a linear 1-1-mapping, i.e. keys :+ fromColName are not
+     *   unique, rnkExpressions is used to select exactly one row per value. This corresponds to a
+     *   join with the constraint that no multiplication of records in the other DataFrame can
+     *   occur. If df1 or df2 is to be joined as a one-to-many relation (allowing multiplication of
+     *   records from df1/df2), set rnkExpressions = Nil to disable this deduplication.
      * @param additionalJoinFilterCondition:
-     *   zusätzliche non-equi-join Bedingungen für den left-join
+     *   additional non-equi join conditions for the join
      * @param doCleanupExtend
-     *   Kann auf false gesetzt werden, falls cleanupExtend Operation auf beiden Input-DataFrames
-     *   bereits ausgeführt wurde (default = true)
+     *   Can be set to false if the cleanupExtend operation has already been applied to both input
+     *   DataFrames (default = true)
      */
     def linearFullJoin(
         df2: DataFrame,
@@ -120,20 +117,18 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend)
 
     /**
-     * Implementiert ein left-outer-join von historisierten Daten über eine Liste von gleich
-     * benannten Spalten
+     * Implements a left outer join of linear data over a list of equally named columns
      * @param rnkExpressions:
-     *   Für den Fall, dass df2 kein zeitliches 1-1-mapping ist, also keys :+ fromColName nicht
-     *   eindeutig sind, wird mit Hilfe der rnkExpressions für jeden Wert genau eine Zeile
-     *   ausgewählt. Dies entspricht also einem join mit der Einschränkung, dass keine Muliplikation
-     *   der Records in df1 stattfinden kann. Soll df2 aber als eine one-to-many Relation gejoined
-     *   werden und damit auch die Multiplikation von Records aus df1 möglich sein, so kann durch
-     *   setzen von rnkExpressions = Nil diese Bereinigung ausgeschaltet werden.
+     *   In case df2 does not have a linear 1-1-mapping, i.e. keys :+ fromColName are not unique,
+     *   rnkExpressions is used to select exactly one row per value. This corresponds to a join with
+     *   the constraint that no multiplication of records in df1 can occur. If df2 is to be joined
+     *   as a one-to-many relation (allowing multiplication of records from df1), set rnkExpressions =
+     *   Nil to disable this deduplication.
      * @param additionalJoinFilterCondition:
-     *   zusätzliche non-equi-join Bedingungen für den left-join
+     *   additional non-equi join conditions for the left join
      * @param doCleanupExtend
-     *   Kann auf false gesetzt werden, falls cleanupExtend Operation auf Input-DataFrame dfRight
-     *   bereits ausgeführt wurde (default = true)
+     *   Can be set to false if the cleanupExtend operation has already been applied to input
+     *   DataFrame dfRight (default = true)
      */
     def linearLeftJoin(
         df2: DataFrame,
@@ -145,21 +140,18 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "left", doCleanupExtend)
 
     /**
-     * Implementiert ein right-outer-join von linearen Daten über eine Liste von gleich benannten
-     * Spalten
+     * Implements a right outer join of linear data over a list of equally named columns
      * @param rnkExpressions:
-     *   Für den Fall, dass df1 oder df2 kein lineares 1-1-mapping ist, also keys :+ fromColName
-     *   nicht eindeutig sind, wird mit Hilfe der rnkExpressions für jeden Zeitpunkt genau eine
-     *   Zeile ausgewählt. Dies entspricht also einem join mit der Einschränkung, dass keine
-     *   Muliplikation der Records im anderen DataFrame stattfinden kann. Soll df1 oder df2 aber als
-     *   eine one-to-many Relation gejoined werden und damit auch die Multiplikation von Records aus
-     *   df1/df2 möglich sein, so kann durch setzen von rnkExpressions = Nil diese Bereinigung
-     *   ausgeschaltet werden.
+     *   In case df1 or df2 does not have a linear 1-1-mapping, i.e. keys :+ fromColName are not
+     *   unique, rnkExpressions is used to select exactly one row per value. This corresponds to a
+     *   join with the constraint that no multiplication of records in the other DataFrame can
+     *   occur. If df1 or df2 is to be joined as a one-to-many relation (allowing multiplication of
+     *   records from df1/df2), set rnkExpressions = Nil to disable this deduplication.
      * @param additionalJoinFilterCondition:
-     *   zusätzliche non-equi-join Bedingungen für den left-join
+     *   additional non-equi join conditions for the right join
      * @param doCleanupExtend
-     *   Kann auf false gesetzt werden, falls cleanupExtend Operation auf Input-DataFrame dfLeft
-     *   bereits ausgeführt wurde (default = true)
+     *   Can be set to false if the cleanupExtend operation has already been applied to input
+     *   DataFrame dfLeft (default = true)
      */
     def linearRightJoin(
         df2: DataFrame,
@@ -171,10 +163,9 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
       IntervalQueryImpl.outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend)
 
     /**
-     * Implementiert einen left-anti-join von linearen Daten über eine Liste von gleich benannten
-     * Spalten
+     * Implements a left anti join of linear data over a list of equally named columns
      * @param additionalJoinFilterCondition:
-     *   zusätzliche non-equi-join Bedingungen für den left-anti-join
+     *   additional non-equi join conditions for the left anti join
      *
      * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
@@ -193,20 +184,19 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     }
 
     /**
-     * Löst lineare Überlappungen
+     * Resolves linear overlaps
      * @param rnkExpressions:
-     *   Priorität zum Bereinigen
+     *   priority expressions for deduplication
      * @param aggExpressions:
-     *   Beim Bereinigen zu erstellende Aggregationen
+     *   aggregations to compute during deduplication
      * @param rnkFilter:
-     *   Wenn false werden überlappende Abschnitte nur mit rnk>1 markiert aber nicht gefiltert
+     *   if false, overlapping sections are only marked with rnk>1 but not filtered out
      * @param extend:
-     *   Wenn true und fillGapsWithNull=true, dann werden für jeden key Zeilen mit Null-werten
-     *   hinzugefügt, sodass die ganze lineare Achse [lowerHorizon , upperHorizon] von allen keys
-     *   abgedeckt wird
+     *   if true and fillGapsWithNull=true, rows with null values are added for each key so that the
+     *   entire linear axis [lowerHorizon , upperHorizon] is covered for all keys
      * @param fillGapsWithNull:
-     *   Wenn true, dann werden Lücken in der linearen Achse mit Nullzeilen geschlossen. !
-     *   fillGapsWithNull muss auf true gesetzt werden, damit extend=true etwas bewirkt !
+     *   if true, gaps in the linear axis are filled with null rows. fillGapsWithNull must be set to
+     *   true for extend=true to have any effect
      */
     def linearCleanupExtend(
         keys: Seq[String],
@@ -219,8 +209,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
       IntervalQueryImpl.cleanupExtendIntervals(df1, keys, rnkExpressions, aggExpressions, rnkFilter, extend, fillGapsWithNull)
 
     /**
-     * Kombiniert aufeinanderfolgende Records wenn es in den nichttechnischen Spalten keine Änderung
-     * gibt.
+     * Combines consecutive records when there is no change in the non-technical columns.
      */
     def linearCombine(keys: Seq[String] = Nil, ignoreColNames: Seq[String] = Nil)(implicit
         lqc: LinearQueryConfig,
@@ -232,14 +221,14 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     }
 
     /**
-     * Schneidet bei Überlappungen die Records in Stücke, so dass beim Start der Überlappung alle
-     * gültigen Records aufgeteilt werden
+     * Cuts records into pieces at overlaps, so that at the start of each overlap all active records
+     * are split
      */
     def linearUnifyRanges(keys: Seq[String])(implicit lqc: LinearQueryConfig, logger: Logger): DataFrame =
       IntervalQueryImpl.unifyIntervalRanges(df1, keys)
 
     /**
-     * Erweitert die Versionierung des kleinsten gueltig_ab pro Key auf minDate
+     * Extends the range of the smallest valid_from per key to minDate
      */
     def linearExtendRange(keys: Seq[String] = Nil, extendMin: Boolean = true, extendMax: Boolean = true)(implicit
         lqc: LinearQueryConfig
@@ -277,7 +266,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   }
 
   /**
-   * Pimp-my-library pattern für Columns
+   * Pimp-my-library pattern for Columns
    */
   implicit class LinearColumnExtensions(value: Column) {
     def isInTemporalInterval(implicit lqc: LinearQueryConfig): Column = lqc.isInIntervalExpr(List(value))

@@ -15,7 +15,7 @@ object LinearDoubleTestUtils extends TestUtils {
   // some beautiful nasty data frames for testing
 
   val dfLeft: DataFrame = Seq((0, 171210.000000, 181209.0, 4.2))
-    .toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_l")
+    .toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value_l")
 
   val dfRight: DataFrame = Seq(
     (0, 180101.000000, 180201.0, Some(97.15)),
@@ -27,11 +27,11 @@ object LinearDoubleTestUtils extends TestUtils {
     (1, 190101.000000, 200101.0,         Some(2019.0)),
     (1, 200101.000000, 210101.0,         Some(2020.0)),
     (1, 210101.000000, intervalMaxValue, None)
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert_r")
+  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value_r")
 
   /*
    * dfMap: dfMap which maps a set of images img to id over time:
-   * e.g. 0 ↦ {A,B} in Jan 2018 ; 0 ↦ {B,C} 1.-19. Feb 2018 ; 0 ↦ {B,C,D} 20.-28. Feb 2018 ausser für eine 1ms mit 0 ↦ {B,C,D,X} ; 0 ↦ {D} in Mar 2018
+   * e.g. 0 ↦ {A,B} in Jan 2018 ; 0 ↦ {B,C} 1.-19. Feb 2018 ; 0 ↦ {B,C,D} 20.-28. Feb 2018 except for 1ms with 0 ↦ {B,C,D,X} ; 0 ↦ {D} in Mar 2018
    */
   val dfMap: DataFrame = Seq(
     (0, 180101.000000,    180201.0,         "A"),
@@ -85,13 +85,13 @@ object LinearDoubleTestUtils extends TestUtils {
     (1, 190301.0000010009,      190301.0000010021, 1.2), // small duration
     (1, 190301.0000000001,      190301.000000001,  0.8), // small duration
     (1, 190303.010000,          211201.0234561,    -2.0)
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert")
+  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value")
 
   val dfDocumentation: DataFrame = Seq(
     (1, 190105.123456123456789, 190201.0234561235, 2.72),
     (1, 190201.0100000,         190201.0234561245, 2.72), // overlaps with previous record
     (1, 190201.023456125,       190201.0234561245, 2.72), // ends before it starts
     (1, 190101.000000,          200101.0,          42.0)
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "wert")
+  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value")
 
 }

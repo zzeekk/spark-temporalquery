@@ -59,7 +59,7 @@ trait TestUtils extends Logging {
 
   def dfEqual(df1: DataFrame, df2: DataFrame): Boolean = Try {
     val df1reordered = reorderCols(df1, df2)
-    // symmetricDifference ignoriert Doubletten, daher Kardinalitäten vergleichen
+    // symmetricDifference ignores duplicates, so compare cardinalities as well
     (0 == symmetricDifference(df1reordered, df2).count) && (df1reordered.count == df2.count) && schemaEqual(df1reordered, df2)
   } match {
     case Success(p) => p
@@ -117,9 +117,9 @@ trait TestUtils extends Logging {
             throw e
         }
         val expected = argExpMapComm(x)
-        val resultat = actual == expected
-        if (!resultat) logFailure(argument, actual, expected, comment)
-        resultat
+        val result = actual == expected
+        if (!result) logFailure(argument, actual, expected, comment)
+        result
       case _ => throw new Exception(s"Something went wrong: checkKey called with parameter x=$x")
     }
 
@@ -135,16 +135,16 @@ trait TestUtils extends Logging {
     testArgumentExpectedMapWithComment(experiendum, argExpMapWithReason)
   }
 
-  def makeRowsWithTimeRange[A, B](zeile: (A, String, String, B)): (A, Timestamp, Timestamp, B) =
-    (zeile._1, Timestamp.valueOf(zeile._2), Timestamp.valueOf(zeile._3), zeile._4)
+  def makeRowsWithTimeRange[A, B](row: (A, String, String, B)): (A, Timestamp, Timestamp, B) =
+    (row._1, Timestamp.valueOf(row._2), Timestamp.valueOf(row._3), row._4)
 
-  def makeRowsWithTimeRangeEnd[A, B](zeile: (A, B, String, String)): (A, B, Timestamp, Timestamp) =
-    (zeile._1, zeile._2, Timestamp.valueOf(zeile._3), Timestamp.valueOf(zeile._4))
+  def makeRowsWithTimeRangeEnd[A, B](row: (A, B, String, String)): (A, B, Timestamp, Timestamp) =
+    (row._1, row._2, Timestamp.valueOf(row._3), Timestamp.valueOf(row._4))
 
-  def makeRowsWithTimeRangeEnd[A, B, C](zeile: (A, B, C, String, String)): (A, B, C, Timestamp, Timestamp) =
-    (zeile._1, zeile._2, zeile._3, Timestamp.valueOf(zeile._4), Timestamp.valueOf(zeile._5))
+  def makeRowsWithTimeRangeEnd[A, B, C](row: (A, B, C, String, String)): (A, B, C, Timestamp, Timestamp) =
+    (row._1, row._2, row._3, Timestamp.valueOf(row._4), Timestamp.valueOf(row._5))
 
-  def makeRowsWithTimeRangeEnd[A, B, C, D](zeile: (A, B, C, D, String, String)): (A, B, C, D, Timestamp, Timestamp) =
-    (zeile._1, zeile._2, zeile._3, zeile._4, Timestamp.valueOf(zeile._5), Timestamp.valueOf(zeile._6))
+  def makeRowsWithTimeRangeEnd[A, B, C, D](row: (A, B, C, D, String, String)): (A, B, C, D, Timestamp, Timestamp) =
+    (row._1, row._2, row._3, row._4, Timestamp.valueOf(row._5), Timestamp.valueOf(row._6))
 
 }
