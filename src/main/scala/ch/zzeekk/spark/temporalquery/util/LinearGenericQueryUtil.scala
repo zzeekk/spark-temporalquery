@@ -173,11 +173,8 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         df2: DataFrame,
         joinColumns: Seq[String],
         additionalJoinFilterCondition: Column = lit(true)
-    )(
-        implicit
-        lqc: LinearClosedIntervalQueryConfig,
-        logger: Logger
-    ): DataFrame = {
+        // TODO: Why we require closed interval? Why not LinearQueryConfig
+    )(implicit lqc: LinearClosedIntervalQueryConfig, logger: Logger): DataFrame = {
       assert(lqc.intervalDef.isInstanceOf[ClosedInterval[_]],
         "Only ClosedInterval interval definition in LinearQueryConfig supported for linearLeftAntiJoin()")
       IntervalQueryImpl.leftAntiJoinIntervals(df1, df2, joinColumns, additionalJoinFilterCondition)

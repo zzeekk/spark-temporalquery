@@ -294,6 +294,7 @@ object IntervalQueryImpl extends Logging {
       df2: DataFrame,
       keys: Seq[String],
       additionalJoinFilterCondition: Column
+      // TODO: Why we require closed interval? Why not IntervalMultidimQueryConfig[T, _]
   )(implicit iqc: IntervalMultidimQueryConfig[T, ClosedInterval[T]], logger: Logger): DataFrame = {
     debugLog(s"leftAntiJoinIntervals START: keys = ${keys.mkString(", ")}")
     val df1Cols = df1.columns.map(df1(_))
