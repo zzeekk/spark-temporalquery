@@ -34,7 +34,8 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
   def additionalTechnicalColNames: Seq[String]
 
   // copy of configuration with 2nd pair of from/to column names used as main column pair
-  def config2: IntervalMultidimQueryConfig[T, D] // hint: implement with case class copy constructor in subclass
+  // hint: implement with case class copy constructor in subclass
+  def config2: IntervalMultidimQueryConfig[T, D]
 
   // TODO: change type to SET[String] if possible
   def fromToColnames2: List[String] = fromToColnames.map(increaseColNameNb)

@@ -7,15 +7,15 @@ object LinearDoubleTestUtils extends TestUtils {
 
   import session.implicits._
 
-  implicit val defaultConfig: LinearHalfOpenIntervalQueryConfig = LinearHalfOpenIntervalQueryConfig.withDefaultIntervalDef()
-  logger.info(s"defaultConfig = $defaultConfig")
-  val intervalMinValue: Double = defaultConfig.lowerHorizon
-  val intervalMaxValue: Double = defaultConfig.upperHorizon
+  implicit val defaultLinearConfig: LinearHalfOpenIntervalQueryConfig = LinearHalfOpenIntervalQueryConfig.withDefaultIntervalDef()
+  logger.info(s"defaultLinearConfig = $defaultLinearConfig")
+  val intervalMinValue: Double = defaultLinearConfig.lowerHorizon
+  val intervalMaxValue: Double = defaultLinearConfig.upperHorizon
 
   // some beautiful nasty data frames for testing
 
   val dfLeft: DataFrame = Seq((0, 171210.000000, 181209.0, 4.2))
-    .toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value_l")
+    .toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "value_l")
 
   val dfRight: DataFrame = Seq(
     (0, 180101.000000, 180201.0, Some(97.15)),
@@ -27,7 +27,7 @@ object LinearDoubleTestUtils extends TestUtils {
     (1, 190101.000000, 200101.0,         Some(2019.0)),
     (1, 200101.000000, 210101.0,         Some(2020.0)),
     (1, 210101.000000, intervalMaxValue, None)
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value_r")
+  ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "value_r")
 
   /*
    * dfMap: dfMap which maps a set of images img to id over time:
@@ -39,7 +39,7 @@ object LinearDoubleTestUtils extends TestUtils {
     (0, 180201.000000,    180301.0,         "C"),
     (0, 180220.000000,    180401.0,         "D"),
     (0, 180225.141516123, 180225.141516123, "X")
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
+  ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "img")
 
   val dfMapToCombine: DataFrame = Seq(
     (0, 180101.000000,    180401.0,         Some("A")),
@@ -56,16 +56,16 @@ object LinearDoubleTestUtils extends TestUtils {
     (1, 200601.000000,    210101.0,         Some("one")),
     (0, 180220.000000,    180401.0,         Some("D")),
     (0, 180225.141516123, 180225.141516123, Some("X"))
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
+  ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "img")
 
   val dfMoment: DataFrame = Seq((0, 191125.111213005, 191125.111213005, "A"))
-    .toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
+    .toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "img")
 
   // for 0.000001 the image set is {A,B}
   val dfSmallOverlap: DataFrame = Seq(
     (0, 190101.000000, 190101.100001, "A"),
     (0, 190101.100000, 190102.0,      "B")
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "img")
+  ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "img")
 
   // Data Frame dfDirtyIntervals
   val dfDirtyIntervals: DataFrame = Seq(
@@ -85,13 +85,13 @@ object LinearDoubleTestUtils extends TestUtils {
     (1, 190301.0000010009,      190301.0000010021, 1.2), // small duration
     (1, 190301.0000000001,      190301.000000001,  0.8), // small duration
     (1, 190303.010000,          211201.0234561,    -2.0)
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value")
+  ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "value")
 
   val dfDocumentation: DataFrame = Seq(
     (1, 190105.123456123456789, 190201.0234561235, 2.72),
     (1, 190201.0100000,         190201.0234561245, 2.72), // overlaps with previous record
     (1, 190201.023456125,       190201.0234561245, 2.72), // ends before it starts
     (1, 190101.000000,          200101.0,          42.0)
-  ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName, "value")
+  ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "value")
 
 }

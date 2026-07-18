@@ -1,6 +1,7 @@
 package ch.zzeekk.spark.temporalquery
 
 import java.sql.Timestamp
+import java.time.temporal.ChronoUnit
 
 package object util {
 
@@ -9,5 +10,13 @@ package object util {
 
   // The time ends with doomsDay: What will happen afterwards cannot be known as there is no afterwards.
   val doomsDay: Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
+
+  val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a, b) => a.before(b))
+
+  val stdClosedTemporalInterval: ClosedInterval[Timestamp] = ClosedInterval(
+    lowerHorizon = bigBangDay,
+    upperHorizon = doomsDay,
+    discreteAxisDef = DiscreteTimeAxis(ChronoUnit.MILLIS)
+  )
 
 }

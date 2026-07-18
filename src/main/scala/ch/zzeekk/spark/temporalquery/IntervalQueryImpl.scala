@@ -8,7 +8,7 @@ import org.apache.spark.sql.{Column, DataFrame}
 import org.slf4j.Logger
 
 import scala.annotation.tailrec
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.TypeTag
 
 object IntervalQueryImpl extends Logging {
 
