@@ -2,7 +2,7 @@ package ch.zzeekk.spark.temporalquery.util
 
 import ch.zzeekk.spark.temporalquery.LinearDoubleTestUtils._
 import ch.zzeekk.spark.temporalquery.TestUtils
-import ch.zzeekk.spark.temporalquery.util.IntervalLibrary.IntervalDataFrameExtensions
+import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -15,12 +15,12 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   "linear join condition symmetricity of half-open intervals" should "return expected results" in {
     val df1 = List((1, 1d, 2d)).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
     val df2 = List((1, 2d, 3d)).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
-    df1.intervalInnerJoin[Double](df2, Seq("id")).isEmpty && df2.intervalInnerJoin[Double](df1, Seq("id")).isEmpty shouldBe true
+    df1.multivarRangeInnerJoin[Double](df2, Seq("id")).isEmpty && df2.multivarRangeInnerJoin[Double](df1, Seq("id")).isEmpty shouldBe true
   }
 
   "linearCleanupExtend dfLeft" should "return expected results" in {
-    val actual = dfLeft.intervalCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol))
-      .intervalCombine[Double]()
+    val actual = dfLeft.multivarRangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol))
+      .multivarRangeCombine[Double]()
       .orderBy(defaultLinearConfig.fromCol)
     val expected = Seq(
       (0, None,      false, intervalMinValue, 171210.0),
@@ -34,12 +34,12 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfRight_noExtend_nofillGaps" should "return expected results" in {
-    val actual = dfRight.intervalCleanupExtend[Double](
+    val actual = dfRight.multivarRangeCleanupExtend[Double](
       keys = Seq("id"),
       rnkExpressions = Seq(defaultLinearConfig.fromCol),
       extend = false,
       fillGapsWithNull = false
-    ).intervalCombine[Double]()
+    ).multivarRangeCombine[Double]()
     val expected = Seq(
       (0, Some(97.15),  180101.000000, 180201.0),
       (0, Some(97.15),  180601.052411, intervalMaxValue),
@@ -56,11 +56,11 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfRight_fillGaps_noExtend" should "return expected results" in {
-    val actual = dfRight.intervalCleanupExtend[Double](
+    val actual = dfRight.multivarRangeCleanupExtend[Double](
       keys = Seq("id"),
       rnkExpressions = Seq(defaultLinearConfig.fromCol),
       extend = false
-    ).intervalCombine[Double]()
+    ).multivarRangeCombine[Double]()
     val expected = Seq(
       (0, Some(97.15),  true,  180101.000000, 180201.0),
       (0, None,         false, 180201.000000, 180601.052411),
@@ -77,11 +77,11 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfRight_extend_nofillGaps" should "return expected results" in {
-    val actual = dfRight.intervalCleanupExtend[Double](
+    val actual = dfRight.multivarRangeCleanupExtend[Double](
       keys = Seq("id"),
       rnkExpressions = Seq(defaultLinearConfig.fromCol),
       fillGapsWithNull = false
-    ).intervalCombine[Double]()
+    ).multivarRangeCombine[Double]()
     val expected = Seq(
       (0, Some(97.15),  180101.000000, 180201.0),
       (0, Some(97.15),  180601.052411, intervalMaxValue),
@@ -98,10 +98,10 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfRight_extend_fillGaps" should "return expected results" in {
-    val actual = dfRight.intervalCleanupExtend[Double](
+    val actual = dfRight.multivarRangeCleanupExtend[Double](
       keys = Seq("id"),
       rnkExpressions = Seq(defaultLinearConfig.fromCol)
-    ).intervalCombine[Double]()
+    ).multivarRangeCombine[Double]()
       .orderBy($"id", defaultLinearConfig.fromCol)
     val expected = Seq(
       (0, None,         false, intervalMinValue, 180101.0),
@@ -121,8 +121,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfMap" should "return expected results" in {
-    val actual = dfMap.intervalCleanupExtend[Double](Seq("id"), Seq($"img"))
-      .intervalCombine[Double]()
+    val actual = dfMap.multivarRangeCleanupExtend[Double](Seq("id"), Seq($"img"))
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       (0, None,      false, intervalMinValue, 180101.0),
       (0, Some("A"), true,  180101.000000,    180201.0),
@@ -136,8 +136,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfMap_NoExtendFillgaps" should "return expected results" in {
-    val actual = dfMap.intervalCleanupExtend[Double](Seq("id"), Seq($"img"), extend = false, fillGapsWithNull = false)
-      .intervalCombine[Double]()
+    val actual = dfMap.multivarRangeCleanupExtend[Double](Seq("id"), Seq($"img"), extend = false, fillGapsWithNull = false)
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       (0, Some("A"), 180101.000000, 180201.0),
       (0, Some("B"), 180201.000000, 180301.0),
@@ -150,8 +150,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfSmallOverlap" should "return expected results" in {
-    val actual = dfSmallOverlap.intervalCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol))
-      .intervalCombine[Double]()
+    val actual = dfSmallOverlap.multivarRangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol))
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       (0, None,      false, intervalMinValue, 190101.0),
       (0, Some("A"), true,  190101.000000,    190101.100001),
@@ -165,8 +165,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfDirtyIntervals" should "return expected results" in {
-    val actual = dfDirtyIntervals.intervalCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol, $"value"))
-      .intervalCombine[Double]()
+    val actual = dfDirtyIntervals.multivarRangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol, $"value"))
+      .multivarRangeCombine[Double]()
       .orderBy($"id", defaultLinearConfig.fromCol)
     val expected = Seq(
       (0, None,        false, intervalMinValue,   190101.00000012346),
@@ -197,9 +197,9 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearCleanupExtend dfDirtyIntervals_NoExtendFillgaps" should "return expected results" in {
     val actual =
-      dfDirtyIntervals.intervalCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol, $"value"), extend = false,
+      dfDirtyIntervals.multivarRangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol, $"value"), extend = false,
         fillGapsWithNull = false)
-        .intervalCombine[Double]()
+        .multivarRangeCombine[Double]()
         .orderBy($"id", defaultLinearConfig.fromCol)
     val expected = Seq(
       (0, 3.14,  190101.00000012346, 190105.12345612346),
@@ -229,8 +229,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (1, "B", 200704.000000, 200708.0)
     ).toDF("id", "val", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
     // we want the record with the longest interval, i.e. maximal toColName-fromColName
-    val actual = argument.intervalCleanupExtend[Double](Seq("id"), Seq((defaultLinearConfig.toCol - defaultLinearConfig.fromCol).desc))
-      .intervalCombine[Double]()
+    val actual = argument.multivarRangeCleanupExtend[Double](Seq("id"), Seq((defaultLinearConfig.toCol - defaultLinearConfig.fromCol).desc))
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       (1, None,      false, intervalMinValue, 200701.0),
       (1, Some("A"), true,  200701.000000,    200704.0),
@@ -247,8 +247,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (1, "S", intervalMinValue, intervalMaxValue),
       (1, "X", 200701.000000,    intervalMaxValue)
     ).toDF("id", "val", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
-    val actual = argument.intervalCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol))
-      .intervalCombine[Double]()
+    val actual = argument.multivarRangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol))
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       (1, "S", intervalMinValue, intervalMaxValue)
     ).toDF("id", "val", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
@@ -266,8 +266,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (1, "G", 200924.000000,    intervalMaxValue)
     ).toDF("id", "val", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
     val actual = argument
-      .intervalCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.toCol.desc, defaultLinearConfig.fromCol.asc))
-      .intervalCombine[Double]()
+      .multivarRangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.toCol.desc, defaultLinearConfig.fromCol.asc))
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       (1, "S", intervalMinValue, 200701.0),
       (1, "X", 200701.000000,    200803.0),
@@ -281,7 +281,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearExtendRange dfLeft" should "return expected results" in {
     // argument: dfLeft from object TestUtils
-    val actual = dfLeft.intervalExtendRange[Double](Seq("id"))
+    val actual = dfLeft.multivarRangeExtendRange[Double](Seq("id"))
     val rowsExpected = Seq((0, 4.2, intervalMinValue, intervalMaxValue))
     val expected = rowsExpected.toDF("id", "value_L", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
     val expectedWithActualColumns = expected.select(actual.columns.map(col): _*)
@@ -292,7 +292,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearExtendRange dfRight_id" should "return expected results" in {
-    val actual = dfRight.intervalExtendRange[Double](Seq("id"))
+    val actual = dfRight.multivarRangeExtendRange[Double](Seq("id"))
     val expected = Seq(
       (0, Some(97.15),  intervalMinValue, 180201.0),
       (0, Some(97.15),  180601.0524110,   181023.035010),
@@ -311,7 +311,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearExtendRange dfRight" should "return expected results" in {
     // argument: dfRight from object TestUtils
-    val actual = dfRight.intervalExtendRange[Double]()
+    val actual = dfRight.multivarRangeExtendRange[Double]()
     val expected = Seq(
       (0, Some(97.15),  intervalMinValue, 180201.0),
       (0, Some(97.15),  180601.0524110,   181023.035010),
@@ -329,7 +329,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearInnerJoin dfRight 'on' semantics" should "return expected results" in {
-    val actual = dfLeft.as("dfL").intervalInnerJoin[Double](dfRight.as("dfR"), $"dfL.id" === $"dfR.id")
+    val actual = dfLeft.as("dfL").multivarRangeInnerJoin[Double](dfRight.as("dfR"), $"dfL.id" === $"dfR.id")
     assert(actual.columns.count(_ == "id") == 2)
     val expected = Seq(
       (0, 4.2, 0, Some(97.15), 180101.000000, 180201.0),
@@ -342,7 +342,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearInnerJoin dfRight with 'using' semantics" should "return expected results" in {
-    val actual = dfLeft.as("dfL").intervalInnerJoin[Double](dfRight.as("dfR"), Seq("id"))
+    val actual = dfLeft.as("dfL").multivarRangeInnerJoin[Double](dfRight.as("dfR"), Seq("id"))
     assert(3 == actual.select($"id", $"dfL.value_l", $"dfR.value_r").count())
     val expected = Seq(
       (0, 4.2, Some(97.15), 180101.000000, 180201.0),
@@ -357,7 +357,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   "linearInnerJoin with equally named columns apart join columns" should "return expected results" in {
     val dfL = dfLeft.withColumnRenamed("value_l", "value").as("dfL")
     val dfR = dfRight.withColumnRenamed("value_r", "value").as("dfR")
-    val actual = dfL.intervalInnerJoin[Double](dfR, Seq("id"))
+    val actual = dfL.multivarRangeInnerJoin[Double](dfR, Seq("id"))
     assert(3 == actual.select($"id", $"dfL.value", $"dfR.value").count())
     val expected = Seq(
       (0, 4.2, Some(97.15), 180101.000000, 180201.0),
@@ -465,8 +465,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
    */
 
   "linearFullJoin dfRight" should "return expected results" in {
-    val actual = dfLeft.intervalFullJoin[Double](dfRight, Seq("id")).intervalCombine[Double]()
-      .intervalCombine[Double]()
+    val actual = dfLeft.multivarRangeFullJoin[Double](dfRight, Seq("id")).multivarRangeCombine[Double]()
+      .multivarRangeCombine[Double]()
       .orderBy($"id", defaultLinearConfig.fromCol)
     val expected = Seq(
       // id = 0
@@ -489,8 +489,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearFullJoin rightMap" should "return expected results" in {
     // Testing temporalFullJoin where the right dataFrame is not unique for join attributes
-    val actual = dfLeft.intervalFullJoin[Double](df2 = dfMap, keys = Seq("id"))
-      .intervalCombine[Double]()
+    val actual = dfLeft.multivarRangeFullJoin[Double](df2 = dfMap, keys = Seq("id"))
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       // img = {}
       (Some(0), None,      None,      intervalMinValue, 171210.0),
@@ -509,8 +509,9 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearFullJoin rightMapWithrnkExpressions" should "return expected results" in {
     // Testing temporalFullJoin where the right dataFrame is not unique for join attributes
-    val actual = dfLeft.intervalFullJoin[Double](df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
-      .intervalCombine[Double]()
+    val actual =
+      dfLeft.multivarRangeFullJoin[Double](df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
+        .multivarRangeCombine[Double]()
     val expected = Seq(
       // img = {}
       (Some(0), None,      None, intervalMinValue, 171210.0),
@@ -541,8 +542,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     )
       .toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "img")
     val actual =
-      dfLeft.intervalFullJoin[Double](df2 = argumentRight, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
-        .intervalCombine[Double]()
+      dfLeft.multivarRangeFullJoin[Double](df2 = argumentRight, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
+        .multivarRangeCombine[Double]()
     val expected = Seq(
       // img = {}
       (Some(0), None,      None, intervalMinValue, 171210.0),
@@ -565,8 +566,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearLeftJoin dfRight" should "return expected results" in {
-    val actual = dfLeft.intervalLeftJoin[Double](dfRight, Seq("id"))
-      .intervalCombine[Double]()
+    val actual = dfLeft.multivarRangeLeftJoin[Double](dfRight, Seq("id"))
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       (0, 4.2, None,        171210.000000, 180101.0),
       (0, 4.2, Some(97.15), 180101.000000, 180201.0),
@@ -580,8 +581,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearLeftJoin rightMap" should "return expected results" in {
     // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
-    val actual = dfLeft.intervalLeftJoin[Double](df2 = dfMap, keys = Seq("id"))
-      .intervalCombine[Double]()
+    val actual = dfLeft.multivarRangeLeftJoin[Double](df2 = dfMap, keys = Seq("id"))
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       // img = {}
       (0, 4.2, None,      171210.000000, 180101.0),
@@ -598,8 +599,9 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearLeftJoin rightMapWithrnkExpressions" should "return expected results" in {
     // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
-    val actual = dfLeft.intervalLeftJoin[Double](df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
-      .intervalCombine[Double]()
+    val actual =
+      dfLeft.multivarRangeLeftJoin[Double](df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
+        .multivarRangeCombine[Double]()
     val expected = Seq(
       // img = {}
       (0, 4.2, None, 171210.000000, 180101.0),
@@ -629,8 +631,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     )
       .toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "img")
     val actual =
-      dfLeft.intervalLeftJoin[Double](df2 = argumentRight, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
-        .intervalCombine[Double]()
+      dfLeft.multivarRangeLeftJoin[Double](df2 = argumentRight, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
+        .multivarRangeCombine[Double]()
     val expected = Seq(
       // img = {}
       (0, 4.2, None, 171210.000000, 180101.0),
@@ -654,7 +656,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   "linearLeftJoin with equally named columns apart join columns" should "return expected results" in {
     val dfL = dfLeft.withColumnRenamed("value_l", "value").as("dfL")
     val dfR = dfRight.withColumnRenamed("value_r", "value").as("dfR")
-    val actual = dfL.intervalLeftJoin[Double](dfR, Seq("id"))
+    val actual = dfL.multivarRangeLeftJoin[Double](dfR, Seq("id"))
       // .intervalCombine[Double]() // temporal combine not possible with equally named columns in the same DataFrame.
       .orderBy($"id", defaultLinearConfig.fromCol)
     assert(5 == actual.select($"id", $"dfL.value", $"dfR.value").count())
@@ -672,8 +674,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearRightJoin dfRight" should "return expected results" in {
-    val actual = dfLeft.intervalRightJoin[Double](dfRight, Seq("id"))
-      .intervalCombine[Double]()
+    val actual = dfLeft.multivarRangeRightJoin[Double](dfRight, Seq("id"))
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       // id = 0
       (0, Some(4.2), Some(97.15), 180101.000000, 180201.0),
@@ -692,8 +694,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearRightJoin rightMap" should "return expected results" in {
     // Testing temporalRightJoin where the right dataFrame is not unique for join attributes
-    val actual = dfLeft.intervalRightJoin[Double](df2 = dfMap, keys = Seq("id"))
-      .intervalCombine[Double]()
+    val actual = dfLeft.multivarRangeRightJoin[Double](df2 = dfMap, keys = Seq("id"))
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       // img = {}
       (0, Some(4.2), Some("A"), 180101.000000, 180201.0),
@@ -709,8 +711,9 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   "linearRightJoin rightMapWithrnkExpressions" should "return expected results" in {
     // Testing temporalRightJoin where the right dataFrame is not unique for join attributes
     // but in a right join rnkExpressions are applied to left data frame
-    val actual = dfLeft.intervalRightJoin[Double](df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
-      .intervalCombine[Double]()
+    val actual =
+      dfLeft.multivarRangeRightJoin[Double](df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
+        .multivarRangeCombine[Double]()
     val expected = Seq(
       // img = {}
       (0, Some(4.2), Some("A"), 180101.000000, 180201.0),
@@ -737,8 +740,9 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       .toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "img")
 
     val actual =
-      dfLeft.intervalRightJoin[Double](df2 = argumentRight, keys = Seq("id"), rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
-        .intervalCombine[Double]()
+      dfLeft.multivarRangeRightJoin[Double](df2 = argumentRight, keys = Seq("id"),
+        rnkExpressions = Seq($"img", defaultLinearConfig.fromCol))
+        .multivarRangeCombine[Double]()
     val expected = Seq(
       // img = {}
       (0, Some(4.2), Some("A"), 180101.000000, 180201.0),
@@ -753,7 +757,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCombine dfRight" should "return expected results" in {
-    val actual = dfRight.intervalCombine[Double]()
+    val actual = dfRight.multivarRangeCombine[Double]()
     val expected = Seq(
       (0, 180101.0000000, 180201.0,         Some(97.15)),
       (0, 180601.0524110, intervalMaxValue, Some(97.15)),
@@ -772,7 +776,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     val actual = dfRight
       .withColumn("test_column", lit("please drop me"))
       .drop("test_column")
-      .intervalCombine[Double]()
+      .multivarRangeCombine[Double]()
     val expected = Seq(
       (0, 180101.0000000, 180201.0,         Some(97.15)),
       (0, 180601.0524110, intervalMaxValue, Some(97.15)),
@@ -788,7 +792,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCombine dfMapToCombine" should "return expected results" in {
-    val actual = dfMapToCombine.intervalCombine[Double]()
+    val actual = dfMapToCombine.multivarRangeCombine[Double]()
     val expected = Seq(
       (0, 180101.000000, 190101.0, Some("A")),
       (0, 180101.000000, 180204.0, Some("B")),
@@ -805,7 +809,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCombine dfDirtyIntervals" should "return expected results" in {
-    val actual = dfDirtyIntervals.intervalCombine[Double]()
+    val actual = dfDirtyIntervals.multivarRangeCombine[Double]()
     val expected = Seq(
       (0, 190101.00000012346, 190105.12345612346, 3.14),
       (0, 190105.12345612346, 190201.0234561245,  2.72),
@@ -826,7 +830,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCombine documentation" should "return expected results" in {
-    val actual = dfDocumentation.intervalCombine[Double]()
+    val actual = dfDocumentation.multivarRangeCombine[Double]()
     val expected = Seq(
       (1, 190105.12345612346, 190201.0234561245, 2.72), // overlaps with previous record
       (1, 190101.00000,       200101.0,          42.0)
@@ -840,7 +844,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearUnifyRanges dfMoment" should "return expected results" in {
     // Note that a Moment can not be modeled with HalfOpenInterval - result is therefore empty
-    val actual = dfMoment.intervalUnifyRanges[Double](Seq("id"))
+    val actual = dfMoment.multivarRangeUnifyRanges[Double](Seq("id"))
       .select(dfMoment.columns.map(col): _*) // re-order columns
     val expected = dfMoment.where(lit(false)) // empty data frame expected
     logger.info("expected:")
@@ -851,7 +855,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "temporalUnifyRanges dfSmallOverlap" should "return expected results" in {
-    val actual = dfSmallOverlap.intervalUnifyRanges[Double](Seq("id"))
+    val actual = dfSmallOverlap.multivarRangeUnifyRanges[Double](Seq("id"))
     val expected = Seq(
       // img = {A,B}
       (0, "A", 190101.000000, 190101.100000),
@@ -865,7 +869,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearUnifyRanges dfMap" should "return expected results" in {
-    val actual = dfMap.intervalUnifyRanges[Double](Seq("id"))
+    val actual = dfMap.multivarRangeUnifyRanges[Double](Seq("id"))
     val expected = Seq(
       // img = {A,B}
       (0, "A", 180101.000000, 180201.0),

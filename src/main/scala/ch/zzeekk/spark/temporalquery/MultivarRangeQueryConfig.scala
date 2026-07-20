@@ -10,7 +10,7 @@ import org.slf4j.Logger
  * @tparam T
  *   : scala type for interval axis
  */
-abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Serializable {
+abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Serializable {
   // this is an abstract class because "traits can not have type parameters with context bounds"
 
   // 2nd pair of from/to column names
@@ -35,7 +35,7 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
 
   // copy of configuration with 2nd pair of from/to column names used as main column pair
   // hint: implement with case class copy constructor in subclass
-  def config2: IntervalMultidimQueryConfig[T, D]
+  def config2: MultivarRangeQueryConfig[T, D]
 
   // TODO: change type to SET[String] if possible
   def fromToColnames2: List[String] = fromToColnames.map(increaseColNameNb)
@@ -103,11 +103,11 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
   val isInBoundariesExpr: Seq[Column] => Column = checkValue(checkFun = (valCol, dim) =>
     valCol.between(lit(dim.lowerHorizon), lit(dim.upperHorizon)))
 
-  def isValidIntervalExpr: Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
+  def isValidMultivarRangeExpr: Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
     dim.intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)
   )
 
-  def joinIntervalExpr(df1: DataFrame, df2: DataFrame)(implicit logger: Logger): Column = {
+  def joinMultivarRangeExpr(df1: DataFrame, df2: DataFrame)(implicit logger: Logger): Column = {
     val joinCol = applyBooleanColumnFunctionToIntervalDefs(dim =>
       dim.intDef.intervalJoinExpr(df1(dim.fromColName), df1(dim.toColName), df2(dim.fromCol2Name), df2(dim.toCol2Name))
     )

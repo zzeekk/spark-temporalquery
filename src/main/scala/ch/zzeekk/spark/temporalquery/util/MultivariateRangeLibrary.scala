@@ -1,42 +1,42 @@
 package ch.zzeekk.spark.temporalquery.util
 
-import ch.zzeekk.spark.temporalquery.{ClosedInterval, ClosedIntervalMultidimQueryConfig, IntervalMultidimQueryConfig, IntervalQueryImpl}
+import ch.zzeekk.spark.temporalquery.{ClosedInterval, ClosedMultivarRangeQueryConfig, MultivarRangeQueryConfig, MultivarRangeQueryImpl}
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.{Column, DataFrame}
 import org.slf4j.Logger
 
 import scala.reflect.runtime.universe.TypeTag
 
-object IntervalLibrary {
+object MultivariateRangeLibrary {
 
   /**
    * Pimp-my-library pattern for Columns
    */
-  implicit class IntervalColumnExtensions(value: Column) {
-    def isInInterval[T: Ordering: TypeTag](implicit iqc: IntervalMultidimQueryConfig[T, _]): Column =
+  implicit class MultivarRangeColumnExtensions(value: Column) {
+    def isInMultivariateRange[T: Ordering: TypeTag](implicit iqc: MultivarRangeQueryConfig[T, _]): Column =
       iqc.isInIntervalExpr(List(value))
   }
 
   /**
    * Pimp-my-library pattern for DataFrame
    */
-  implicit class IntervalDataFrameExtensions(df1: DataFrame) {
+  implicit class MultivariateRangeFrameExtensions(df1: DataFrame) {
 
     /**
      * Implements an inner join of historical data over a list of equally named columns
      */
-    def intervalInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keys: Seq[String])(implicit
-        iqc: IntervalMultidimQueryConfig[T, _],
+    def multivarRangeInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keys: Seq[String])(implicit
+        iqc: MultivarRangeQueryConfig[T, _],
         logger: Logger
-    ): DataFrame = IntervalQueryImpl.joinIntervalsWithKeysImpl(df1, df2, keys)
+    ): DataFrame = MultivarRangeQueryImpl.joinIntervalsWithKeysImpl(df1, df2, keys)
 
     /**
      * Implements an inner join of historical data over an explicit join condition
      */
-    def intervalInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keyCondition: Column)(implicit
-        iqc: IntervalMultidimQueryConfig[T, _],
+    def multivarRangeInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keyCondition: Column)(implicit
+        iqc: MultivarRangeQueryConfig[T, _],
         logger: Logger
-    ): DataFrame = IntervalQueryImpl.joinIntervals(df1, df2, keys = Nil, joinType = "inner", keyCondition)
+    ): DataFrame = MultivarRangeQueryImpl.joinIntervals(df1, df2, keys = Nil, joinType = "inner", keyCondition)
 
     /**
      * Implements a full outer join of historical data over a list of equally named columns
@@ -54,13 +54,13 @@ object IntervalLibrary {
      *   Can be set to false if the cleanupExtend operation has already been applied to both input
      *   DataFrames (default = true)
      */
-    def intervalFullJoin[T: Ordering: TypeTag](
+    def multivarRangeFullJoin[T: Ordering: TypeTag](
         df2: DataFrame,
         keys: Seq[String],
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit iqc: IntervalMultidimQueryConfig[T, _], logger: Logger): DataFrame = IntervalQueryImpl
+    )(implicit iqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = MultivarRangeQueryImpl
       .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend)
 
     /**
@@ -78,13 +78,13 @@ object IntervalLibrary {
      *   Can be set to false if the cleanupExtend operation has already been applied to input
      *   DataFrame dfRight (default = true)
      */
-    def intervalLeftJoin[T: Ordering: TypeTag](
+    def multivarRangeLeftJoin[T: Ordering: TypeTag](
         df2: DataFrame,
         keys: Seq[String],
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit iqc: IntervalMultidimQueryConfig[T, _], logger: Logger): DataFrame = IntervalQueryImpl
+    )(implicit iqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = MultivarRangeQueryImpl
       .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions,
         additionalJoinFilterCondition, "left", doCleanupExtend)
 
@@ -104,13 +104,13 @@ object IntervalLibrary {
      *   Can be set to false if the cleanupExtend operation has already been applied to input
      *   DataFrame dfLeft (default = true)
      */
-    def intervalRightJoin[T: Ordering: TypeTag](
+    def multivarRangeRightJoin[T: Ordering: TypeTag](
         df2: DataFrame,
         keys: Seq[String],
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit iqc: IntervalMultidimQueryConfig[T, _], logger: Logger): DataFrame = IntervalQueryImpl
+    )(implicit iqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = MultivarRangeQueryImpl
       .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend)
 
     /**
@@ -121,15 +121,15 @@ object IntervalLibrary {
      *
      * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
-    def intervalLeftAntiJoin[T: Ordering: TypeTag](
+    def multivarRangeLeftAntiJoin[T: Ordering: TypeTag](
         df2: DataFrame,
         joinColumns: Seq[String],
         additionalJoinFilterCondition: Column = lit(true)
     )(implicit
-        tc: IntervalMultidimQueryConfig[T, ClosedInterval[T]],
+        tc: MultivarRangeQueryConfig[T, ClosedInterval[T]],
         logger: Logger
     ): DataFrame =
-      IntervalQueryImpl.leftAntiJoinIntervals(df1, df2, joinColumns, additionalJoinFilterCondition)
+      MultivarRangeQueryImpl.leftAntiJoinIntervals(df1, df2, joinColumns, additionalJoinFilterCondition)
 
     /**
      * Resolves temporal overlaps
@@ -147,45 +147,49 @@ object IntervalLibrary {
      *   : if true, gaps in the history are filled with null rows. fillGapsWithNull must be set to
      *   true for extend=true to have any effect
      */
-    def intervalCleanupExtend[T: Ordering: TypeTag](
+    def multivarRangeCleanupExtend[T: Ordering: TypeTag](
         keys: Seq[String],
         rnkExpressions: Seq[Column],
         aggExpressions: Seq[(String, Column)] = Nil,
         rnkFilter: Boolean = true,
         extend: Boolean = true,
         fillGapsWithNull: Boolean = true
-    )(implicit iqc: IntervalMultidimQueryConfig[T, _], logger: Logger): DataFrame = IntervalQueryImpl
+    )(implicit iqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = MultivarRangeQueryImpl
       .cleanupExtendIntervals(df1, keys, rnkExpressions, aggExpressions, rnkFilter, extend, fillGapsWithNull)
 
     /**
      * Combines consecutive records when there is no change in the non-technical columns. The
-     * dataframe is first cleaned up via [[intervalRoundDiscreteTime]], see its description.
+     * dataframe is first cleaned up via [[multivarRangeRoundDiscreteTime]], see its description.
      */
-    def intervalCombine[T: Ordering: TypeTag](ignoreColNames: Seq[String] = Nil)(implicit
-        iqc: IntervalMultidimQueryConfig[T, _]
-    ): DataFrame = IntervalQueryImpl
-      .combineIntervals(df1.where(iqc.isValidIntervalExpr), ignoreColNames)
+    def multivarRangeCombine[T: Ordering: TypeTag](ignoreColNames: Seq[String] = Nil)(implicit
+        iqc: MultivarRangeQueryConfig[T, _]
+    ): DataFrame = MultivarRangeQueryImpl
+      .combineIntervals(df1.where(iqc.isValidMultivarRangeExpr), ignoreColNames)
 
     /**
      * Cuts records into pieces at overlaps, so that at the start of each overlap all active records
      * are split
      */
-    def intervalUnifyRanges[T: Ordering: TypeTag](
+    def multivarRangeUnifyRanges[T: Ordering: TypeTag](
         keys: Seq[String],
         extend: Boolean = false,
         fillGapsWithNull: Boolean = false
     )(implicit
-        iqc: IntervalMultidimQueryConfig[T, _],
+        iqc: MultivarRangeQueryConfig[T, _],
         logger: Logger
-    ): DataFrame = IntervalQueryImpl
+    ): DataFrame = MultivarRangeQueryImpl
       .unifyIntervalRanges(df1, keys, extend, fillGapsWithNull)
 
     /**
      * Extends the history of the smallest value per key to minDate
      */
-    def intervalExtendRange[T: Ordering: TypeTag](keys: Seq[String] = Nil, extendMin: Boolean = true, extendMax: Boolean = true)(implicit
-        iqc: IntervalMultidimQueryConfig[T, _]
-    ): DataFrame = IntervalQueryImpl.extendIntervalRanges(df1, keys, extendMin, extendMax)
+    def multivarRangeExtendRange[T: Ordering: TypeTag](
+        keys: Seq[String] = Nil,
+        extendMin: Boolean = true,
+        extendMax: Boolean = true
+    )(implicit
+        iqc: MultivarRangeQueryConfig[T, _]
+    ): DataFrame = MultivarRangeQueryImpl.extendIntervalRanges(df1, keys, extendMin, extendMax)
 
     /**
      * Sets the discreteness of the time scale to milliseconds. Hereby the validity intervals may be
@@ -200,8 +204,9 @@ object IntervalLibrary {
      * @return
      *   temporal dataframe with a discreteness of milliseconds
      */
-    def intervalRoundDiscreteTime[T: Ordering: TypeTag](implicit tc: ClosedIntervalMultidimQueryConfig[T]): DataFrame = IntervalQueryImpl
-      .roundIntervalsToDiscreteTime(df1)
+    def multivarRangeRoundDiscreteTime[T: Ordering: TypeTag](implicit tc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
+      MultivarRangeQueryImpl
+        .roundIntervalsToDiscreteTime(df1)
 
     /**
      * Transforms [[DataFrame]] with continuous time, half open time intervals [fromColName ,
@@ -212,8 +217,9 @@ object IntervalLibrary {
      * @return
      *   [[DataFrame]] with discrete time axis
      */
-    def intervalContinuous2discrete[T: Ordering: TypeTag](implicit tc: ClosedIntervalMultidimQueryConfig[T]): DataFrame = IntervalQueryImpl
-      .transformHalfOpenToClosedIntervals(df1)
+    def multivarRangeContinuous2discrete[T: Ordering: TypeTag](implicit tc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
+      MultivarRangeQueryImpl
+        .transformHalfOpenToClosedIntervals(df1)
 
   }
 

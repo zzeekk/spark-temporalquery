@@ -10,7 +10,7 @@ import org.slf4j.Logger
 import scala.annotation.tailrec
 import scala.reflect.runtime.universe.TypeTag
 
-object IntervalQueryImpl extends Logging {
+object MultivarRangeQueryImpl extends Logging {
 
   // helpers
 
@@ -64,20 +64,20 @@ object IntervalQueryImpl extends Logging {
   private val joinColPostFix2 = "__2"
 
   private[temporalquery] def roundIntervalsToDiscreteTime[T: Ordering: TypeTag](df: DataFrame)(implicit
-      iqc: ClosedIntervalMultidimQueryConfig[T]
+      iqc: ClosedMultivarRangeQueryConfig[T]
   ): DataFrame =
     df.withColumn(iqc.fromColName, iqc.intervalDef.getCeilExpr(iqc.fromCol))
       .withColumn(iqc.toColName, iqc.intervalDef.getFloorExpr(iqc.toCol))
-      .where(iqc.isValidIntervalExpr)
+      .where(iqc.isValidMultivarRangeExpr)
       // return columns in same order as provided
       .select(df.columns.map(col): _*)
 
   private[temporalquery] def transformHalfOpenToClosedIntervals[T: Ordering: TypeTag](df: DataFrame)(implicit
-      iqc: ClosedIntervalMultidimQueryConfig[T]
+      iqc: ClosedMultivarRangeQueryConfig[T]
   ): DataFrame =
     df.withColumn(iqc.fromColName, iqc.intervalDef.getCeilExpr(iqc.fromCol))
       .withColumn(iqc.toColName, iqc.intervalDef.getPredecessorExpr(iqc.toCol))
-      .where(iqc.isValidIntervalExpr)
+      .where(iqc.isValidMultivarRangeExpr)
       // return columns in same order as provided
       .select(df.columns.map(col): _*)
 
@@ -92,7 +92,7 @@ object IntervalQueryImpl extends Logging {
       keys: Seq[String],
       joinType: String = "inner",
       additionalJoinCondition: Column = lit(true)
-  )(implicit iqc: IntervalMultidimQueryConfig[T, _], logger: Logger): DataFrame = {
+  )(implicit iqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = {
     debugLog(
       s"joinIntervals: joinType = $joinType , additionalJoinCondition = $additionalJoinCondition , keys = (${keys.mkString(",")})"
     )
@@ -120,7 +120,7 @@ object IntervalQueryImpl extends Logging {
     debugLog(s"joinIntervals: df2Renamed.schema = ${df2Renamed.schema.catalogString}")
     debugLog(s"joinIntervals: keyCondition      = $keyCondition")
     val dfJoined = df1Renamed
-      .join(df2Renamed, keyCondition and additionalJoinCondition and iqc.joinIntervalExpr(df1Renamed, df2Renamed), joinType)
+      .join(df2Renamed, keyCondition and additionalJoinCondition and iqc.joinMultivarRangeExpr(df1Renamed, df2Renamed), joinType)
     debugLog(s"joinIntervals: dfJoined.schema   = ${dfJoined.schema.catalogString}")
 
     // select final schema
@@ -143,14 +143,14 @@ object IntervalQueryImpl extends Logging {
       df2: DataFrame,
       keys: Seq[String],
       joinType: String = "inner"
-  )(implicit iqc: IntervalMultidimQueryConfig[T, _], logger: Logger): DataFrame =
+  )(implicit iqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame =
     joinIntervals(df1, df2, keys, joinType)
 
   /**
    * build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
    */
   private[temporalquery] def buildIntervalRanges[T: Ordering: TypeTag](df: DataFrame, keys: Seq[String], extend: Boolean)(implicit
-      iqc: IntervalMultidimQueryConfig[_, _],
+      iqc: MultivarRangeQueryConfig[_, _],
       logger: Logger
   ): DataFrame = {
     debugLog(s"(buildIntervalRanges) df.schema = ${df.schema.catalogString} , iqc = $iqc")
@@ -162,9 +162,9 @@ object IntervalQueryImpl extends Logging {
     )
 
     val keyCols = keys.map(col)
-    debugLog(s"(buildIntervalRanges) get start/end-points for every key: ${iqc.isValidIntervalExpr}")
+    debugLog(s"(buildIntervalRanges) get start/end-points for every key: ${iqc.isValidMultivarRangeExpr}")
     val dfPoints = df
-      .where(iqc.isValidIntervalExpr) // filter invalid intervals
+      .where(iqc.isValidMultivarRangeExpr) // filter invalid intervals
       .select(keyCols :+ iqc.fromCol.as(ptColName): _*).union(
         df.select(keyCols :+
             iqc.
@@ -202,7 +202,7 @@ object IntervalQueryImpl extends Logging {
       rnkFilter: Boolean,
       extend: Boolean = true,
       fillGapsWithNull: Boolean = true
-  )(implicit iqc: IntervalMultidimQueryConfig[T, _], logger: Logger): DataFrame = {
+  )(implicit iqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = {
     debugLog(s"(cleanupExtendIntervals) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
     debugLog(
       s"(cleanupExtendIntervals) rnkExpressions = ${rnkExpressions.mkString(",")} ; aggExpressions = ${aggExpressions.mkString(",")}"
@@ -274,7 +274,7 @@ object IntervalQueryImpl extends Logging {
       additionalJoinFilterCondition: Column,
       joinType: String,
       doCleanupExtend: Boolean
-  )(implicit iqc: IntervalMultidimQueryConfig[T, _], logger: Logger): DataFrame = {
+  )(implicit iqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = {
     // extend data frames
     val df1Extended = if ((joinType == "full" || joinType == "right") && doCleanupExtend)
       cleanupExtendIntervals(df1, keys, rnkExpressions.intersect(df1.columns.map(col)), Nil, rnkFilter = true).drop(iqc.definedColName)
@@ -295,13 +295,13 @@ object IntervalQueryImpl extends Logging {
       keys: Seq[String],
       additionalJoinFilterCondition: Column
       // TODO: Why we require closed interval? Why not IntervalMultidimQueryConfig[T, _]
-  )(implicit iqc: IntervalMultidimQueryConfig[T, ClosedInterval[T]], logger: Logger): DataFrame = {
+  )(implicit iqc: MultivarRangeQueryConfig[T, ClosedInterval[T]], logger: Logger): DataFrame = {
     debugLog(s"leftAntiJoinIntervals START: keys = ${keys.mkString(", ")}")
     val df1Cols = df1.columns.map(df1(_))
     val df2Renamed = renameIntervalCols2nd(df2)
 
     val joinCondition: Column = createAliasKeyCondition(df1, df2Renamed, keys)
-      .and(iqc.joinIntervalExpr(df1, df2Renamed))
+      .and(iqc.joinMultivarRangeExpr(df1, df2Renamed))
       .and(additionalJoinFilterCondition)
 
     val dfAntiJoin = df1.join(df2Renamed, joinCondition, "leftanti")
@@ -343,7 +343,7 @@ object IntervalQueryImpl extends Logging {
    * Combine consecutive records with same data values
    */
   private[temporalquery] def combineIntervals[T: Ordering: TypeTag](df: DataFrame, ignoreColNames: Seq[String])(implicit
-      iqc: IntervalMultidimQueryConfig[T, _]
+      iqc: MultivarRangeQueryConfig[T, _]
   ): DataFrame =
     keepAlias(
       df = df,
@@ -375,7 +375,7 @@ object IntervalQueryImpl extends Logging {
       keys: Seq[String],
       extend: Boolean = false,
       fillGapsWithNull: Boolean = false
-  )(implicit iqc: IntervalMultidimQueryConfig[T, _], logger: Logger): DataFrame = {
+  )(implicit iqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = {
     debugLog(s"(unifyIntervalRanges) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
     debugLog(s"(unifyIntervalRanges) extend = $extend ; fillGapsWithNull = $fillGapsWithNull")
     debugLog(s"(unifyIntervalRanges) iqc = $iqc")
@@ -410,7 +410,7 @@ object IntervalQueryImpl extends Logging {
       keys: Seq[String],
       extendMin: Boolean,
       extendMax: Boolean
-  )(implicit iqc: IntervalMultidimQueryConfig[T, _]): DataFrame = {
+  )(implicit iqc: MultivarRangeQueryConfig[T, _]): DataFrame = {
     val fromMinColName = s"_${iqc.fromColName}_min"
     val toMaxColName = s"_${iqc.toColName}_max"
     require(
@@ -431,7 +431,7 @@ object IntervalQueryImpl extends Logging {
    * Helper method to rename main pair of interval columns to 2nd pair of column names defined in
    * IntervalQueryConfig
    */
-  private def renameIntervalCols2nd[T: Ordering: TypeTag](df: DataFrame)(implicit iqc: IntervalMultidimQueryConfig[T, _]): DataFrame = {
+  private def renameIntervalCols2nd[T: Ordering: TypeTag](df: DataFrame)(implicit iqc: MultivarRangeQueryConfig[T, _]): DataFrame = {
     assert(df.columns.contains(iqc.fromColName) && df.columns.contains(iqc.toColName))
     assert(!df.columns.contains(iqc.fromColName2) && !df.columns.contains(iqc.toColName2))
     df.withColumnRenamed(iqc.fromColName, iqc.fromColName2).withColumnRenamed(iqc.toColName, iqc.toColName2)
@@ -441,6 +441,6 @@ object IntervalQueryImpl extends Logging {
    * Helper method to copy main pair of interval columns as 2nd pair of interval columns defined in
    * IntervalQueryConfig
    */
-  private def copyIntervalCols2nd[T: Ordering: TypeTag](df: DataFrame)(implicit iqc: IntervalMultidimQueryConfig[T, _]): DataFrame =
+  private def copyIntervalCols2nd[T: Ordering: TypeTag](df: DataFrame)(implicit iqc: MultivarRangeQueryConfig[T, _]): DataFrame =
     df.withColumn(iqc.fromColName2, iqc.fromCol).withColumn(iqc.toColName2, iqc.toCol)
 }

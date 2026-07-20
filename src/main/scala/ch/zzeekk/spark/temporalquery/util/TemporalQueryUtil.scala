@@ -28,7 +28,7 @@ object TemporalQueryUtil extends Serializable with Logging {
   /**
    * Type which includes TemporalClosedIntervalQueryConfig and TemporalHalfOpenIntervalQueryConfig
    */
-  type TemporalQueryConfig = IntervalMultidimQueryConfig[Timestamp, _] with TemporalQueryConfigMarker
+  type TemporalQueryConfig = MultivarRangeQueryConfig[Timestamp, _] with TemporalQueryConfigMarker
 
   private implicit val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a, b) => a.before(b))
 
@@ -39,7 +39,7 @@ object TemporalQueryUtil extends Serializable with Logging {
       override val dimensionMap: Map[String, (String, ClosedInterval[Timestamp])] =
         Map("valid_from" -> ("valid_to", stdClosedTemporalInterval)),
       override val additionalTechnicalColNames: Seq[String] = Nil
-  ) extends ClosedIntervalMultidimQueryConfig[Timestamp] with TemporalQueryConfigMarker {
+  ) extends ClosedMultivarRangeQueryConfig[Timestamp] with TemporalQueryConfigMarker {
     override def config2: TemporalClosedIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
   }
@@ -64,7 +64,7 @@ object TemporalQueryUtil extends Serializable with Logging {
       override val dimensionMap: Map[String, (String, HalfOpenInterval[Timestamp])] =
         Map("valid_from" -> ("valid_to", HalfOpenInterval(bigBangDay, doomsDay))),
       override val additionalTechnicalColNames: Seq[String] = Nil
-  ) extends HalfOpenIntervalMultidimQueryConfig[Timestamp] with TemporalQueryConfigMarker {
+  ) extends HalfOpenMultivarRangeQueryConfig[Timestamp] with TemporalQueryConfigMarker {
     override def config2: TemporalHalfOpenIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
   }

@@ -25,7 +25,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   /**
    * Type which includes LinearClosedIntervalQueryConfig and LinearHalfOpenIntervalQueryConfig
    */
-  private type LinearQueryConfig = IntervalMultidimQueryConfig[T, _] with LinearQueryConfigMarker
+  private type LinearQueryConfig = MultivarRangeQueryConfig[T, _] with LinearQueryConfigMarker
 
   /**
    * Configuration Parameters for operations on closed intervals. An instance of this class is
@@ -35,7 +35,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
       dimensionColNameMap: Map[String, String] = Map("position_from" -> "position_to"),
       override val additionalTechnicalColNames: Seq[String] = Nil,
       override val intervalDef: ClosedInterval[T]
-  ) extends ClosedIntervalMultidimQueryConfig[T] with LinearQueryConfigMarker {
+  ) extends ClosedMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
     override def dimensionMap: Map[String, (String, ClosedInterval[T])] = dimensionColNameMap.map { case (f, t) =>
       (f, (t, intervalDef))
     }
@@ -51,7 +51,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
       dimensionColNameMap: Map[String, String] = Map("position_from" -> "position_to"),
       override val additionalTechnicalColNames: Seq[String] = Nil,
       override val intervalDef: HalfOpenInterval[T]
-  ) extends HalfOpenIntervalMultidimQueryConfig[T] with LinearQueryConfigMarker {
+  ) extends HalfOpenMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
     override def dimensionMap: Map[String, (String, HalfOpenInterval[T])] = dimensionColNameMap
       .map { case (f, t) => (f, (t, intervalDef)) }
     override lazy val config2: LinearHalfOpenIntervalQueryConfig = this

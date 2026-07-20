@@ -29,7 +29,7 @@ object BiTemporalQueryUtil extends Serializable with Logging {
    * Type which includes BiTemporalClosedIntervalQueryConfig and
    * BiTemporalHalfOpenIntervalQueryConfig
    */
-  type BiTemporalQueryConfig = IntervalMultidimQueryConfig[Timestamp, _] with BiTemporalQueryConfigMarker
+  type BiTemporalQueryConfig = MultivarRangeQueryConfig[Timestamp, _] with BiTemporalQueryConfigMarker
 
   /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
@@ -39,7 +39,7 @@ object BiTemporalQueryUtil extends Serializable with Logging {
         Map("known_from" -> ("known_to", stdClosedTemporalInterval),
           "valid_from"   -> ("valid_to", stdClosedTemporalInterval)),
       override val additionalTechnicalColNames: Seq[String] = Nil
-  ) extends ClosedIntervalMultidimQueryConfig[Timestamp] with BiTemporalQueryConfigMarker {
+  ) extends ClosedMultivarRangeQueryConfig[Timestamp] with BiTemporalQueryConfigMarker {
     override def config2: BiTemporalClosedIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
   }
@@ -71,7 +71,7 @@ object BiTemporalQueryUtil extends Serializable with Logging {
         Map("known_from" -> ("known_to", HalfOpenInterval(bigBangDay, doomsDay)),
           "valid_from"   -> ("valid_to", HalfOpenInterval(bigBangDay, doomsDay))),
       override val additionalTechnicalColNames: Seq[String] = Nil
-  ) extends HalfOpenIntervalMultidimQueryConfig[Timestamp] with BiTemporalQueryConfigMarker {
+  ) extends HalfOpenMultivarRangeQueryConfig[Timestamp] with BiTemporalQueryConfigMarker {
     override def config2: BiTemporalHalfOpenIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
   }
