@@ -5,6 +5,7 @@
 package ch.zzeekk.spark.temporalquery.util
 
 import ch.zzeekk.spark.temporalquery._
+import org.slf4j.Logger
 
 import java.sql.Timestamp
 
@@ -41,6 +42,24 @@ object BiTemporalQueryUtil extends Serializable with Logging {
   ) extends ClosedIntervalMultidimQueryConfig[Timestamp] with BiTemporalQueryConfigMarker {
     override def config2: BiTemporalClosedIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
+  }
+
+  object BiTemporalClosedIntervalQueryConfig {
+    def withDefaultIntervalDef(
+        knownFromColName: String = "known_from",
+        knownToColName: String = "known_to",
+        validFromColName: String = "valid_from",
+        validToColName: String = "valid_to"
+    )(implicit
+        intervalDef: ClosedInterval[Timestamp],
+        logger: Logger
+    ): BiTemporalClosedIntervalQueryConfig = {
+      debugLog(s"(withDefaultIntervalDef) knownFromColName = $knownFromColName ; knownToColName = $knownToColName ;" +
+        s" validFromColName = $validFromColName ; validToColName = $validToColName ; intervalDef = $intervalDef")
+      BiTemporalClosedIntervalQueryConfig(
+        dimensionMap = Map(knownFromColName -> (knownToColName, intervalDef), validFromColName -> (validToColName, intervalDef))
+      )
+    }
   }
 
   /**
