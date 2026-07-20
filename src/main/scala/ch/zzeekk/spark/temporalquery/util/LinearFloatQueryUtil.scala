@@ -1,6 +1,6 @@
 package ch.zzeekk.spark.temporalquery.util
 
-import ch.zzeekk.spark.temporalquery.HalfOpenInterval
+import ch.zzeekk.spark.temporalquery.interval.HalfOpenInterval
 
 /**
  * Linear query utils for interval axis of type Float

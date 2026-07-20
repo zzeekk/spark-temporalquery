@@ -66,7 +66,7 @@ The following shortcuts exists to use it with predefined datatypes:
 ```scala
   // this imports linear* implicit functions on DataFrame
   import ch.zzeekk.spark.temporalquery.util.LinearDoubleQueryUtil._
-  import ch.zzeekk.spark.temporalquery.HalfOpenInterval
+  import ch.zzeekk.spark.temporalquery.interval.HalfOpenInterval
   // configure options for linear query operations
   val intervalDef = HalfOpenInterval(0d, Double.MaxValue)
   implicit val lqc: LinearQueryConfig = LinearHalfOpenIntervalQueryConfig(fromColName="pos_from", toColName="pos_to", intervalDef = intervalDef)

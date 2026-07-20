@@ -1,6 +1,7 @@
 package ch.zzeekk.spark.temporalquery
 
 import ch.zzeekk.spark.temporalquery.TemporalHelpers._
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, IntervalDef, IntervalQueryDimension}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, SubqueryAlias, UnaryNode}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
@@ -145,6 +146,53 @@ object MultivarRangeQueryImpl extends Logging {
       joinType: String = "inner"
   )(implicit iqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame =
     joinIntervals(df1, df2, keys, joinType)
+
+  /**
+   * build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
+   */
+  private[temporalquery] def buildDimensionRanges[T: Ordering: TypeTag](
+      df: DataFrame,
+      keys: Seq[String],
+      dim: IntervalQueryDimension[T, _ <: IntervalDef[T]],
+      extend: Boolean
+  )(implicit
+      logger: Logger
+  ): DataFrame = {
+    debugLog(s"(buildDimensionRanges) df.schema = ${df.schema.catalogString} , dim = $dim")
+    val intDef = dim.intDef
+    val ptColName = "_pt"
+    require(
+      !df.columns.contains(ptColName),
+      s"(buildIntervalRanges) Your dataframe must not contain column $ptColName! df.columns = ${df.columns.mkString(",")}"
+    )
+    val keyCols = keys.map(col)
+    debugLog(s"(buildDimensionRanges) get start/end-points for every key: ${dim.intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)}")
+    val dfPoints = df
+      .where(intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)) // filter invalid intervals
+      .select(keyCols :+ dim.fromCol.as(ptColName): _*).union(
+        df.select(keyCols :+
+            intDef.getSuccessorExpr(dim.toCol).as(ptColName): _*)
+      )
+    debugLog(s"(buildDimensionRanges) dfPoints.schema = ${dfPoints.schema.catalogString}")
+
+    debugLog("(buildDimensionRanges) if desired, extend every key with min/maxDate-points")
+    val dfPointsExt = if (extend) {
+      dfPoints
+        .union(dfPoints.select(keyCols: _*).distinct.withColumn(ptColName, lit(intDef.lowerHorizon)))
+        .union(dfPoints.select(keyCols: _*).distinct.withColumn(ptColName, lit(intDef.upperHorizon)))
+        .distinct
+        .where(intDef.isInBoundariesExpr(col(ptColName)))
+    } else dfPoints.distinct
+    debugLog(s"(buildDimensionRanges) dfPointsExt.schema = ${dfPointsExt.schema.catalogString}")
+    debugLog("(buildDimensionRanges) build ranges")
+    dfPointsExt
+      .withColumnRenamed(ptColName, dim.fromColName)
+      .withColumn(
+        dim.toColName,
+        intDef.getPredecessorExpr(lead(dim.fromCol, 1).over(Window.partitionBy(keys.map(col): _*).orderBy(dim.fromCol)))
+      )
+      .where(dim.toCol.isNotNull)
+  }
 
   /**
    * build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
@@ -370,6 +418,72 @@ object MultivarRangeQueryImpl extends Logging {
   /**
    * Unify ranges
    */
+  private[temporalquery] def unifyDimensionRanges[T: Ordering: TypeTag](
+      df: DataFrame,
+      keys: Seq[String],
+      dim: IntervalQueryDimension[T, _ <: IntervalDef[T]],
+      extend: Boolean = false,
+      fillGapsWithNull: Boolean = false,
+      additionalTechnicalColNames: List[String]
+  )(implicit logger: Logger): DataFrame = {
+    debugLog(s"(unifyDimensionRanges) START keys = ${keys.mkString(",")} ; extend = $extend ;" +
+      s" fillGapsWithNull = $fillGapsWithNull ; dim = $dim")
+    if (logger.isDebugEnabled()) df.debLog("df")
+    val intDef = dim.intDef
+    def transform(df: DataFrame): DataFrame = {
+      debugLog(s"(unifyDimensionRanges.transform) get ranges. df.schema = ${df.schema.catalogString}")
+      val df1Renamed = renameKeys(df, keys, joinColPostFix1)
+      debugLog(s"(unifyDimensionRanges.transform)     df1Renamed.schema = ${df1Renamed.schema.catalogString}")
+      val df2Ranges = renameKeys(df = renameDimensionCols2nd(df = buildDimensionRanges(df, keys, dim, extend), dim).as("ranges"),
+        keys = keys, postFix = joinColPostFix2)
+      if (logger.isDebugEnabled()) df2Ranges.createdLog("df2Ranges", showRows = true)
+      val keyCondition = createRenamedKeyCondition(keys)
+      val joinType = if (fillGapsWithNull) "left" else "inner"
+      val joinCondition = keyCondition and intDef.isInIntervalExpr(valueCol = dim.fromCol2, dim.fromCol, dim.toCol)
+      debugLog(s"(unifyDimensionRanges.transform) join back on input df: df2Ranges.join(df1Renamed) with " +
+        s" joinType = $joinType , joinCondition = $joinCondition")
+      val dfJoin = df2Ranges.join(right = df1Renamed, joinExprs = joinCondition, joinType = joinType)
+      if (logger.isDebugEnabled()) dfJoin.createdLog("dfJoin", showRows = true)
+      val selCols = keys.map(key => col(s"$key$joinColPostFix2").as(key)) ++
+        df.columns.diff(keys ++ List(dim.fromColName, dim.toColName) ++ additionalTechnicalColNames).map(dfJoin(_)) :+
+        dim.fromCol2.as(dim.fromColName) :+ dim.toCol2.as(dim.toColName)
+      debugLog(s"(unifyDimensionRanges.transform) select result: selCols = ${selCols.mkString(",")}")
+      dfJoin.select(selCols: _*)
+    }
+    val result = keepAlias(df, transform)
+    if (logger.isDebugEnabled()) result.createdLog("result", showRows = true)
+    result
+  }
+
+  /**
+   * Unify ranges
+   */
+  private[temporalquery] def unifyMultivarRanges[T: Ordering: TypeTag](
+      df: DataFrame,
+      keys: Seq[String],
+      extend: Boolean = false,
+      fillGapsWithNull: Boolean = false
+  )(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]], logger: Logger): DataFrame = {
+    debugLog(s"(unifyMultivarRanges) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
+    debugLog(s"(unifyMultivarRanges) extend = $extend ; fillGapsWithNull = $fillGapsWithNull")
+    debugLog(s"(unifyMultivarRanges) mrqc = $mrqc")
+    val dims = mrqc.intervalDimensions
+    dims.zip(dims.inits.toSeq.tail.reverse).foldLeft(df) { case (df, (dim, prevDims)) =>
+      unifyDimensionRanges(
+        df = df,
+        keys = keys ++ prevDims.map(_.fromColName) ++ prevDims.map(_.toColName),
+        dim = dim,
+        extend = extend,
+        fillGapsWithNull = fillGapsWithNull,
+        additionalTechnicalColNames = mrqc.additionalTechnicalColNames
+      )
+    }
+  }
+
+  /**
+   * Unify ranges
+   */
+  @deprecated("simply wrong in multi-dimension case")
   private[temporalquery] def unifyIntervalRanges[T: Ordering: TypeTag](
       df: DataFrame,
       keys: Seq[String],
@@ -425,6 +539,19 @@ object MultivarRangeQueryImpl extends Logging {
       when(iqc.fromCol === col(fromMinColName), lit(iqc.lowerHorizon)).otherwise(iqc.fromCol).as(iqc.fromColName) :+
       when(iqc.toCol === col(toMaxColName), lit(iqc.upperHorizon)).otherwise(iqc.toCol).as(iqc.toColName)
     df_prep.select(selCols: _*)
+  }
+
+  /**
+   * Helper method to rename main pair of interval columns to 2nd pair of column names defined in
+   * IntervalQueryConfig
+   */
+  private def renameDimensionCols2nd[T](
+      df: DataFrame,
+      dim: IntervalQueryDimension[T, _]
+  ): DataFrame = {
+    assert(df.columns.contains(dim.fromColName) && df.columns.contains(dim.toColName))
+    assert(!df.columns.contains(dim.fromCol2Name) && !df.columns.contains(dim.toCol2Name))
+    df.withColumnRenamed(dim.fromColName, dim.fromCol2Name).withColumnRenamed(dim.toColName, dim.toCol2Name)
   }
 
   /**

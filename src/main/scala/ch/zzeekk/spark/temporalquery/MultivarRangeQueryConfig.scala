@@ -1,5 +1,6 @@
 package ch.zzeekk.spark.temporalquery
 
+import ch.zzeekk.spark.temporalquery.interval.{IntervalDef, IntervalQueryDimension}
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.{Column, DataFrame}
 import org.slf4j.Logger
@@ -31,7 +32,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   private val numDimensions: Int = dimensionMap.size
 
   def fromToColnames: List[String] = (dimensionMap.keys ++ dimensionMap.values.map(_._1)).toList
-  def additionalTechnicalColNames: Seq[String]
+  def additionalTechnicalColNames: List[String]
 
   // copy of configuration with 2nd pair of from/to column names used as main column pair
   // hint: implement with case class copy constructor in subclass
@@ -41,15 +42,13 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   def fromToColnames2: List[String] = fromToColnames.map(increaseColNameNb)
 
   // technical column names to be excluded in some operations
-  val technicalColNames: List[String] =
-    (dimensionMap.keys ++ dimensionMap.values.map(_._1) ++
-      additionalTechnicalColNames).toList
+  val technicalColNames: List[String] = fromToColnames ++ additionalTechnicalColNames
 
   // helper column names
   def definedColName: String = "_defined"
   def definedCol: Column = col(definedColName)
 
-  def intervalDimensions: List[IntervalQueryDimension[T, D]] = dimensionMap.map { case (f, (t, i)) =>
+  final def intervalDimensions: List[IntervalQueryDimension[T, D]] = dimensionMap.map { case (f, (t, i)) =>
     IntervalQueryDimension(
       fromColName = f,
       toColName = t,
@@ -59,7 +58,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
       upperHorizon = i.upperHorizon,
       intDef = i
     )
-  }.toList
+  }.toList.sortBy(_.fromColName)
 
   @deprecated("simply wrong in multi-dimension case")
   def fromColName: String = intervalDimensions.head.fromColName

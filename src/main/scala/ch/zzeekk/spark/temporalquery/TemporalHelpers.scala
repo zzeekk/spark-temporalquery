@@ -1,11 +1,12 @@
 package ch.zzeekk.spark.temporalquery
 
+import ch.zzeekk.spark.temporalquery.interval.ClosedInterval
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 
 import java.sql.Timestamp
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.TypeTag
 
 object TemporalHelpers extends Serializable with Logging {
   // "extends Serializable" needed to avoid
@@ -16,7 +17,7 @@ object TemporalHelpers extends Serializable with Logging {
 
   /**
    * returns the length of the time interval [subtrahend ; minuend] in milliseconds considering
-   * switch from winter to daylight saving time in March and Octobre
+   * switch from winter to daylight saving time in March and October
    *
    * @param minuend:
    *   the end of the time interval
@@ -70,7 +71,9 @@ object TemporalHelpers extends Serializable with Logging {
 
     subtrahendsSorted.foldLeft(Seq((validFrom, validTo)))(subtractOneSubtrahend)
   }
-  def getUdfIntervalComplement[T: Ordering: TypeTag](implicit hc: MultivarRangeQueryConfig[T, ClosedInterval[T]]): UserDefinedFunction =
+  def getUdfIntervalComplement[T: Ordering: TypeTag](
+      implicit hc: MultivarRangeQueryConfig[T, ClosedInterval[T]]
+  ): UserDefinedFunction =
     udf(intervalComplement[T] _)
 
 }

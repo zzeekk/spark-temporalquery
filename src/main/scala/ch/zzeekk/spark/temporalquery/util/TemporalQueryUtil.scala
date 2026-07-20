@@ -5,6 +5,7 @@
 package ch.zzeekk.spark.temporalquery.util
 
 import ch.zzeekk.spark.temporalquery._
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 import org.slf4j.Logger
 
 import java.sql.Timestamp
@@ -38,7 +39,7 @@ object TemporalQueryUtil extends Serializable with Logging {
   case class TemporalClosedIntervalQueryConfig(
       override val dimensionMap: Map[String, (String, ClosedInterval[Timestamp])] =
         Map("valid_from" -> ("valid_to", stdClosedTemporalInterval)),
-      override val additionalTechnicalColNames: Seq[String] = Nil
+      override val additionalTechnicalColNames: List[String] = Nil
   ) extends ClosedMultivarRangeQueryConfig[Timestamp] with TemporalQueryConfigMarker {
     override def config2: TemporalClosedIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
@@ -63,7 +64,7 @@ object TemporalQueryUtil extends Serializable with Logging {
   case class TemporalHalfOpenIntervalQueryConfig(
       override val dimensionMap: Map[String, (String, HalfOpenInterval[Timestamp])] =
         Map("valid_from" -> ("valid_to", HalfOpenInterval(bigBangDay, doomsDay))),
-      override val additionalTechnicalColNames: Seq[String] = Nil
+      override val additionalTechnicalColNames: List[String] = Nil
   ) extends HalfOpenMultivarRangeQueryConfig[Timestamp] with TemporalQueryConfigMarker {
     override def config2: TemporalHalfOpenIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })

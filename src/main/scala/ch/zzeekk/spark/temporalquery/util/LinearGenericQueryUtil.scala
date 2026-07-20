@@ -3,11 +3,11 @@
  */
 
 package ch.zzeekk.spark.temporalquery.util
-
 import ch.zzeekk.spark.temporalquery._
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 import org.slf4j.Logger
 
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.TypeTag
 
 /**
  * Generic class to provide linear query utils for different interval axis types
@@ -33,7 +33,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
    */
   case class LinearClosedIntervalQueryConfig(
       dimensionColNameMap: Map[String, String] = Map("position_from" -> "position_to"),
-      override val additionalTechnicalColNames: Seq[String] = Nil,
+      override val additionalTechnicalColNames: List[String] = Nil,
       override val intervalDef: ClosedInterval[T]
   ) extends ClosedMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
     override def dimensionMap: Map[String, (String, ClosedInterval[T])] = dimensionColNameMap.map { case (f, t) =>
@@ -49,7 +49,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
    */
   case class LinearHalfOpenIntervalQueryConfig(
       dimensionColNameMap: Map[String, String] = Map("position_from" -> "position_to"),
-      override val additionalTechnicalColNames: Seq[String] = Nil,
+      override val additionalTechnicalColNames: List[String] = Nil,
       override val intervalDef: HalfOpenInterval[T]
   ) extends HalfOpenMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
     override def dimensionMap: Map[String, (String, HalfOpenInterval[T])] = dimensionColNameMap
