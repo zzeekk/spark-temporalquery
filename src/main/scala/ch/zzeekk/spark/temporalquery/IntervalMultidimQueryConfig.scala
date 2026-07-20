@@ -92,7 +92,8 @@ abstract class IntervalMultidimQueryConfig[T: Ordering, D <: IntervalDef[T]] ext
 
   // TODO: explain this function
   private def checkValue(checkFun: (Column, IntervalQueryDimension[T, D]) => Column)(values: Seq[Column]): Column = {
-    require(values.length == numDimensions, "Please provide as many values as dimensions")
+    require(values.length == numDimensions,
+      s"Please provide as many values as dimensions! values.length=${values.length} , numDimensions=$numDimensions")
     applyBooleanColumnFunctionToIntervalDefs(dim => checkFun(values(intervalDimensions.indexOf(dim)), dim))
   }
 

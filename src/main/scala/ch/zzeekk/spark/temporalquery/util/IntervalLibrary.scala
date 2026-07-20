@@ -170,11 +170,15 @@ object IntervalLibrary {
      * Cuts records into pieces at overlaps, so that at the start of each overlap all active records
      * are split
      */
-    def intervalUnifyRanges[T: Ordering: TypeTag](keys: Seq[String])(implicit
+    def intervalUnifyRanges[T: Ordering: TypeTag](
+        keys: Seq[String],
+        extend: Boolean = false,
+        fillGapsWithNull: Boolean = false
+    )(implicit
         iqc: IntervalMultidimQueryConfig[T, _],
         logger: Logger
     ): DataFrame = IntervalQueryImpl
-      .unifyIntervalRanges(df1, keys)
+      .unifyIntervalRanges(df1, keys, extend, fillGapsWithNull)
 
     /**
      * Extends the history of the smallest value per key to minDate

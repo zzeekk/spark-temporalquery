@@ -3,10 +3,10 @@ package ch.zzeekk.spark.temporalquery.util
 import ch.zzeekk.spark.temporalquery.TemporalHelpers._
 import ch.zzeekk.spark.temporalquery.TemporalTestUtils._
 import ch.zzeekk.spark.temporalquery.TestUtils
+import ch.zzeekk.spark.temporalquery.util.IntervalLibrary.IntervalDataFrameExtensions
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import ch.zzeekk.spark.temporalquery.util.IntervalLibrary.IntervalDataFrameExtensions
 
 import java.sql.Timestamp
 
@@ -975,12 +975,26 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
     result shouldBe true
   }
 
-  "temporalUnifyRanges dfMoment" should "return expected results" in {
+  "temporalUnifyRanges" should "not modify dfMoment as extend and fillGapsWithNull are false" in {
     val actual = dfMoment.intervalUnifyRanges(Seq("id"))
       .select(dfMoment.columns.map(col): _*) // re-order columns
     val expected = dfMoment
     logger.info("expected:")
     expected.show(false)
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("temporalUnifyRanges dfMoment", dfMoment)(actual, expected)
+    result shouldBe true
+  }
+
+  "temporalUnifyRanges" should "extend dfMoment" in {
+    val actual = dfMoment.intervalUnifyRanges(keys = Seq("id"), extend = true, fillGapsWithNull = true)
+      .select(dfMoment.columns.map(col): _*) // re-order columns
+    val expected = List(
+      (0, "2019-11-25 11:12:13.005", "2019-11-25 11:12:13.005", Some("A")),
+      (0, initiumTemporisString,     "2019-11-25 11:12:13.004", None),
+      (0, "2019-11-25 11:12:13.006", finisTemporisString,       None)
+    )
+      .map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "img")
     val result = dfEqual(actual, expected)
     if (!result) printFailedTestResult("temporalUnifyRanges dfMoment", dfMoment)(actual, expected)
     result shouldBe true
