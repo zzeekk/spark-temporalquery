@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery.util
 
-import ch.zzeekk.spark.temporalquery.multivarRange.{ClosedMultivarRangeQueryConfig, MultivarRangeQueryConfig, MultivarRangeQueryImpl}
 import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, IntervalDef}
+import ch.zzeekk.spark.temporalquery.multivarRange.{ClosedMultivarRangeQueryConfig, MultivarRangeQueryConfig, MultivarRangeQueryImpl}
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.{Column, DataFrame}
 import org.slf4j.Logger
@@ -178,7 +178,7 @@ object MultivariateRangeLibrary {
     )(implicit
         mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
         logger: Logger
-    ): DataFrame = MultivarRangeQueryImpl.unifyMultivarRanges(df1, keys, extend, fillGapsWithNull)
+    ): DataFrame = MultivarRangeQueryImpl.unifyMultivarRanges(df1, keys, extend, fillGapsWithNull, mrqc)
 
     /**
      * Extends the history of the smallest value per key to minDate

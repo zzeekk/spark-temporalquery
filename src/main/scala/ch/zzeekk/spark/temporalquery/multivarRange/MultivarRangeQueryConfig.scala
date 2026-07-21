@@ -36,7 +36,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
 
   // copy of configuration with 2nd pair of from/to column names used as main column pair
   // hint: implement with case class copy constructor in subclass
-  def config2: MultivarRangeQueryConfig[T, D]
+  def config2: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
 
   // TODO: change type to SET[String] if possible
   def fromToColnames2: List[String] = fromToColnames.map(increaseColNameNb)

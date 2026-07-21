@@ -271,10 +271,12 @@ object MultivarRangeQueryImpl extends Logging {
       val fenestra = Window.partitionBy(keys.map(col) :+ mrqc.fromCol2: _*)
 
       val dfJoin =
-        unifyIntervalRanges(df = df2nd,
+        unifyMultivarRanges(df = df2nd,
           keys = keys,
           extend = extend,
-          fillGapsWithNull = fillGapsWithNull)(implicitly[Ordering[T]], implicitly[TypeTag[T]], mrqc.config2, logger)
+          fillGapsWithNull = fillGapsWithNull,
+          mrqc = mrqc.config2
+        )
           .withColumn(mrqc.definedColName, mrqc.toCol.isNotNull)
           .withColumn(mrqc.fromColName, coalesce(mrqc.fromCol, mrqc.fromCol2))
           .withColumn(mrqc.toColName, coalesce(mrqc.toCol, mrqc.toCol2))
@@ -462,8 +464,9 @@ object MultivarRangeQueryImpl extends Logging {
       df: DataFrame,
       keys: Seq[String],
       extend: Boolean = false,
-      fillGapsWithNull: Boolean = false
-  )(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]], logger: Logger): DataFrame = {
+      fillGapsWithNull: Boolean = false,
+      mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
+  )(implicit logger: Logger): DataFrame = {
     debugLog(s"(unifyMultivarRanges) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
     debugLog(s"(unifyMultivarRanges) extend = $extend ; fillGapsWithNull = $fillGapsWithNull")
     debugLog(s"(unifyMultivarRanges) mrqc = $mrqc")
@@ -478,42 +481,6 @@ object MultivarRangeQueryImpl extends Logging {
         additionalTechnicalColNames = mrqc.additionalTechnicalColNames
       )
     }
-  }
-
-  /**
-   * Unify ranges
-   */
-  @deprecated("simply wrong in multi-dimension case")
-  private[temporalquery] def unifyIntervalRanges[T: Ordering: TypeTag](
-      df: DataFrame,
-      keys: Seq[String],
-      extend: Boolean = false,
-      fillGapsWithNull: Boolean = false
-  )(implicit mrqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = {
-    debugLog(s"(unifyIntervalRanges) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
-    debugLog(s"(unifyIntervalRanges) extend = $extend ; fillGapsWithNull = $fillGapsWithNull")
-    debugLog(s"(unifyIntervalRanges) mrqc = $mrqc")
-    def transform(df: DataFrame): DataFrame = {
-      debugLog(s"(unifyIntervalRanges.transform) get ranges. df.schema = ${df.schema.catalogString}")
-      val df1Renamed = renameKeys(df, keys, joinColPostFix1)
-      debugLog(s"(unifyIntervalRanges.transform)     df1Renamed.schema = ${df1Renamed.schema.catalogString}")
-      val df2Ranges = renameKeys(df = renameIntervalCols2nd(df = buildIntervalRanges(df, keys, extend)).as("ranges"),
-        keys = keys, postFix = joinColPostFix2)
-      if (logger.isDebugEnabled()) df2Ranges.createdLog("df2Ranges", showRows = true)
-      val keyCondition = createRenamedKeyCondition(keys)
-      val joinType = if (fillGapsWithNull) "left" else "inner"
-      val joinCondition = keyCondition and mrqc.isInIntervalExpr(List(mrqc.fromCol2))
-      debugLog(s"(unifyIntervalRanges.transform) join back on input df: df2Ranges.join(df1Renamed) with " +
-        s" joinType = $joinType , joinCondition = $joinCondition")
-      val dfJoin = df2Ranges.join(right = df1Renamed, joinExprs = joinCondition, joinType = joinType)
-      if (logger.isDebugEnabled()) dfJoin.createdLog("dfJoin", showRows = true)
-      val selCols = keys.map(key => col(s"$key$joinColPostFix2").as(key)) ++
-        df.columns.diff(keys ++ mrqc.technicalColNames).map(dfJoin(_)) :+
-        mrqc.fromCol2.as(mrqc.fromColName) :+ mrqc.toCol2.as(mrqc.toColName)
-      debugLog(s"(unifyIntervalRanges.transform) select result: selCols = ${selCols.mkString(",")}")
-      dfJoin.select(selCols: _*)
-    }
-    keepAlias(df, transform)
   }
 
   /**
