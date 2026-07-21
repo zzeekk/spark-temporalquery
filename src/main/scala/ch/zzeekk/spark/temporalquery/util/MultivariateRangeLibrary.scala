@@ -204,7 +204,7 @@ object MultivariateRangeLibrary {
      * @return
      *   temporal dataframe with a discreteness of milliseconds
      */
-    def multivarRangeRoundDiscreteTime[T: Ordering: TypeTag](implicit tc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
+    def multivarRangeRoundDiscreteTime[T: Ordering: TypeTag](implicit clmrqc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
       MultivarRangeQueryImpl
         .roundIntervalsToDiscreteTime(df1)
 
@@ -217,9 +217,8 @@ object MultivariateRangeLibrary {
      * @return
      *   [[DataFrame]] with discrete time axis
      */
-    def multivarRangeContinuous2discrete[T: Ordering: TypeTag](implicit tc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
-      MultivarRangeQueryImpl
-        .transformHalfOpenToClosedIntervals(df1)
+    def multivarRangeContinuous2discrete[T: Ordering: TypeTag](implicit clmrqc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
+      MultivarRangeQueryImpl.transformHalfOpenToClosedIntervals(df1, clmrqc)
 
   }
 

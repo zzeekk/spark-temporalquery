@@ -1,8 +1,8 @@
 package ch.zzeekk.spark.temporalquery.util
 
 import ch.zzeekk.spark.temporalquery.TemporalTestUtils._
-import ch.zzeekk.spark.temporalquery.{udf_durationInMillis, TestUtils}
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
+import ch.zzeekk.spark.temporalquery.{udf_durationInMillis, TestUtils}
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -16,7 +16,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
 
   logger.info(s"TemporalQueryUtilTest: defaultTemporalConfig = $defaultTemporalConfig")
 
-  "temporalContinuous2discrete" should "return expected results" in {
+  "temporalContinuous2discrete" should "round to ms without adding gaps or overlaps" in {
     val actual = dfContinuousTime.multivarRangeContinuous2discrete
     val expected = Seq(
       (0, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),

@@ -73,14 +73,20 @@ object MultivarRangeQueryImpl extends Logging {
       // return columns in same order as provided
       .select(df.columns.map(col): _*)
 
-  private[temporalquery] def transformHalfOpenToClosedIntervals[T: Ordering: TypeTag](df: DataFrame)(implicit
+  private[temporalquery] def transformHalfOpenToClosedIntervals[T: Ordering: TypeTag](
+      df: DataFrame,
       clmrqc: ClosedMultivarRangeQueryConfig[T]
-  ): DataFrame =
-    df.withColumn(clmrqc.fromColName, clmrqc.intervalDef.getCeilExpr(clmrqc.fromCol))
-      .withColumn(clmrqc.toColName, clmrqc.intervalDef.getPredecessorExpr(clmrqc.toCol))
+  ): DataFrame = {
+    val dims = clmrqc.intervalDimensions
+    df
+      .withColumns(colsMap = dims.map(d => (d.fromColName, d.intDef.getCeilExpr(col(d.fromColName)))).toMap)
+      .withColumns(colsMap = dims.map(d => (d.toColName, d.intDef.getPredecessorExpr(col(d.toColName)))).toMap)
+      //    .withColumn(clmrqc.fromColName, clmrqc.intervalDef.getCeilExpr(clmrqc.fromCol))
+      //    .withColumn(clmrqc.toColName, clmrqc.intervalDef.getPredecessorExpr(clmrqc.toCol))
       .where(clmrqc.isValidMultivarRangeExpr)
       // return columns in same order as provided
       .select(df.columns.map(col): _*)
+  }
 
   /**
    * join two interval data frames keys must occur in both data frames df1 and df2 and are
