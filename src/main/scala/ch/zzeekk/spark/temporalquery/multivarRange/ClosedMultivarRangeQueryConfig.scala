@@ -1,7 +1,7 @@
-package ch.zzeekk.spark.temporalquery
+package ch.zzeekk.spark.temporalquery.multivarRange
 
-import org.apache.spark.sql.Column
 import ch.zzeekk.spark.temporalquery.interval.ClosedInterval
+import org.apache.spark.sql.Column
 
 abstract class ClosedMultivarRangeQueryConfig[T: Ordering] extends MultivarRangeQueryConfig[T, ClosedInterval[T]] {
   def getFloorExpr(value: Column): List[Column] = intervalDimensions.map(_.intDef.getFloorExpr(value))

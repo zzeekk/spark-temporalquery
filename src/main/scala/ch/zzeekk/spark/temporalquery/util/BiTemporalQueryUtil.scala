@@ -3,6 +3,11 @@
  */
 
 package ch.zzeekk.spark.temporalquery.util
+import ch.zzeekk.spark.temporalquery.multivarRange.{
+  ClosedMultivarRangeQueryConfig,
+  HalfOpenMultivarRangeQueryConfig,
+  MultivarRangeQueryConfig
+}
 import ch.zzeekk.spark.temporalquery._
 import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 import org.slf4j.Logger

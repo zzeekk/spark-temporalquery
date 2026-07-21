@@ -1,4 +1,4 @@
-package ch.zzeekk.spark.temporalquery
+package ch.zzeekk.spark.temporalquery.multivarRange
 
 import ch.zzeekk.spark.temporalquery.interval.HalfOpenInterval
 import org.apache.spark.sql.Column

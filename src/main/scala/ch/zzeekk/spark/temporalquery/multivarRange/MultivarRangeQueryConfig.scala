@@ -1,4 +1,4 @@
-package ch.zzeekk.spark.temporalquery
+package ch.zzeekk.spark.temporalquery.multivarRange
 
 import ch.zzeekk.spark.temporalquery.interval.{IntervalDef, IntervalQueryDimension}
 import org.apache.spark.sql.functions.{col, lit}

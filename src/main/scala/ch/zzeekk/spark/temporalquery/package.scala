@@ -1,6 +1,7 @@
-package ch.zzeekk.spark.temporalquery
+package ch.zzeekk.spark
 
 import ch.zzeekk.spark.temporalquery.interval.ClosedInterval
+import ch.zzeekk.spark.temporalquery.multivarRange.MultivarRangeQueryConfig
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
@@ -8,9 +9,7 @@ import org.apache.spark.sql.functions.udf
 import java.sql.Timestamp
 import scala.reflect.runtime.universe.TypeTag
 
-object TemporalHelpers extends Serializable with Logging {
-  // "extends Serializable" needed to avoid
-  // org.apache.spark.SparkException: Task not serializable
+package object temporalquery extends Serializable with Logging {
 
   val millisPerHour: Long = 1000L * 3600
   val millisPerDay: Long = 24 * millisPerHour

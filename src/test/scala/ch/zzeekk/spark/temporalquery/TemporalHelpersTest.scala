@@ -1,6 +1,5 @@
 package ch.zzeekk.spark.temporalquery
 
-import ch.zzeekk.spark.temporalquery.TemporalHelpers._
 import ch.zzeekk.spark.temporalquery.TemporalTestUtils._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

@@ -1,8 +1,7 @@
 package ch.zzeekk.spark.temporalquery.interval
 
-import ch.zzeekk.spark.temporalquery.TemporalHelpers.intervalComplement
-import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.axis.{DiscreteNumericAxis, DiscreteTimeAxis}
+import ch.zzeekk.spark.temporalquery.{intervalComplement, TestUtils}
 import ch.zzeekk.spark.temporalquery.util.TemporalQueryUtil.TemporalClosedIntervalQueryConfig
 import org.apache.spark.sql.Row
 import org.scalatest.flatspec.AnyFlatSpec
