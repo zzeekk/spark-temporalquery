@@ -1,5 +1,6 @@
 package ch.zzeekk.spark.temporalquery.util
 
+import ch.zzeekk.spark.temporalquery.Logging
 import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, IntervalDef}
 import ch.zzeekk.spark.temporalquery.multivarRange.{ClosedMultivarRangeQueryConfig, MultivarRangeQueryConfig, MultivarRangeQueryImpl}
 import org.apache.spark.sql.functions.lit
@@ -8,7 +9,7 @@ import org.slf4j.Logger
 
 import scala.reflect.runtime.universe.TypeTag
 
-object MultivariateRangeLibrary {
+object MultivariateRangeLibrary extends Logging {
 
   /**
    * Pimp-my-library pattern for Columns
@@ -156,16 +157,16 @@ object MultivariateRangeLibrary {
         extend: Boolean = true,
         fillGapsWithNull: Boolean = true
     )(implicit mrqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = MultivarRangeQueryImpl
-      .cleanupExtendIntervals(df1, keys, rnkExpressions, aggExpressions, rnkFilter, extend, fillGapsWithNull)
+      .cleanupExtendIntervals(df1, keys, rnkExpressions, aggExpressions, rnkFilter, mrqc, extend, fillGapsWithNull)
 
     /**
      * Combines consecutive records when there is no change in the non-technical columns. The
      * dataframe is first cleaned up via [[multivarRangeRoundDiscreteTime]], see its description.
      */
     def multivarRangeCombine[T: Ordering: TypeTag](ignoreColNames: Seq[String] = Nil)(implicit
-        mrqc: MultivarRangeQueryConfig[T, _]
-    ): DataFrame = MultivarRangeQueryImpl
-      .combineIntervals(df1.where(mrqc.isValidMultivarRangeExpr), ignoreColNames)
+        mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
+        logger: Logger
+    ): DataFrame = MultivarRangeQueryImpl.combineMultivarRanges(df1, ignoreColNames, mrqc)
 
     /**
      * Cuts records into pieces at overlaps, so that at the start of each overlap all active records
@@ -205,8 +206,7 @@ object MultivariateRangeLibrary {
      *   temporal dataframe with a discreteness of milliseconds
      */
     def multivarRangeRoundDiscreteTime[T: Ordering: TypeTag](implicit clmrqc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
-      MultivarRangeQueryImpl
-        .roundIntervalsToDiscreteTime(df1)
+      MultivarRangeQueryImpl.roundIntervalsToDiscreteTime(df1, clmrqc)
 
     /**
      * Transforms [[DataFrame]] with continuous time, half open time intervals [fromColName ,

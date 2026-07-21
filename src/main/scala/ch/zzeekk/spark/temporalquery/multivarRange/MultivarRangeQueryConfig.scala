@@ -86,7 +86,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   // interval functions
 
   // TODO: explain this function
-  private def applyBooleanColumnFunctionToIntervalDefs(boolColFun: IntervalQueryDimension[T, D] => Column): Column =
+  def applyBooleanColumnFunctionToIntervalDefs(boolColFun: IntervalQueryDimension[T, D] => Column): Column =
     intervalDimensions.map(boolColFun).reduce((x, y) => x and y)
 
   // TODO: explain this function

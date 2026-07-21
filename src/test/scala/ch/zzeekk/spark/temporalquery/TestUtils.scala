@@ -71,7 +71,7 @@ trait TestUtils extends Logging {
   def printFailedTestResult(testName: String, arguments: Seq[DataFrame])(actual: DataFrame, expected: DataFrame): Unit = {
     def printDf(df: DataFrame): Unit = {
       println(df.schema.simpleString)
-      df.show(false)
+      df.orderBy(df.columns.map(col): _*).show(false)
     }
 
     val actualReordered = reorderCols(actual, expected)
@@ -87,13 +87,15 @@ trait TestUtils extends Logging {
     printDf(expected)
     println(s"  schemata equal =  ${schemaEqual(actualReordered, expected)}")
     if (schemaEqual(actualReordered, expected)) {
+      println("   symmetric Difference ")
+      printDf(symmetricDifference(actualReordered, expected)
+          .select(when($"_in_first_df", "actual").otherwise("expected").as("_df") +: actual.columns.map(col): _*)
+      )
+    } else {
       println(s"actual.schema:${actualReordered.schema.treeString}")
       println(s"expected.schema:${expected.schema.treeString}")
     }
-    println("   symmetric Difference ")
-    printDf(symmetricDifference(actualReordered, expected)
-        .withColumn("_df", when($"_in_first_df", "actual").otherwise("expected"))
-        .drop($"_in_first_df"))
+
   }
 
   def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame, expected: DataFrame): Unit =

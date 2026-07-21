@@ -16,7 +16,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
 
   logger.info(s"TemporalQueryUtilTest: defaultTemporalConfig = $defaultTemporalConfig")
 
-  "temporalContinuous2discrete" should "round to ms without adding gaps or overlaps" in {
+  "multivarRangeContinuous2discrete" should "round to ms without adding gaps or overlaps" in {
     val actual = dfContinuousTime.multivarRangeContinuous2discrete
     val expected = Seq(
       (0, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),
@@ -30,20 +30,20 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
     ).map(makeRowsWithTimeRange[Int, Double]).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value")
 
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalContinuous2discrete", Seq(dfContinuousTime))(actual, expected)
+    if (!result) printFailedTestResult("multivarRangeContinuous2discrete", Seq(dfContinuousTime))(actual, expected)
     result shouldBe true
   }
 
-  "temporalRoundDiscreteTime_dfLeft" should "return expected results" in {
+  "multivarRangeRoundDiscreteTime" should "not modify dfLeft" in {
     val actual = dfLeft.multivarRangeRoundDiscreteTime
     val expected = dfLeft
 
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalRoundDiscreteTime", Seq(dfRight))(actual, expected)
+    if (!result) printFailedTestResult("multivarRangeRoundDiscreteTime", Seq(dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalRoundDiscreteTime_dfDirtyTimeRanges" should "return expected results" in {
+  "multivarRangeRoundDiscreteTime" should "round timestamps of dfDirtyTimeRanges" in {
     val actual = dfDirtyTimeRanges.multivarRangeRoundDiscreteTime
     val rowsExpected: Seq[(Int, String, String, Double)] = Seq(
       (0, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),
@@ -63,11 +63,11 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
         "value")
 
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalRoundDiscreteTime", Seq(dfDirtyTimeRanges))(actual, expected)
+    if (!result) printFailedTestResult("multivarRangeRoundDiscreteTime", Seq(dfDirtyTimeRanges))(actual, expected)
     result shouldBe true
   }
 
-  "temporalCleanupExtend_dfLeft" should "return expected results" in {
+  "multivarRangeCleanupExtend" should "extend dfLeft" in {
     val actual = dfLeft.multivarRangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq(defaultTemporalConfig.fromCol))
       .multivarRangeCombine()
       .orderBy(defaultTemporalConfig.fromCol)
@@ -79,7 +79,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       .toDF("id", "value_l", defaultTemporalConfig.definedColName, defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
 
     val result = dfEqual(reorderCols(actual, expected), expected)
-    if (!result) printFailedTestResult("temporalCleanupExtend_dfLeft", dfLeft)(reorderCols(actual, expected), expected)
+    if (!result) printFailedTestResult("multivarRangeCleanupExtend", dfLeft)(reorderCols(actual, expected), expected)
     result shouldBe true
   }
 
