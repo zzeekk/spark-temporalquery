@@ -83,7 +83,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
     result shouldBe true
   }
 
-  "temporalCleanupExtend dfRight_noExtend_nofillGaps" should "return expected results" in {
+  "multivarRangeCleanupExtend" should "combine ranges of dfRight without extending or filling gaps" in {
     val actual = dfRight.multivarRangeCleanupExtend(
       keys = Seq("id"),
       rnkExpressions = Seq(defaultTemporalConfig.fromCol),
@@ -99,14 +99,14 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       (1, None,         "2021-01-01 00:00:00", "2099-12-31 23:59:59.999")
     ).map(makeRowsWithTimeRangeEnd[Int, Option[Double]])
       .toDF("id", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-      .withColumn("_defined", lit(true))
+      .withColumn(defaultTemporalConfig.definedColName, lit(true))
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
+    if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCleanupExtend_dfRight_fillGaps_noExtend" should "return expected results" in {
+  "multivarRangeCleanupExtend" should "combine ranges and fill gaps of dfRight without extending" in {
     val actual = dfRight.multivarRangeCleanupExtend(
       keys = Seq("id"),
       rnkExpressions = Seq(defaultTemporalConfig.fromCol),
@@ -123,11 +123,11 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
     ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Boolean])
       .toDF("id", "value_r", defaultTemporalConfig.definedColName, defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalCleanupExtend_dfRight_fillGaps_noExtend", dfRight)(actual, expected)
+    if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_fillGaps_noExtend", dfRight)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCleanupExtend_dfRight_extend_nofillGaps" should "return expected results" in {
+  "multivarRangeCleanupExtend" should "combine ranges of dfRight without extending or filling gaps since extend is ignore if not(fillGapsWithNull)" in {
     val actual = dfRight.multivarRangeCleanupExtend(
       keys = Seq("id"),
       rnkExpressions = Seq(defaultTemporalConfig.fromCol),
@@ -142,14 +142,14 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       (1, None,         "2021-01-01 00:00:00", "2099-12-31 23:59:59.999")
     ).map(makeRowsWithTimeRangeEnd[Int, Option[Double]])
       .toDF("id", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-      .withColumn("_defined", lit(true))
+      .withColumn(defaultTemporalConfig.definedColName, lit(true))
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalCleanupExtend_dfRight_extend_nofillGaps", dfRight)(actual, expected)
+    if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_extend_nofillGaps", dfRight)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCleanupExtend_dfRight_extend_fillGaps" should "return expected results" in {
+  "multivarRangeCleanupExtend" should "combine, extend ranges, fill gaps and remove overlaps of dfRight" in {
     val actual = dfRight.multivarRangeCleanupExtend(
       keys = Seq("id"),
       rnkExpressions = Seq(defaultTemporalConfig.fromCol)
@@ -199,7 +199,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       (0, Some("D"), "2018-03-01 00:00:00", "2018-03-31 23:59:59.999")
     ).map(makeRowsWithTimeRangeEnd[Int, Option[String]])
       .toDF("id", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-      .withColumn("_defined", lit(true))
+      .withColumn(defaultTemporalConfig.definedColName, lit(true))
     val result = dfEqual(actual, expected)
     if (!result) printFailedTestResult("temporalCleanupExtend_dfMap_NoExtendFillgaps", dfMap)(actual, expected)
     result shouldBe true
@@ -267,7 +267,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       (1, -2.0,  "2019-03-03 01:00:0",      "2021-12-01 02:34:56.1")
     ).map(makeRowsWithTimeRangeEnd[Int, Double])
       .toDF("id", "value", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-      .withColumn("_defined", lit(true))
+      .withColumn(defaultTemporalConfig.definedColName, lit(true))
     val result = dfEqual(actual, expected)
 
     if (!result) printFailedTestResult("temporalCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps", dfDirtyTimeRanges)(actual, expected)
@@ -311,7 +311,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       (1, "S", initiumTemporisString, finisTemporisString)
     ).map(makeRowsWithTimeRangeEnd[Int, String])
       .toDF("id", "val", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-      .withColumn("_defined", lit(true))
+      .withColumn(defaultTemporalConfig.definedColName, lit(true))
     val result = dfEqual(actual, expected)
     if (!result) printFailedTestResult("temporalCleanupExtend_rankExprFromColOnly", argument)(actual, expected)
     result shouldBe true
@@ -334,7 +334,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       (1, "B", "2020-08-03 00:00:00", finisTemporisString)
     ).map(makeRowsWithTimeRangeEnd[Int, String])
       .toDF("id", "val", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-      .withColumn("_defined", lit(true))
+      .withColumn(defaultTemporalConfig.definedColName, lit(true))
     val result2 = dfEqual(actual, expected)
     if (!result2) printFailedTestResult("temporalCleanupExtend_rankExpr2Cols", argument)(actual, expected)
     result2 shouldBe true

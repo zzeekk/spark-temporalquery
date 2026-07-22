@@ -19,6 +19,10 @@ object BiTemporalTestUtils extends TestUtils {
   def makeRowsBiTemporal[A, B](row: (A, String, String, String, String, B)): (A, Timestamp, Timestamp, Timestamp, Timestamp, B) =
     (row._1, Timestamp.valueOf(row._2), Timestamp.valueOf(row._3), Timestamp.valueOf(row._4), Timestamp.valueOf(row._5), row._6)
 
+  // helper: (id, known_from, known_to, valid_from, valid_to, value, _defined)
+  def makeRowsBiTemporalDefined[A, B](row: (A, String, String, String, String, B, Boolean)): (A, Timestamp, Timestamp, Timestamp, Timestamp, B, Boolean) =
+    (row._1, Timestamp.valueOf(row._2), Timestamp.valueOf(row._3), Timestamp.valueOf(row._4), Timestamp.valueOf(row._5), row._6, row._7)
+
   val dfContinuousTime: DataFrame = Seq(
     // entity 0, Jan 1–5: original entry on day 1, corrected on Mar 15 (known_to marks the correction)
     (0, "2019-01-01 08:00:00", "2019-03-15 00:00:00", "2019-01-01 00:00:00.123456789", "2019-01-05 12:34:56.123456789", 3.14),

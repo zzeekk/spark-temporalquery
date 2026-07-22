@@ -4,7 +4,7 @@ import ch.zzeekk.spark.temporalquery.BiTemporalTestUtils._
 import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
 import org.apache.spark.sql.Column
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -31,6 +31,102 @@ class BiTemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       .withColumn(defaultBiTemporalConfig.definedColName, $"value_l".isNotNull)
     val result = dfEqual(reorderCols(actual, expected), expected)
     if (!result) printFailedTestResult("multivarRangeCleanupExtend", dfLeft)(reorderCols(actual, expected), expected)
+    result shouldBe true
+  }
+
+  "multivarRangeCleanupExtend" should "combine ranges while removing overlaps of dfRight without extending or filling gaps" in {
+    val actual = dfRight.multivarRangeCleanupExtend(
+      keys = Seq("id"),
+      rnkExpressions = fromCols,
+      extend = false,
+      fillGapsWithNull = false
+    ).multivarRangeCombine()
+    val expected = List(
+      (0, initiumTemporisString,     finisTemporisString,   "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15)),
+      (0, "2018-01-01 00:00:00",     "2018-06-01 00:00:00", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
+      (0, "2018-06-01 00:00:00.001", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00)),
+      (0, "2020-06-01 00:00:00",     finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
+      (1, initiumTemporisString,     finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
+      (1, initiumTemporisString,     finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
+      (1, initiumTemporisString,     finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+      (1, initiumTemporisString,     finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
+    ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
+      .withColumn(defaultBiTemporalConfig.definedColName, lit(true))
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
+    result shouldBe true
+  }
+
+  "multivarRangeCleanupExtend" should "combine ranges while removing overlaps and filling gaps of dfRight without extending" in {
+    val actual = dfRight.multivarRangeCleanupExtend(
+      keys = Seq("id"),
+      rnkExpressions = fromCols,
+      extend = false
+    ).multivarRangeCombine()
+    val expected = List(
+      (0, initiumTemporisString,     finisTemporisString,   "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15),  true),
+      (0, "2018-01-01 00:00:00",     "2018-06-01 00:00:00", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15),  true),
+      (0, "2018-01-01 00:00:00",     finisTemporisString,   "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", None,         false),
+      (0, "2018-06-01 00:00:00.001", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00),  true),
+      (0, "2020-06-01 00:00:00",     finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15),  true),
+      (1, initiumTemporisString,     finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None,         true),
+      (1, initiumTemporisString,     finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0), true),
+      (1, initiumTemporisString,     finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0), true),
+      (1, initiumTemporisString,     finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None,         true)
+    ).map(makeRowsBiTemporalDefined).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r",
+      defaultBiTemporalConfig.definedColName)
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_fillGaps", dfRight)(actual, expected)
+    result shouldBe true
+  }
+
+  "multivarRangeCleanupExtend" should
+    "combine ranges while removing overlaps of dfRight without extending or filling gaps since extend is ignore if not(fillGapsWithNull)" in {
+      val actual = dfRight.multivarRangeCleanupExtend(
+        keys = Seq("id"),
+        rnkExpressions = fromCols,
+        fillGapsWithNull = false
+      ).multivarRangeCombine()
+      val expected = List(
+        (0, initiumTemporisString,     finisTemporisString,   "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15)),
+        (0, "2018-01-01 00:00:00",     "2018-06-01 00:00:00", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
+        (0, "2018-06-01 00:00:00.001", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00)),
+        (0, "2020-06-01 00:00:00",     finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
+        (1, initiumTemporisString,     finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
+        (1, initiumTemporisString,     finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
+        (1, initiumTemporisString,     finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+        (1, initiumTemporisString,     finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
+      ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
+        .withColumn(defaultBiTemporalConfig.definedColName, lit(true))
+      val result = dfEqual(actual, expected)
+      if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
+      result shouldBe true
+    }
+
+  "multivarRangeCleanupExtend" should "combine, extend ranges, fill gaps and remove overlaps of dfRight" in {
+    val actual = dfRight.multivarRangeCleanupExtend(
+      keys = Seq("id"),
+      rnkExpressions = fromCols
+    ).multivarRangeCombine()
+    val expected = List(
+      (0, initiumTemporisString,     "2017-12-31 23:59:59.999", initiumTemporisString, "2018-06-01 05:24:10.999", None,         false),
+      (0, initiumTemporisString,     "2020-05-31 23:59:59.999", "2020-01-01 00:00:00", finisTemporisString,       None,         false),
+      (0, initiumTemporisString,     finisTemporisString,       "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15),  true),
+      (0, "2018-01-01 00:00:00",     "2018-06-01 00:00:00",     "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15),  true),
+      (0, "2018-01-01 00:00:00",     finisTemporisString,       initiumTemporisString, "2017-12-31 23:59:59.999", None,         false),
+      (0, "2018-01-01 00:00:00",     finisTemporisString,       "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", None,         false),
+      (0, "2018-06-01 00:00:00.001", finisTemporisString,       "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00),  true),
+      (0, "2020-06-01 00:00:00",     finisTemporisString,       "2020-01-01 00:00:00", finisTemporisString,       Some(97.15),  true),
+      (1, initiumTemporisString,     finisTemporisString,       initiumTemporisString, "2017-12-31 23:59:59.999", None,         false),
+      (1, initiumTemporisString,     finisTemporisString,       "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None,         true),
+      (1, initiumTemporisString,     finisTemporisString,       "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0), true),
+      (1, initiumTemporisString,     finisTemporisString,       "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0), true),
+      (1, initiumTemporisString,     finisTemporisString,       "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None,         true),
+      (1, initiumTemporisString,     finisTemporisString,       "2100-01-01 00:00:00", finisTemporisString,       None,         false)
+    ).map(makeRowsBiTemporalDefined)
+      .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r", defaultBiTemporalConfig.definedColName)
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
     result shouldBe true
   }
 
