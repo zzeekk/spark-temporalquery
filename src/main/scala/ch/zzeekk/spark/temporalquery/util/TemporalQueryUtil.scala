@@ -4,13 +4,13 @@
 
 package ch.zzeekk.spark.temporalquery.util
 
+import ch.zzeekk.spark.temporalquery._
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 import ch.zzeekk.spark.temporalquery.multivarRange.{
   ClosedMultivarRangeQueryConfig,
   HalfOpenMultivarRangeQueryConfig,
   MultivarRangeQueryConfig
 }
-import ch.zzeekk.spark.temporalquery._
-import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 import org.slf4j.Logger
 
 import java.sql.Timestamp
@@ -46,6 +46,11 @@ object TemporalQueryUtil extends Serializable with Logging {
         Map("valid_from" -> ("valid_to", stdClosedTemporalInterval)),
       override val additionalTechnicalColNames: List[String] = Nil
   ) extends ClosedMultivarRangeQueryConfig[Timestamp] with TemporalQueryConfigMarker {
+    require(
+      numDimensions == 1,
+      s"TemporalClosedIntervalQueryConfig must have exactly 1 dimension but numDimensions = $numDimensions!" +
+        s"You may want to use MultivarRangeQueryConfig directly!"
+    )
     override def config2: TemporalClosedIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
   }
@@ -71,6 +76,11 @@ object TemporalQueryUtil extends Serializable with Logging {
         Map("valid_from" -> ("valid_to", HalfOpenInterval(bigBangDay, doomsDay))),
       override val additionalTechnicalColNames: List[String] = Nil
   ) extends HalfOpenMultivarRangeQueryConfig[Timestamp] with TemporalQueryConfigMarker {
+    require(
+      numDimensions == 1,
+      s"TemporalHalfOpenIntervalQueryConfig must have exactly 1 dimension but numDimensions = $numDimensions!" +
+        s"You may want to use MultivarRangeQueryConfig directly!"
+    )
     override def config2: TemporalHalfOpenIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
   }

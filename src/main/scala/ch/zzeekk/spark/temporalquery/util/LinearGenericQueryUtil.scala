@@ -3,13 +3,13 @@
  */
 
 package ch.zzeekk.spark.temporalquery.util
+import ch.zzeekk.spark.temporalquery._
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 import ch.zzeekk.spark.temporalquery.multivarRange.{
   ClosedMultivarRangeQueryConfig,
   HalfOpenMultivarRangeQueryConfig,
   MultivarRangeQueryConfig
 }
-import ch.zzeekk.spark.temporalquery._
-import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 import org.slf4j.Logger
 
 import scala.reflect.runtime.universe.TypeTag
@@ -41,6 +41,11 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
       override val additionalTechnicalColNames: List[String] = Nil,
       override val intervalDef: ClosedInterval[T]
   ) extends ClosedMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
+    require(
+      numDimensions == 1,
+      s"LinearClosedIntervalQueryConfig must have exactly 2 dimension but numDimensions = $numDimensions!" +
+        s"You may want to use MultivarRangeQueryConfig directly!"
+    )
     override def dimensionMap: Map[String, (String, ClosedInterval[T])] = dimensionColNameMap.map { case (f, t) =>
       (f, (t, intervalDef))
     }
@@ -57,6 +62,11 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
       override val additionalTechnicalColNames: List[String] = Nil,
       override val intervalDef: HalfOpenInterval[T]
   ) extends HalfOpenMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
+    require(
+      numDimensions == 1,
+      s"LinearHalfOpenIntervalQueryConfig must have exactly 2 dimension but numDimensions = $numDimensions!" +
+        s"You may want to use MultivarRangeQueryConfig directly!"
+    )
     override def dimensionMap: Map[String, (String, HalfOpenInterval[T])] = dimensionColNameMap
       .map { case (f, t) => (f, (t, intervalDef)) }
     override lazy val config2: LinearHalfOpenIntervalQueryConfig = this

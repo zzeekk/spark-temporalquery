@@ -29,7 +29,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
    */
   def dimensionMap: Map[String, (String, D)]
   require(dimensionMap.nonEmpty, "at least one fromCol name must be specified!")
-  private val numDimensions: Int = dimensionMap.size
+  val numDimensions: Int = dimensionMap.size
 
   def fromToColnames: List[String] = (dimensionMap.keys ++ dimensionMap.values.map(_._1)).toList
   def additionalTechnicalColNames: List[String]

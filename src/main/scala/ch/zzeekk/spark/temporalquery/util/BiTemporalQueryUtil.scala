@@ -3,13 +3,13 @@
  */
 
 package ch.zzeekk.spark.temporalquery.util
+import ch.zzeekk.spark.temporalquery._
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 import ch.zzeekk.spark.temporalquery.multivarRange.{
   ClosedMultivarRangeQueryConfig,
   HalfOpenMultivarRangeQueryConfig,
   MultivarRangeQueryConfig
 }
-import ch.zzeekk.spark.temporalquery._
-import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 import org.slf4j.Logger
 
 import java.sql.Timestamp
@@ -45,6 +45,11 @@ object BiTemporalQueryUtil extends Serializable with Logging {
           "valid_from"   -> ("valid_to", stdClosedTemporalInterval)),
       override val additionalTechnicalColNames: List[String] = Nil
   ) extends ClosedMultivarRangeQueryConfig[Timestamp] with BiTemporalQueryConfigMarker {
+    require(
+      numDimensions == 2,
+      s"BiTemporalClosedIntervalQueryConfig must have exactly 2 dimension but numDimensions = $numDimensions!" +
+        s"You may want to use MultivarRangeQueryConfig directly!"
+    )
     override def config2: BiTemporalClosedIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
   }
@@ -77,6 +82,11 @@ object BiTemporalQueryUtil extends Serializable with Logging {
           "valid_from"   -> ("valid_to", HalfOpenInterval(bigBangDay, doomsDay))),
       override val additionalTechnicalColNames: List[String] = Nil
   ) extends HalfOpenMultivarRangeQueryConfig[Timestamp] with BiTemporalQueryConfigMarker {
+    require(
+      numDimensions == 2,
+      s"BiTemporalHalfOpenIntervalQueryConfig must have exactly 2 dimension but numDimensions = $numDimensions!" +
+        s"You may want to use MultivarRangeQueryConfig directly!"
+    )
     override def config2: BiTemporalHalfOpenIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
   }
