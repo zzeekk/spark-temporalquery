@@ -108,11 +108,11 @@ object BiTemporalTestUtils extends TestUtils {
 
   /*
    * dfMap: maps a set of images to id over valid time with varying knowledge timestamps:
-   *   "A": recorded immediately on the day validity started (2018-01-01)
-   *   "B": always known since bigBangDay
-   *   "C": recorded 4 days after validity started (known from 2018-02-05)
-   *   "D": recorded on the day validity started (2018-02-20)
-   *   "X": added retrospectively on 2018-03-01, valid for only 1ms on 2018-02-25
+   *   "A": got to know on New Year's Day: valid in January
+   *   "B": always known to be valid in February since bigBangDay
+   *   "C": recorded beginning February but deleted mid March
+   *   "D": recorded on February 20: valid from that day until the end of March
+   *   "X": some typo mistake which remained in the data solely on March 1st: valid for a milli second on Feb 25
    */
   val dfMap: DataFrame = List(
     (0, "2018-01-01 00:00:00", finisTemporisString,       "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "A"),

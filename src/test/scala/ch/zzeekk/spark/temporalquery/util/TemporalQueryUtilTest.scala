@@ -67,7 +67,7 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
     result shouldBe true
   }
 
-  "multivarRangeCleanupExtend" should "extend dfLeft" in {
+  "multivarRangeCleanupExtend and multivarRangeCombine" should "extend and combine dfLeft" in {
     val actual = dfLeft.multivarRangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq(defaultTemporalConfig.fromCol))
       .multivarRangeCombine()
       .orderBy(defaultTemporalConfig.fromCol)
@@ -83,51 +83,55 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
     result shouldBe true
   }
 
-  "multivarRangeCleanupExtend" should "combine ranges of dfRight without extending or filling gaps" in {
-    val actual = dfRight.multivarRangeCleanupExtend(
-      keys = Seq("id"),
-      rnkExpressions = Seq(defaultTemporalConfig.fromCol),
-      extend = false,
-      fillGapsWithNull = false
-    ).multivarRangeCombine()
-    val expected = Seq(
-      (0, Some(97.15),  "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
-      (0, Some(97.15),  "2018-06-01 05:24:11", finisTemporisString),
-      (1, None,         "2018-01-01 00:00:00", "2018-12-31 23:59:59.999"),
-      (1, Some(2019.0), "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
-      (1, Some(2020.0), "2020-01-01 00:00:00", "2020-12-31 23:59:59.999"),
-      (1, None,         "2021-01-01 00:00:00", "2099-12-31 23:59:59.999")
-    ).map(makeRowsWithTimeRangeEnd[Int, Option[Double]])
-      .toDF("id", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-      .withColumn(defaultTemporalConfig.definedColName, lit(true))
-    val result = dfEqual(actual, expected)
+  "multivarRangeCleanupExtend and multivarRangeCombine" should
+    "combine ranges of dfRight" +
+    " without extending or filling gaps" in {
+      val actual = dfRight.multivarRangeCleanupExtend(
+        keys = Seq("id"),
+        rnkExpressions = Seq(defaultTemporalConfig.fromCol),
+        extend = false,
+        fillGapsWithNull = false
+      ).multivarRangeCombine()
+      val expected = Seq(
+        (0, Some(97.15),  "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+        (0, Some(97.15),  "2018-06-01 05:24:11", finisTemporisString),
+        (1, None,         "2018-01-01 00:00:00", "2018-12-31 23:59:59.999"),
+        (1, Some(2019.0), "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
+        (1, Some(2020.0), "2020-01-01 00:00:00", "2020-12-31 23:59:59.999"),
+        (1, None,         "2021-01-01 00:00:00", "2099-12-31 23:59:59.999")
+      ).map(makeRowsWithTimeRangeEnd[Int, Option[Double]])
+        .toDF("id", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
+        .withColumn(defaultTemporalConfig.definedColName, lit(true))
+      val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
-    result shouldBe true
-  }
+      if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
+      result shouldBe true
+    }
 
-  "multivarRangeCleanupExtend" should "combine ranges and fill gaps of dfRight without extending" in {
-    val actual = dfRight.multivarRangeCleanupExtend(
-      keys = Seq("id"),
-      rnkExpressions = Seq(defaultTemporalConfig.fromCol),
-      extend = false
-    ).multivarRangeCombine()
-    val expected = Seq(
-      (0, Some(97.15),  true,  "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
-      (0, None,         false, "2018-02-01 00:00:00", "2018-06-01 05:24:10.999"),
-      (0, Some(97.15),  true,  "2018-06-01 05:24:11", finisTemporisString),
-      (1, None,         true,  "2018-01-01 00:00:00", "2018-12-31 23:59:59.999"),
-      (1, Some(2019.0), true,  "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
-      (1, Some(2020.0), true,  "2020-01-01 00:00:00", "2020-12-31 23:59:59.999"),
-      (1, None,         true,  "2021-01-01 00:00:00", "2099-12-31 23:59:59.999")
-    ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Boolean])
-      .toDF("id", "value_r", defaultTemporalConfig.definedColName, defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-    val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_fillGaps_noExtend", dfRight)(actual, expected)
-    result shouldBe true
-  }
+  "multivarRangeCleanupExtend and multivarRangeCombine" should
+    "combine ranges and fill gaps of dfRight" +
+    " without extending" in {
+      val actual = dfRight.multivarRangeCleanupExtend(
+        keys = Seq("id"),
+        rnkExpressions = Seq(defaultTemporalConfig.fromCol),
+        extend = false
+      ).multivarRangeCombine()
+      val expected = Seq(
+        (0, Some(97.15),  true,  "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+        (0, None,         false, "2018-02-01 00:00:00", "2018-06-01 05:24:10.999"),
+        (0, Some(97.15),  true,  "2018-06-01 05:24:11", finisTemporisString),
+        (1, None,         true,  "2018-01-01 00:00:00", "2018-12-31 23:59:59.999"),
+        (1, Some(2019.0), true,  "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
+        (1, Some(2020.0), true,  "2020-01-01 00:00:00", "2020-12-31 23:59:59.999"),
+        (1, None,         true,  "2021-01-01 00:00:00", "2099-12-31 23:59:59.999")
+      ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Boolean])
+        .toDF("id", "value_r", defaultTemporalConfig.definedColName, defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
+      val result = dfEqual(actual, expected)
+      if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_fillGaps_noExtend", dfRight)(actual, expected)
+      result shouldBe true
+    }
 
-  "multivarRangeCleanupExtend" should
+  "multivarRangeCleanupExtend and multivarRangeCombine" should
     "combine ranges of dfRight without extending or filling gaps since extend is ignore if not(fillGapsWithNull)" in {
       val actual = dfRight.multivarRangeCleanupExtend(
         keys = Seq("id"),
@@ -150,32 +154,34 @@ class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       result shouldBe true
     }
 
-  "multivarRangeCleanupExtend" should "combine, extend ranges, fill gaps and remove overlaps of dfRight" in {
-    val actual = dfRight.multivarRangeCleanupExtend(
-      keys = Seq("id"),
-      rnkExpressions = Seq(defaultTemporalConfig.fromCol)
-    ).multivarRangeCombine()
-      .orderBy($"id", defaultTemporalConfig.fromCol)
-    val expected = Seq(
-      (0, None,         false, initiumTemporisString, "2017-12-31 23:59:59.999"),
-      (0, Some(97.15),  true,  "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
-      (0, None,         false, "2018-02-01 00:00:00", "2018-06-01 05:24:10.999"),
-      (0, Some(97.15),  true,  "2018-06-01 05:24:11", finisTemporisString),
-      (1, None,         false, initiumTemporisString, "2017-12-31 23:59:59.999"),
-      (1, None,         true,  "2018-01-01 00:00:00", "2018-12-31 23:59:59.999"),
-      (1, Some(2019.0), true,  "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
-      (1, Some(2020.0), true,  "2020-01-01 00:00:00", "2020-12-31 23:59:59.999"),
-      (1, None,         true,  "2021-01-01 00:00:00", "2099-12-31 23:59:59.999"),
-      (1, None,         false, "2100-01-01 00:00:00", finisTemporisString)
-    ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Boolean])
-      .toDF("id", "value_r", defaultTemporalConfig.definedColName, defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-    val result = dfEqual(actual, expected)
+  "multivarRangeCleanupExtend and multivarRangeCombine" should
+    "combine, extend ranges, fill gaps" +
+    " and remove overlaps of dfRight" in {
+      val actual = dfRight.multivarRangeCleanupExtend(
+        keys = Seq("id"),
+        rnkExpressions = Seq(defaultTemporalConfig.fromCol)
+      ).multivarRangeCombine()
+        .orderBy($"id", defaultTemporalConfig.fromCol)
+      val expected = Seq(
+        (0, None,         false, initiumTemporisString, "2017-12-31 23:59:59.999"),
+        (0, Some(97.15),  true,  "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+        (0, None,         false, "2018-02-01 00:00:00", "2018-06-01 05:24:10.999"),
+        (0, Some(97.15),  true,  "2018-06-01 05:24:11", finisTemporisString),
+        (1, None,         false, initiumTemporisString, "2017-12-31 23:59:59.999"),
+        (1, None,         true,  "2018-01-01 00:00:00", "2018-12-31 23:59:59.999"),
+        (1, Some(2019.0), true,  "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
+        (1, Some(2020.0), true,  "2020-01-01 00:00:00", "2020-12-31 23:59:59.999"),
+        (1, None,         true,  "2021-01-01 00:00:00", "2099-12-31 23:59:59.999"),
+        (1, None,         false, "2100-01-01 00:00:00", finisTemporisString)
+      ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Boolean])
+        .toDF("id", "value_r", defaultTemporalConfig.definedColName, defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
+      val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalCleanupExtend_dfRight_extend_fillGaps", dfRight)(actual, expected)
-    result shouldBe true
-  }
+      if (!result) printFailedTestResult("temporalCleanupExtend_dfRight_extend_fillGaps", dfRight)(actual, expected)
+      result shouldBe true
+    }
 
-  "multivarRangeCleanupExtend" should
+  "multivarRangeCleanupExtend and multivarRangeCombine" should
     "combine, extend ranges, fill gaps and remove overlaps of dfMap," +
     " and then convert dfMap to a 1-1-relation by selecting the smallest value of img" in {
       val actual = dfMap.multivarRangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq($"img"))
