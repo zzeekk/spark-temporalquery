@@ -298,7 +298,8 @@ object MultivarRangeQueryImpl extends Logging {
       }
       dfAgg.createdLog("dfAgg", showRows = true)
 
-      debugLog("(cleanupExtendIntervals.transform) Prioritize and clean overlaps")
+      debugLog(s"(cleanupExtendIntervals.transform) Prioritize and clean overlaps:" +
+        s" rnkExpressions=${rnkExpressions.mkString(",")}")
       val rnkColName = "_rnk"
       val dfClean = if (rnkExpressions.nonEmpty) {
         require(

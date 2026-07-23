@@ -20,7 +20,8 @@ object BiTemporalTestUtils extends TestUtils {
     (row._1, Timestamp.valueOf(row._2), Timestamp.valueOf(row._3), Timestamp.valueOf(row._4), Timestamp.valueOf(row._5), row._6)
 
   // helper: (id, known_from, known_to, valid_from, valid_to, value, _defined)
-  def makeRowsBiTemporalDefined[A, B](row: (A, String, String, String, String, B, Boolean)): (A, Timestamp, Timestamp, Timestamp, Timestamp, B, Boolean) =
+  def makeRowsBiTemporalDefined[A, B](row: (A, String, String, String, String, B, Boolean))
+      : (A, Timestamp, Timestamp, Timestamp, Timestamp, B, Boolean) =
     (row._1, Timestamp.valueOf(row._2), Timestamp.valueOf(row._3), Timestamp.valueOf(row._4), Timestamp.valueOf(row._5), row._6, row._7)
 
   val dfContinuousTime: DataFrame = Seq(
@@ -114,11 +115,11 @@ object BiTemporalTestUtils extends TestUtils {
    *   "X": added retrospectively on 2018-03-01, valid for only 1ms on 2018-02-25
    */
   val dfMap: DataFrame = List(
-    (0, "2018-01-01 00:00:00", finisTemporisString, "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "A"),
-    (0, initiumTemporisString, finisTemporisString, "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999", "B"),
-    (0, "2018-02-05 00:00:00", finisTemporisString, "2018-02-01 00:00:00",     "2018-02-28 23:59:59.999", "C"),
-    (0, "2018-02-20 00:00:00", finisTemporisString, "2018-02-20 00:00:00",     "2018-03-31 23:59:59.999", "D"),
-    (0, "2018-03-01 00:00:00", finisTemporisString, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X")
+    (0, "2018-01-01 00:00:00", finisTemporisString,       "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "A"),
+    (0, initiumTemporisString, finisTemporisString,       "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999", "B"),
+    (0, "2018-02-05 00:00:00", "2018-03-15 23:59:59.999", "2018-02-01 00:00:00",     "2018-03-03 23:59:59.999", "C"),
+    (0, "2018-02-20 00:00:00", finisTemporisString,       "2018-02-20 00:00:00",     "2018-03-31 23:59:59.999", "D"),
+    (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X")
   ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "img")
 
   // Moment DF: a single-point-in-time fact, known for a moment

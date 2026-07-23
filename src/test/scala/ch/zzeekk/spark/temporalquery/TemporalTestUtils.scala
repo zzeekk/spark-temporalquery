@@ -42,7 +42,8 @@ object TemporalTestUtils extends TestUtils {
 
   /*
    * dfMap: dfMap which maps a set of images img to id over time:
-   * e.g. 0 ↦ {A,B} in Jan 2018 ; 0 ↦ {B,C} 1.-19. Feb 2018 ; 0 ↦ {B,C,D} 20.-28. Feb 2018 except for 1ms with 0 ↦ {B,C,D,X} ; 0 ↦ {D} in Mar 2018
+   * e.g. 0 ↦ {A,B} in Jan 2018 ; 0 ↦ {B,C} 1.-19. Feb 2018 ; 0 ↦ {B,C,D} 20.-28. Feb 2018
+   *      except for 1ms with 0 ↦ {B,C,D,X} ; 0 ↦ {D} in Mar 2018
    */
   val dfMap: DataFrame = Seq(
     (0, "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "A"),

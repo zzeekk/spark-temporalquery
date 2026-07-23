@@ -87,10 +87,10 @@ trait TestUtils extends Logging {
     printDf(expected)
     println(s"  schemata equal =  ${schemaEqual(actualReordered, expected)}")
     if (schemaEqual(actualReordered, expected)) {
-      println("   symmetric Difference ")
-      printDf(symmetricDifference(actualReordered, expected)
-          .select(when($"_in_first_df", "actual").otherwise("expected").as("_df") +: actual.columns.map(col): _*)
-      )
+      val dfSymDiff = symmetricDifference(actualReordered, expected)
+        .select(when($"_in_first_df", "actual").otherwise("expected").as("_df") +: actual.columns.map(col): _*)
+      println(s"   symmetric Difference, dfSymDiff.count = ${dfSymDiff.count()} ")
+      printDf(dfSymDiff)
     } else {
       println(s"actual.schema:${actualReordered.schema.treeString}")
       println(s"expected.schema:${expected.schema.treeString}")
