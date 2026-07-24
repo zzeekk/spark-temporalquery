@@ -22,4 +22,26 @@ package object util {
     discreteAxisDef = DiscreteTimeAxis(ChronoUnit.MILLIS)
   )
 
+  /**
+   * Converts any value to a Double if possible
+   *
+   * @param v
+   *   the value to be converted
+   * @return
+   *   a double or an exception
+   */
+  def anyToDouble(v: Any): Double = v match {
+    case x: java.sql.Timestamp    => x.getTime.toDouble
+    case x: java.util.Date        => x.getTime.toDouble
+    case x: java.lang.Integer     => x.toDouble
+    case x: java.lang.Long        => x.toDouble
+    case x: java.lang.Double      => x
+    case x: java.lang.Float       => x.toDouble
+    case x: java.math.BigDecimal  => x.doubleValue()
+    case x: scala.math.BigDecimal => x.toDouble
+    case other                    => throw new IllegalArgumentException(
+        s"anyToDouble: Cannot convert v=$v of ${other.getClass.getName} to Double"
+      )
+  }
+
 }

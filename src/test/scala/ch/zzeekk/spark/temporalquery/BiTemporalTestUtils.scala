@@ -1,6 +1,6 @@
 package ch.zzeekk.spark.temporalquery
 
-import ch.zzeekk.spark.temporalquery.util.BiTemporalQueryUtil.BiTemporalClosedIntervalQueryConfig
+import ch.zzeekk.spark.temporalquery.util.BiTemporalQueryUtil.{BiTemporalClosedIntervalQueryConfig, BiTemporalHalfOpenIntervalQueryConfig}
 import ch.zzeekk.spark.temporalquery.util.{bigBangDay, doomsDay}
 import org.apache.spark.sql.DataFrame
 
@@ -11,6 +11,7 @@ object BiTemporalTestUtils extends TestUtils {
   import session.implicits._
 
   implicit val defaultBiTemporalConfig: BiTemporalClosedIntervalQueryConfig = BiTemporalClosedIntervalQueryConfig()
+  val halfopenBiTemporalConfig: BiTemporalHalfOpenIntervalQueryConfig = BiTemporalHalfOpenIntervalQueryConfig()
 
   val initiumTemporisString: String = bigBangDay.toString
   val finisTemporisString: String = doomsDay.toString
