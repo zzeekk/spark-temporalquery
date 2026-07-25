@@ -6,10 +6,17 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 
+import java.io.PrintWriter
 import java.sql.Timestamp
 import scala.reflect.runtime.universe.TypeTag
 
 package object temporalquery extends Serializable with Logging {
+
+  def saveString2File(fileName: String)(s: String): Unit =
+    new PrintWriter(fileName) {
+      try write(s)
+      finally close()
+    }
 
   val millisPerHour: Long = 1000L * 3600
   val millisPerDay: Long = 24 * millisPerHour

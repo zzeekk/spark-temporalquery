@@ -43,7 +43,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   ) extends ClosedMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
     require(
       numDimensions == 1,
-      s"LinearClosedIntervalQueryConfig must have exactly 2 dimension but numDimensions = $numDimensions!" +
+      s"LinearClosedIntervalQueryConfig must have exactly 1 dimension but numDimensions = $numDimensions!" +
         s"You may want to use MultivarRangeQueryConfig directly!"
     )
     override def dimensionMap: Map[String, (String, ClosedInterval[T])] = dimensionColNameMap.map { case (f, t) =>
@@ -64,7 +64,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   ) extends HalfOpenMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
     require(
       numDimensions == 1,
-      s"LinearHalfOpenIntervalQueryConfig must have exactly 2 dimension but numDimensions = $numDimensions!" +
+      s"LinearHalfOpenIntervalQueryConfig must have exactly 1 dimension but numDimensions = $numDimensions!" +
         s"You may want to use MultivarRangeQueryConfig directly!"
     )
     override def dimensionMap: Map[String, (String, HalfOpenInterval[T])] = dimensionColNameMap
@@ -72,6 +72,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     override lazy val config2: LinearHalfOpenIntervalQueryConfig = this
       .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
   }
+
   object LinearHalfOpenIntervalQueryConfig {
 
     /**

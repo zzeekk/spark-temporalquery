@@ -1,8 +1,8 @@
 package ch.zzeekk.spark.temporalquery.util
 
 import ch.zzeekk.spark.temporalquery.BiTemporalTestUtils._
-import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
+import ch.zzeekk.spark.temporalquery.{saveString2File, TestUtils}
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -142,8 +142,6 @@ class BiTemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
     " and then convert dfMap to a 1-1-relation by selecting the smallest value of img" in {
       val actual = dfMap.multivarRangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq($"img"))
         .multivarRangeCombine()
-      // TODO multivarRangeCombine must be improved so that all possible combinations are combine by 1 run
-      // .multivarRangeCombine().multivarRangeCombine()
       val expected = List(
         (0, initiumTemporisString, "2017-12-31 23:59:59.999", "2018-01-01 00:00:00", "2018-02-28 23:59:59.999", Some("B")),
         (0, initiumTemporisString, "2018-02-04 23:59:59.999", "2018-03-01 00:00:00", finisTemporisString,       None),
@@ -219,8 +217,6 @@ class BiTemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
     val actual = dfMoment.multivarRangeUnifyRanges(keys = Seq("id"))
       .select(dfMoment.columns.map(col): _*) // re-order columns
     val expected = dfMoment
-    logger.info("expected:")
-    expected.show(false)
     val result = dfEqual(actual, expected)
     if (!result) printFailedTestResult("multivarRangeUnifyRanges dfMoment", dfMoment)(actual, expected)
     result shouldBe true
@@ -236,10 +232,76 @@ class BiTemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
       (0, "2019-12-01 00:00:00",     "2019-12-01 00:00:00",     "2019-11-25 11:12:13.006", finisTemporisString,       None),
       (0, "2019-12-01 00:00:00.001", finisTemporisString,       initiumTemporisString,     finisTemporisString,       None)
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "img")
-    logger.info("expected:")
-    expected.show(false)
     val result = dfEqual(actual, expected)
     if (!result) printFailedTestResult("multivarRangeUnifyRanges dfMoment", dfMoment)(actual, expected)
+    result shouldBe true
+  }
+
+  "multivarRangeCombine" should "combine everything possible" in {
+    val argument = Seq(
+      (0, initiumTemporisString, "2017-12-31 23:59:59.999", initiumTemporisString,     "2017-12-31 23:59:59.999", None),
+      (0, initiumTemporisString, "2017-12-31 23:59:59.999", "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999", Some("B")),
+      (0, initiumTemporisString, "2017-12-31 23:59:59.999", "2018-03-01 00:00:00",     finisTemporisString,       None),
+      (0, "2018-01-01 00:00:00", "2018-02-04 23:59:59.999", initiumTemporisString,     "2017-12-31 23:59:59.999", None),
+      (0, "2018-01-01 00:00:00", "2018-02-04 23:59:59.999", "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", Some("A")),
+      (0, "2018-01-01 00:00:00", "2018-02-04 23:59:59.999", "2018-02-01 00:00:00",     "2018-02-28 23:59:59.999", Some("B")),
+      (0, "2018-01-01 00:00:00", "2018-02-04 23:59:59.999", "2018-03-01 00:00:00",     finisTemporisString,       None),
+      (0, "2018-02-05 00:00:00", "2018-02-19 23:59:59.999", initiumTemporisString,     "2017-12-31 23:59:59.999", None),
+      (0, "2018-02-05 00:00:00", "2018-02-19 23:59:59.999", "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", Some("A")),
+      (0, "2018-02-05 00:00:00", "2018-02-19 23:59:59.999", "2018-02-01 00:00:00",     "2018-02-28 23:59:59.999", Some("B")),
+      (0, "2018-02-05 00:00:00", "2018-02-19 23:59:59.999", "2018-03-01 00:00:00",     "2018-03-03 23:59:59.999", Some("C")),
+      (0, "2018-02-05 00:00:00", "2018-02-19 23:59:59.999", "2018-03-04 00:00:00",     finisTemporisString,       None),
+      (0, "2018-02-20 00:00:00", "2018-02-28 23:59:59.999", initiumTemporisString,     "2017-12-31 23:59:59.999", None),
+      (0, "2018-02-20 00:00:00", "2018-02-28 23:59:59.999", "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", Some("A")),
+      (0, "2018-02-20 00:00:00", "2018-02-28 23:59:59.999", "2018-02-01 00:00:00",     "2018-02-19 23:59:59.999", Some("B")),
+      (0, "2018-02-20 00:00:00", "2018-02-28 23:59:59.999", "2018-02-20 00:00:00",     "2018-02-28 23:59:59.999", Some("B")),
+      (0, "2018-02-20 00:00:00", "2018-02-28 23:59:59.999", "2018-03-01 00:00:00",     "2018-03-03 23:59:59.999", Some("C")),
+      (0, "2018-02-20 00:00:00", "2018-02-28 23:59:59.999", "2018-03-04 00:00:00",     "2018-03-31 23:59:59.999", Some("D")),
+      (0, "2018-02-20 00:00:00", "2018-02-28 23:59:59.999", "2018-04-01 00:00:00",     finisTemporisString,       None),
+      (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", initiumTemporisString,     "2017-12-31 23:59:59.999", None),
+      (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", Some("A")),
+      (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", "2018-02-01 00:00:00",     "2018-02-19 23:59:59.999", Some("B")),
+      (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", "2018-02-20 00:00:00",     "2018-02-25 14:15:16.122", Some("B")),
+      (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", Some("B")),
+      (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", "2018-02-25 14:15:16.124", "2018-02-28 23:59:59.999", Some("B")),
+      (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", "2018-03-01 00:00:00",     "2018-03-03 23:59:59.999", Some("C")),
+      (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", "2018-03-04 00:00:00",     "2018-03-31 23:59:59.999", Some("D")),
+      (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", "2018-04-01 00:00:00",     finisTemporisString,       None),
+      (0, "2018-03-02 00:00:00", "2018-03-15 23:59:59.999", initiumTemporisString,     "2017-12-31 23:59:59.999", None),
+      (0, "2018-03-02 00:00:00", "2018-03-15 23:59:59.999", "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", Some("A")),
+      (0, "2018-03-02 00:00:00", "2018-03-15 23:59:59.999", "2018-02-01 00:00:00",     "2018-02-19 23:59:59.999", Some("B")),
+      (0, "2018-03-02 00:00:00", "2018-03-15 23:59:59.999", "2018-02-20 00:00:00",     "2018-02-28 23:59:59.999", Some("B")),
+      (0, "2018-03-02 00:00:00", "2018-03-15 23:59:59.999", "2018-03-01 00:00:00",     "2018-03-03 23:59:59.999", Some("C")),
+      (0, "2018-03-02 00:00:00", "2018-03-15 23:59:59.999", "2018-03-04 00:00:00",     "2018-03-31 23:59:59.999", Some("D")),
+      (0, "2018-03-02 00:00:00", "2018-03-15 23:59:59.999", "2018-04-01 00:00:00",     finisTemporisString,       None),
+      (0, "2018-03-16 00:00:00", finisTemporisString,       initiumTemporisString,     "2017-12-31 23:59:59.999", None),
+      (0, "2018-03-16 00:00:00", finisTemporisString,       "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", Some("A")),
+      (0, "2018-03-16 00:00:00", finisTemporisString,       "2018-02-01 00:00:00",     "2018-02-19 23:59:59.999", Some("B")),
+      (0, "2018-03-16 00:00:00", finisTemporisString,       "2018-02-20 00:00:00",     "2018-02-28 23:59:59.999", Some("B")),
+      (0, "2018-03-16 00:00:00", finisTemporisString,       "2018-03-01 00:00:00",     "2018-03-31 23:59:59.999", Some("D")),
+      (0, "2018-03-16 00:00:00", finisTemporisString,       "2018-04-01 00:00:00",     finisTemporisString,       None)
+    ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "img")
+    val actual = argument.multivarRangeCombine()
+    val expected = Seq(
+      (0, initiumTemporisString, "2017-12-31 23:59:59.999", "2018-01-01 00:00:00", "2018-02-28 23:59:59.999", Some("B")),
+      (0, initiumTemporisString, "2018-02-04 23:59:59.999", "2018-03-01 00:00:00", finisTemporisString,       None),
+      (0, initiumTemporisString, finisTemporisString,       initiumTemporisString, "2017-12-31 23:59:59.999", None),
+      (0, "2018-01-01 00:00:00", finisTemporisString,       "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some("A")),
+      (0, "2018-01-01 00:00:00", finisTemporisString,       "2018-02-01 00:00:00", "2018-02-28 23:59:59.999", Some("B")),
+      (0, "2018-02-05 00:00:00", "2018-02-19 23:59:59.999", "2018-03-04 00:00:00", finisTemporisString,       None),
+      (0, "2018-02-05 00:00:00", "2018-03-15 23:59:59.999", "2018-03-01 00:00:00", "2018-03-03 23:59:59.999", Some("C")),
+      (0, "2018-02-20 00:00:00", "2018-03-15 23:59:59.999", "2018-03-04 00:00:00", "2018-03-31 23:59:59.999", Some("D")),
+      (0, "2018-02-20 00:00:00", finisTemporisString,       "2018-04-01 00:00:00", finisTemporisString,       None),
+      (0, "2018-03-16 00:00:00", finisTemporisString,       "2018-03-01 00:00:00", "2018-03-31 23:59:59.999", Some("D"))
+    ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "img")
+    val result = dfEqual(actual, expected)
+    if (!result) {
+      logger.error(s"!!! Test failed !!! Saving dataFrames actual and expected as SVG to files in repository root.")
+      saveString2File("argument.svg")(argument.toSvg("img"))
+      saveString2File("actual.svg")(actual.toSvg("img"))
+      saveString2File("expected.svg")(expected.toSvg("img"))
+      printFailedTestResult("multivarRangeUnifyRanges dfMoment", dfMoment)(actual, expected)
+    }
     result shouldBe true
   }
 

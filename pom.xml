@@ -53,6 +53,8 @@
         <scalafmt.changedOnly>true</scalafmt.changedOnly>
         <scalafmt.skip>false</scalafmt.skip>
         <scalafmt.validateOnly>true</scalafmt.validateOnly>
+        <scalatest.test.version>3.2.20</scalatest.test.version>
+        <scalatest.plus.version>${scalatest.test.version}.0</scalatest.plus.version>
         <spark.version>3.5.7</spark.version>
     </properties>
 
@@ -124,7 +126,6 @@
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
-                            <tokenAuth>true</tokenAuth>
                             <autoPublish>false</autoPublish>
                         </configuration>
                     </plugin>
@@ -162,7 +163,13 @@
         <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.minor.version}</artifactId>
-            <version>3.2.19</version>
+            <version>${scalatest.test.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.scalatestplus</groupId>
+            <artifactId>scalacheck-1-19_${scala.minor.version}</artifactId>
+            <version>${scalatest.plus.version}</version>
             <scope>test</scope>
         </dependency>
         <!-- Log4j2 needs this to read configuration in yaml format -->

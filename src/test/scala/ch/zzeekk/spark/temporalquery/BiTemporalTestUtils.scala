@@ -127,5 +127,4 @@ object BiTemporalTestUtils extends TestUtils {
   val dfMoment: DataFrame = List(
     (0, "2019-12-01 00:00:00", "2019-12-01 00:00:00", "2019-11-25 11:12:13.005", "2019-11-25 11:12:13.005", "A")
   ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "img")
-
 }

@@ -451,17 +451,25 @@ object MultivarRangeQueryImpl extends Logging {
   private[temporalquery] def combineMultivarRanges[T: Ordering: TypeTag](
       df: DataFrame,
       ignoreColNames: Seq[String] = Nil,
-      mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
+      mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
+      runId: Int = 1
   )(implicit logger: Logger): DataFrame = {
-    debugLog(s"(combineMultivarRanges) df1.schema = ${df.schema.catalogString}")
-    debugLog(s"(combineMultivarRanges) ignoreColNames = ${ignoreColNames.mkString(",")}")
-    debugLog(s"(combineMultivarRanges) mrqc = $mrqc")
+    debugLog(s"(combineMultivarRanges(runId=$runId)) df1.schema = ${df.schema.catalogString}")
+    debugLog(s"(combineMultivarRanges(runId=$runId)) ignoreColNames = ${ignoreColNames.mkString(",")}")
+    debugLog(s"(combineMultivarRanges(runId=$runId)) mrqc = $mrqc")
     val dims = mrqc.intervalDimensions
     val resultatCombine = dims.foldLeft(df.where(mrqc.isValidMultivarRangeExpr)) { case (df, dim) =>
       combineDimensionRanges(df.where(mrqc.isValidMultivarRangeExpr), dim, mrqc.additionalTechnicalColNames, ignoreColNames)
     }
     if (logger.isDebugEnabled()) resultatCombine.createdLog("resultatCombine")
-    resultatCombine
+    if (df.except(resultatCombine).isEmpty) {
+      logger.info(s"(combineMultivarRanges(runId=$runId)) DONE: returning resultatCombine")
+      resultatCombine
+    } else {
+      debugLog(s"(combineMultivarRanges(runId=$runId))" +
+        s" calling combineMultivarRanges once again to ensure that everything is combined")
+      combineMultivarRanges[T](resultatCombine, ignoreColNames, mrqc, runId + 1)
+    }
   }
 
   /**
