@@ -1,6 +1,6 @@
-package ch.zzeekk.spark.temporalquery.util
+package ch.zzeekk.spark.temporalquery.util.linear
 
-import ch.zzeekk.spark.temporalquery.LinearDoubleTestUtils._
+import LinearDoubleTestUtils._
 import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
 import org.apache.spark.sql.functions.{col, lit}

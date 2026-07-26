@@ -1,15 +1,18 @@
-package ch.zzeekk.spark.temporalquery
+package ch.zzeekk.spark.temporalquery.util.linear
 
-import ch.zzeekk.spark.temporalquery.util.TemporalQueryUtil.TemporalClosedIntervalQueryConfig
+import ch.zzeekk.spark.temporalquery.TestUtils
+import ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedIntervalQueryUtil._
 import org.apache.spark.sql.DataFrame
 
 object TemporalTestUtils extends TestUtils {
 
   import session.implicits._
 
-  implicit val defaultTemporalConfig: TemporalClosedIntervalQueryConfig = TemporalClosedIntervalQueryConfig()
-  val initiumTemporisString: String = defaultTemporalConfig.lowerHorizon.toString
-  val finisTemporisString: String = defaultTemporalConfig.upperHorizon.toString
+  implicit val defaultTemporalConfig: LinearClosedIntervalQueryConfig = LinearClosedIntervalQueryConfig
+    .withDefaultIntervalDef(fromColName = "valid_from", toColName = "valid_to")
+
+  val initiumTemporisString: String = defaultClosedIntervalDef.lowerHorizon.toString
+  val finisTemporisString: String = defaultClosedIntervalDef.upperHorizon.toString
 
   // some beautiful nasty data frames for testing
 

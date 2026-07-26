@@ -1,8 +1,8 @@
 package ch.zzeekk.spark.temporalquery.interval
 
 import ch.zzeekk.spark.temporalquery.axis.{DiscreteNumericAxis, DiscreteTimeAxis}
+import ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedIntervalQueryUtil._
 import ch.zzeekk.spark.temporalquery.{intervalComplement, TestUtils}
-import ch.zzeekk.spark.temporalquery.util.TemporalQueryUtil.TemporalClosedIntervalQueryConfig
 import org.apache.spark.sql.Row
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -128,8 +128,10 @@ class ClosedIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
   }
 
   "intervalComplement" should "return expected results" in {
-    implicit val intervalConfig: TemporalClosedIntervalQueryConfig = TemporalClosedIntervalQueryConfig
-      .withDefaultIntervalDef()(intervalDef = millisIntervalDef, logger)
+//    implicit val intervalConfig: TemporalClosedIntervalQueryConfig = TemporalClosedIntervalQueryConfig
+//      .withDefaultIntervalDef()(intervalDef = millisIntervalDef, logger)
+    implicit val intervalConfig: LinearClosedIntervalQueryConfig = LinearClosedIntervalQueryConfig
+      .withDefaultIntervalDef(fromColName = "valid_from", toColName = "valid_to")
 
     val subtrahends = Seq(
       ("2020-01-01 00:04:4", "2020-01-01 00:05:0"),

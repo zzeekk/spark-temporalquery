@@ -1,7 +1,7 @@
-package ch.zzeekk.spark.temporalquery.util
+package ch.zzeekk.spark.temporalquery.util.bilinear
 
-import ch.zzeekk.spark.temporalquery.util.BiLinearDoubleQueryUtil._
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
+import ch.zzeekk.spark.temporalquery.util.bilinear.BiLinearDoubleQueryUtil._
 import ch.zzeekk.spark.temporalquery.{saveString2File, TestUtils}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

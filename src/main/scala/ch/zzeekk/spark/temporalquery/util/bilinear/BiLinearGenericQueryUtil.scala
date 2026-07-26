@@ -2,7 +2,7 @@
  * Copyright (c) 2017 Zacharias Kull under MIT Licence
  */
 
-package ch.zzeekk.spark.temporalquery.util
+package ch.zzeekk.spark.temporalquery.util.bilinear
 
 import ch.zzeekk.spark.temporalquery._
 import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
@@ -56,6 +56,29 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
 
   }
 
+  object BiLinearClosedIntervalQueryConfig {
+
+    /**
+     * Alternative method to create a BiLinearHalfOpenIntervalQueryConfig providing a default
+     * intervalDef by an implicit parameter
+     */
+    def withDefaultIntervalDef(
+        fstFromColName: String = "x_from",
+        fstToColName: String = "x_to",
+        sndFromColName: String = "y_from",
+        sndToColName: String = "y_to"
+    )(implicit intervalDef: ClosedInterval[T], logger: Logger): BiLinearClosedIntervalQueryConfig = {
+      debugLog(s"(withDefaultIntervalDef) fstFromColName = $fstFromColName ;" +
+        s" fstToColName = $fstToColName ; sndFromColName = $sndFromColName ;" +
+        s" sndToColName = $sndToColName ; intervalDef = $intervalDef")
+      BiLinearClosedIntervalQueryConfig(
+        dimensionColNameMap = Map(fstFromColName -> fstToColName, sndFromColName -> sndToColName),
+        additionalTechnicalColNames = Nil,
+        intervalDef = intervalDef
+      )
+    }
+  }
+
   /**
    * Configuration Parameters for operations on half-open intervals. An instance of this class is
    * needed as implicit parameter.
@@ -97,7 +120,6 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
         intervalDef = intervalDef
       )
     }
-
   }
 
 }

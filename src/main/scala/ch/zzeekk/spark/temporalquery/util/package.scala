@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery
 
 import ch.zzeekk.spark.temporalquery.axis.DiscreteTimeAxis
-import ch.zzeekk.spark.temporalquery.interval.ClosedInterval
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 
 import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
@@ -20,6 +20,11 @@ package object util {
     lowerHorizon = bigBangDay,
     upperHorizon = doomsDay,
     discreteAxisDef = DiscreteTimeAxis(ChronoUnit.MILLIS)
+  )
+
+  val stdHalfOpenTemporalInterval: HalfOpenInterval[Timestamp] = HalfOpenInterval(
+    lowerHorizon = bigBangDay,
+    upperHorizon = doomsDay
   )
 
   /**

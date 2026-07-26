@@ -1,13 +1,12 @@
 package ch.zzeekk.spark.temporalquery
 
-import ch.zzeekk.spark.temporalquery.TemporalTestUtils._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.sql.Timestamp
 import java.util.{Calendar, TimeZone}
 
-class TemporalHelpersTest extends AnyFlatSpec with Matchers {
+class PackageTest extends AnyFlatSpec with Matchers with TestUtils {
 
   "durationInMillis" should "return expected results" in {
     println(s"test durationInMillis: Calendar.getInstance().get(Calendar.DST_OFFSET) = ${Calendar.getInstance().get(Calendar.DST_OFFSET)}")

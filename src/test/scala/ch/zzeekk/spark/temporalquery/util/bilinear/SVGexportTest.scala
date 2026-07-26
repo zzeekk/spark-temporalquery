@@ -1,8 +1,9 @@
-package ch.zzeekk.spark.temporalquery.util
+package ch.zzeekk.spark.temporalquery.util.bilinear
 
-import ch.zzeekk.spark.temporalquery.BiTemporalTestUtils._
 import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
+import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalTestUtils._
+import ch.zzeekk.spark.temporalquery.util.timestampOrdering
 import org.apache.spark.sql.functions.col
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

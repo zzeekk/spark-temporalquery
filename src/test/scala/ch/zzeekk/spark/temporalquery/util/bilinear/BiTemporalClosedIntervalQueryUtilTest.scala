@@ -1,7 +1,8 @@
-package ch.zzeekk.spark.temporalquery.util
+package ch.zzeekk.spark.temporalquery.util.bilinear
 
-import ch.zzeekk.spark.temporalquery.BiTemporalTestUtils._
+import BiTemporalTestUtils._
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
+import ch.zzeekk.spark.temporalquery.util.timestampOrdering
 import ch.zzeekk.spark.temporalquery.{saveString2File, TestUtils}
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.{col, lit}
@@ -10,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.sql.Timestamp
 
-class BiTemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
+class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
 
   import session.implicits._
   private implicit val timeOrdering: Ordering[Timestamp] = timestampOrdering

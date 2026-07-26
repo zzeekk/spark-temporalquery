@@ -1,4 +1,4 @@
-package ch.zzeekk.spark.temporalquery.util
+package ch.zzeekk.spark.temporalquery.util.bilinear
 
 import ch.zzeekk.spark.temporalquery.interval.HalfOpenInterval
 

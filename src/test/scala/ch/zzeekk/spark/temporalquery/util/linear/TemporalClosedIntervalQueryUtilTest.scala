@@ -1,7 +1,8 @@
-package ch.zzeekk.spark.temporalquery.util
+package ch.zzeekk.spark.temporalquery.util.linear
 
-import ch.zzeekk.spark.temporalquery.TemporalTestUtils._
+import TemporalTestUtils._
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
+import ch.zzeekk.spark.temporalquery.util.timestampOrdering
 import ch.zzeekk.spark.temporalquery.{udf_durationInMillis, TestUtils}
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -9,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.sql.Timestamp
 
-class TemporalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
+class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
 
   import session.implicits._
   private implicit val timeOrdering: Ordering[Timestamp] = timestampOrdering

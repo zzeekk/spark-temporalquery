@@ -1,6 +1,8 @@
-package ch.zzeekk.spark.temporalquery
+package ch.zzeekk.spark.temporalquery.util.bilinear
 
-import ch.zzeekk.spark.temporalquery.util.BiTemporalQueryUtil.{BiTemporalClosedIntervalQueryConfig, BiTemporalHalfOpenIntervalQueryConfig}
+import ch.zzeekk.spark.temporalquery.TestUtils
+import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalClosedIntervalQueryUtil._
+import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalHalfOpenIntervalQueryUtil.defaultHalfOpenIntervalDef
 import ch.zzeekk.spark.temporalquery.util.{bigBangDay, doomsDay}
 import org.apache.spark.sql.DataFrame
 
@@ -10,8 +12,13 @@ object BiTemporalTestUtils extends TestUtils {
 
   import session.implicits._
 
-  implicit val defaultBiTemporalConfig: BiTemporalClosedIntervalQueryConfig = BiTemporalClosedIntervalQueryConfig()
-  val halfopenBiTemporalConfig: BiTemporalHalfOpenIntervalQueryConfig = BiTemporalHalfOpenIntervalQueryConfig()
+  implicit val defaultBiTemporalConfig: BiLinearClosedIntervalQueryConfig = BiLinearClosedIntervalQueryConfig
+    .withDefaultIntervalDef(fstFromColName = "known_from", fstToColName = "known_to",
+      sndFromColName = "valid_from", sndToColName = "valid_to")
+
+  val halfopenBiTemporalConfig: BiLinearHalfOpenIntervalQueryConfig = BiLinearHalfOpenIntervalQueryConfig
+    .withDefaultIntervalDef(fstFromColName = "known_from", fstToColName = "known_to",
+      sndFromColName = "valid_from", sndToColName = "valid_to")
 
   val initiumTemporisString: String = bigBangDay.toString
   val finisTemporisString: String = doomsDay.toString

@@ -2,14 +2,11 @@
  * Copyright (c) 2017 Zacharias Kull under MIT Licence
  */
 
-package ch.zzeekk.spark.temporalquery.util
+package ch.zzeekk.spark.temporalquery.util.linear
+
 import ch.zzeekk.spark.temporalquery._
 import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
-import ch.zzeekk.spark.temporalquery.multivarRange.{
-  ClosedMultivarRangeQueryConfig,
-  HalfOpenMultivarRangeQueryConfig,
-  MultivarRangeQueryConfig
-}
+import ch.zzeekk.spark.temporalquery.multivarRange.{ClosedMultivarRangeQueryConfig, HalfOpenMultivarRangeQueryConfig}
 import org.slf4j.Logger
 
 import scala.reflect.runtime.universe.TypeTag
@@ -46,6 +43,23 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     }
     override lazy val config2: LinearClosedIntervalQueryConfig = this
       .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
+  }
+
+  object LinearClosedIntervalQueryConfig {
+
+    /**
+     * Alternative method to create a LinearHalfOpenIntervalQueryConfig providing a default
+     * intervalDef by an implicit parameter
+     */
+    def withDefaultIntervalDef(
+        fromColName: String = "position_from",
+        toColName: String = "position_to"
+    )(implicit intervalDef: ClosedInterval[T], logger: Logger): LinearClosedIntervalQueryConfig = {
+      debugLog(s"(withDefaultIntervalDef) fromColName = $fromColName ; toColName = $toColName ; intervalDef = $intervalDef")
+      LinearClosedIntervalQueryConfig(dimensionColNameMap = Map(fromColName -> toColName),
+        additionalTechnicalColNames = Nil, intervalDef = intervalDef)
+    }
+
   }
 
   /**
