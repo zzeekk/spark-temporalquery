@@ -31,12 +31,6 @@ object BiTemporalQueryUtil extends Serializable with Logging {
   trait BiTemporalQueryConfigMarker
 
   /**
-   * Type which includes BiTemporalClosedIntervalQueryConfig and
-   * BiTemporalHalfOpenIntervalQueryConfig
-   */
-  type BiTemporalQueryConfig = MultivarRangeQueryConfig[Timestamp, _] with BiTemporalQueryConfigMarker
-
-  /**
    * Configuration Parameters. An instance of this class is needed as implicit parameter.
    */
   case class BiTemporalClosedIntervalQueryConfig(

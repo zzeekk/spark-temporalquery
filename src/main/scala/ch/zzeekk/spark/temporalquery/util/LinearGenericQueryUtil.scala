@@ -28,11 +28,6 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   trait LinearQueryConfigMarker
 
   /**
-   * Type which includes LinearClosedIntervalQueryConfig and LinearHalfOpenIntervalQueryConfig
-   */
-  private type LinearQueryConfig = MultivarRangeQueryConfig[T, _] with LinearQueryConfigMarker
-
-  /**
    * Configuration Parameters for operations on closed intervals. An instance of this class is
    * needed as implicit parameter.
    */
