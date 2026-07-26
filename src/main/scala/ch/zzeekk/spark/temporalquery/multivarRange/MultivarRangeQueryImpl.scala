@@ -462,8 +462,9 @@ object MultivarRangeQueryImpl extends Logging {
       combineDimensionRanges(df.where(mrqc.isValidMultivarRangeExpr), dim, mrqc.additionalTechnicalColNames, ignoreColNames)
     }
     if (logger.isDebugEnabled()) resultatCombine.createdLog("resultatCombine")
-    if (df.except(resultatCombine).isEmpty) {
-      logger.info(s"(combineMultivarRanges(runId=$runId)) DONE: returning resultatCombine")
+    if (mrqc.numDimensions == 1 || df.except(resultatCombine).isEmpty) {
+      logger.info(s"(combineMultivarRanges(runId=$runId)) DONE: returning resultatCombine: schema =" +
+        s" ${resultatCombine.schema.catalogString} , mrqc=$mrqc")
       resultatCombine
     } else {
       debugLog(s"(combineMultivarRanges(runId=$runId))" +

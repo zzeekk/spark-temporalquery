@@ -201,6 +201,6 @@ trait TestUtils extends Logging {
    */
   def dfConstantUnitSplitted(value: String): Gen[DataFrame] = testUnitPoint2s.map(splitRectangle())
     .map[List[(Double, Double, Double, Double, String)]](rects => rects.map(rectangleValue2RowTuple(value)))
-    .map(_.toDF("h_from", "h_to", "v_from", "v_to", "value"))
+    .map(_.toDF("x_from", "x_to", "y_from", "y_to", "value"))
 
 }

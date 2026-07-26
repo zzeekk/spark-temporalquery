@@ -14,7 +14,7 @@ class BiDimOpenIntervalTests extends AnyFlatSpec with Matchers with ScalaCheckPr
   logger.info(s"BiDimOpenIntervalTests: biDimConfig = $biDimConfig")
 
   "multivarRangeCombine" should "combine everything possible of every generated dataFrame" in {
-    val expected = List((0d, 1d, 0d, 1d, "A")).toDF("h_from", "h_to", "v_from", "v_to", "value")
+    val expected = List((0d, 1d, 0d, 1d, "A")).toDF("x_from", "x_to", "y_from", "y_to", "value")
 
     forAll(genA = dfConstantUnitSplitted("A")) { df =>
       val actual = df.multivarRangeCombine[Double]()

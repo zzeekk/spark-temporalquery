@@ -39,7 +39,7 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
    * needed as implicit parameter.
    */
   case class BiLinearClosedIntervalQueryConfig(
-      dimensionColNameMap: Map[String, String] = Map("h_from" -> "h_to", "v_from" -> "v_to"),
+      dimensionColNameMap: Map[String, String] = Map("x_from" -> "x_to", "y_from" -> "y_to"),
       override val additionalTechnicalColNames: List[String] = Nil,
       override val intervalDef: ClosedInterval[T]
   ) extends ClosedMultivarRangeQueryConfig[T] with BiLinearQueryConfigMarker {
@@ -53,6 +53,7 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
     }
     override lazy val config2: BiLinearClosedIntervalQueryConfig = this
       .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
+
   }
 
   /**
@@ -60,7 +61,7 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
    * needed as implicit parameter.
    */
   case class BiLinearHalfOpenIntervalQueryConfig(
-      dimensionColNameMap: Map[String, String] = Map("h_from" -> "h_to", "v_from" -> "v_to"),
+      dimensionColNameMap: Map[String, String] = Map("x_from" -> "x_to", "y_from" -> "y_to"),
       override val additionalTechnicalColNames: List[String] = Nil,
       override val intervalDef: HalfOpenInterval[T]
   ) extends HalfOpenMultivarRangeQueryConfig[T] with BiLinearQueryConfigMarker {
@@ -82,16 +83,16 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
      * intervalDef by an implicit parameter
      */
     def withDefaultIntervalDef(
-        horizontalFromColName: String = "h_from",
-        horizontalToColName: String = "h_to",
-        verticalFromColName: String = "v_from",
-        verticalToColName: String = "v_to"
+        fstFromColName: String = "x_from",
+        fstToColName: String = "x_to",
+        sndFromColName: String = "y_from",
+        sndToColName: String = "y_to"
     )(implicit intervalDef: HalfOpenInterval[T], logger: Logger): BiLinearHalfOpenIntervalQueryConfig = {
-      debugLog(s"(withDefaultIntervalDef) horizontalFromColName = $horizontalFromColName ;" +
-        s" horizontalToColName = $horizontalToColName ; verticalFromColName = $verticalFromColName ;" +
-        s" verticalToColName = $verticalToColName ; intervalDef = $intervalDef")
+      debugLog(s"(withDefaultIntervalDef) fstFromColName = $fstFromColName ;" +
+        s" fstToColName = $fstToColName ; sndFromColName = $sndFromColName ;" +
+        s" sndToColName = $sndToColName ; intervalDef = $intervalDef")
       BiLinearHalfOpenIntervalQueryConfig(
-        dimensionColNameMap = Map(horizontalFromColName -> horizontalToColName, verticalFromColName -> verticalToColName),
+        dimensionColNameMap = Map(fstFromColName -> fstToColName, sndFromColName -> sndToColName),
         additionalTechnicalColNames = Nil,
         intervalDef = intervalDef
       )
