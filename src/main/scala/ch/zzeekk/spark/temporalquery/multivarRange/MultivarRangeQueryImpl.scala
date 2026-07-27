@@ -33,8 +33,13 @@ object MultivarRangeQueryImpl extends Logging {
   /**
    * Keep Dataframe Alias over any given transform.
    */
-  def keepAlias(df: DataFrame, transform: DataFrame => DataFrame): DataFrame =
-    getAlias(df).map(transform(df).alias).getOrElse(transform(df))
+  def keepAlias(df: DataFrame, transform: DataFrame => DataFrame)(implicit logger: Logger): DataFrame = {
+    debugLog("START keepAlias")
+    if (logger.isDebugEnabled()) df.debLog("df")
+    val dfTransformed = transform(df)
+    if (logger.isDebugEnabled()) dfTransformed.debLog("dfTransformed")
+    getAlias(df).map(transform(dfTransformed).alias).getOrElse(dfTransformed) // .distinct()
+  }
 
   /**
    * Create a column reference using the DataFrame's alias if existing.
@@ -296,7 +301,6 @@ object MultivarRangeQueryImpl extends Logging {
       val dfAgg = aggExpressions.foldLeft(dfJoinCleanExtend) {
         case (df_acc, (name, expr)) => df_acc.withColumn(name, expr.over(fenestra))
       }
-      dfAgg.createdLog("dfAgg", showRows = true)
 
       debugLog(s"(cleanupExtendIntervals.transform) Prioritize and clean overlaps:" +
         s" rnkExpressions=${rnkExpressions.mkString(",")}")
@@ -492,12 +496,17 @@ object MultivarRangeQueryImpl extends Logging {
       debugLog(s"(unifyDimensionRanges.transform) get ranges. df.schema = ${df.schema.catalogString}")
       val df1Renamed = renameKeys(df, keys, joinColPostFix1)
       debugLog(s"(unifyDimensionRanges.transform)     df1Renamed.schema = ${df1Renamed.schema.catalogString}")
-      val df2Ranges = renameKeys(df = renameDimensionCols2nd(df = buildDimensionRanges(df, keys, dim, extend), dim).as("ranges"),
-        keys = keys, postFix = joinColPostFix2)
+      val df2Ranges = renameKeys(df = renameDimensionCols2nd(
+          df = buildDimensionRanges(df, keys, dim, extend),
+          dim
+        ).as("ranges"),
+        keys = keys, postFix = joinColPostFix2
+      )
       if (logger.isDebugEnabled()) df2Ranges.createdLog("df2Ranges", showRows = true)
       val keyCondition = createRenamedKeyCondition(keys)
       val joinType = if (fillGapsWithNull) "left" else "inner"
-      val joinCondition = keyCondition and intDef.isInIntervalExpr(valueCol = dim.fromCol2, dim.fromCol, dim.toCol)
+      val joinCondition = keyCondition and
+        intDef.isInIntervalExpr(valueCol = dim.fromCol2, fromCol = dim.fromCol, toCol = dim.toCol)
       debugLog(s"(unifyDimensionRanges.transform) join back on input df: df2Ranges.join(df1Renamed) with " +
         s" joinType = $joinType , joinCondition = $joinCondition")
       val dfJoinUnify = df2Ranges.join(right = df1Renamed, joinExprs = joinCondition, joinType = joinType)
@@ -506,11 +515,13 @@ object MultivarRangeQueryImpl extends Logging {
         df.columns.diff(keys ++ List(dim.fromColName, dim.toColName) ++ additionalTechnicalColNames).map(dfJoinUnify(_)) :+
         dim.fromCol2.as(dim.fromColName) :+ dim.toCol2.as(dim.toColName)
       debugLog(s"(unifyDimensionRanges.transform) select result: selCols = ${selCols.mkString(",")}")
-      dfJoinUnify.select(selCols: _*)
+      val resultUnifyTransform = dfJoinUnify.select(selCols: _*)
+      if (logger.isDebugEnabled()) resultUnifyTransform.createdLog("resultUnifyTransform", showRows = true)
+      resultUnifyTransform
     }
-    val result = keepAlias(df, transform)
-    if (logger.isDebugEnabled()) result.createdLog("result", showRows = true)
-    result
+    val resultUnify = keepAlias(df, transform)
+    if (logger.isDebugEnabled()) resultUnify.createdLog("resultUnify", showRows = true)
+    resultUnify
   }
 
   /**

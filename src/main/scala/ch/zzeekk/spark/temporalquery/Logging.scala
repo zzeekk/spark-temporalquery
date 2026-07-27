@@ -91,20 +91,21 @@ trait Logging extends Serializable {
      *   your messenger
      */
     def debLog(dsName: String, showRows: Boolean = false)(implicit logger: Logger): Unit = {
-      debugLog(s"$dsName.schema: ${ds.schema.catalogString}")
+      debugLog(s"$dsName.schema (${ds.columns.length} columns): ${ds.schema.catalogString}")
       debugLog(s"$dsName: number of partitions = ${ds.rdd.getNumPartitions}")
       val cntRows = ds.count()
       val cntDistinctRows = Try(ds.distinct().count()) match {
         case Success(n) => n
         case Failure(e) =>
-          logger.warn(s"debLog($dsName): could not count distinct rows of $dsName")
+          logger.warn(s"debaLog($dsName): could not count distinct rows of $dsName")
           logger.warn(e.getMessage)
           logger.warn("debLog($dsName): ignoring this problem and returning -1")
           -1L
       }
+      if (cntRows != cntDistinctRows) logger.warn(s"DataFrame $dsName has duplicates !")
       debLogFun(s"$dsName.count() = $cntRows") // may take a long time
       debLogFun(s"$dsName.distinct().count() = $cntDistinctRows") // may take even much longer time
-      if (showRows) ds.show(4, truncate = false)
+      if (showRows) ds.orderBy(ds.columns.map(org.apache.spark.sql.functions.col): _*).show(32, truncate = false)
     }
 
     /**

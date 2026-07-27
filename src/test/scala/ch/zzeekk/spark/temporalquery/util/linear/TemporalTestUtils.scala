@@ -3,7 +3,7 @@ package ch.zzeekk.spark.temporalquery.util.linear
 import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedIntervalQueryUtil._
 import org.apache.spark.sql.DataFrame
-
+import org.apache.spark.sql.types.DoubleType
 object TemporalTestUtils extends TestUtils {
 
   import session.implicits._
@@ -21,7 +21,6 @@ object TemporalTestUtils extends TestUtils {
 
   val dfRight: DataFrame = Seq(
     (0, "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
-    // gap in history
     (0, "2018-06-01 05:24:11", "2018-10-23 03:50:09.999", Some(97.15)),
     (0, "2018-10-23 03:50:10", "2019-12-31 23:59:59.999", Some(97.15)),
     (0, "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
@@ -31,17 +30,7 @@ object TemporalTestUtils extends TestUtils {
     (1, "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
   ).map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_r")
 
-  val dfRightDouble: DataFrame = Seq(
-    (0.0, "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
-    // gap in history
-    (0.0, "2018-06-01 05:24:11", "2018-10-23 03:50:09.999", Some(97.15)),
-    (0.0, "2018-10-23 03:50:10", "2019-12-31 23:59:59.999", Some(97.15)),
-    (0.0, "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
-    (1.0, "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
-    (1.0, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
-    (1.0, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
-    (1.0, "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
-  ).map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_r")
+  val dfRightDouble: DataFrame = dfRight.withColumn("id", $"id".cast(DoubleType))
 
   /*
    * dfMap: dfMap which maps a set of images img to id over time:

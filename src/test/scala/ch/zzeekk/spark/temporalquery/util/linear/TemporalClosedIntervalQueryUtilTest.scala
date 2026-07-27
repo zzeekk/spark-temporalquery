@@ -296,9 +296,9 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "val", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     // we want the record with the longest validity period, i.e. maximal toColName-fromColName
     val actual =
-      argument.rangeCleanupExtend(Seq("id"),
-        Seq(udf_durationInMillis(defaultTemporalConfig.toCol, defaultTemporalConfig.fromCol).desc))
-        .rangeCombine()
+      argument.rangeCleanupExtend(keys = Seq("id"),
+        rnkExpressions = Seq(udf_durationInMillis(defaultTemporalConfig.toCol, defaultTemporalConfig.fromCol).desc)
+      ).rangeCombine()
     val expected = Seq(
       (1, None,      false, initiumTemporisString, "2020-06-30 23:59:59.999"),
       (1, Some("A"), true,  "2020-07-01 00:00:00", "2020-07-03 23:59:59.999"),
@@ -317,7 +317,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       (1, "X", "2020-07-01 00:00:00", finisTemporisString)
     ).map(makeRowsWithTimeRangeEnd[Int, String])
       .toDF("id", "val", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-    val actual = argument.rangeCleanupExtend(Seq("id"), Seq(defaultTemporalConfig.fromCol))
+    val actual = argument.rangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq(defaultTemporalConfig.fromCol))
       .rangeCombine()
     val expected = Seq(
       (1, "S", initiumTemporisString, finisTemporisString)
@@ -337,9 +337,9 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       (1, "G", "2020-09-24 00:00:00", finisTemporisString)
     ).map(makeRowsWithTimeRangeEnd[Int, String])
       .toDF("id", "val", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-    val actual = argument
-      .rangeCleanupExtend(Seq("id"), Seq(defaultTemporalConfig.toCol.desc, defaultTemporalConfig.fromCol.asc))
-      .rangeCombine()
+    val actual = argument.rangeCleanupExtend(keys = Seq("id"),
+      rnkExpressions = Seq(defaultTemporalConfig.toCol.desc, defaultTemporalConfig.fromCol.asc)
+    ).rangeCombine()
     val expected = Seq(
       (1, "S", initiumTemporisString, "2020-06-30 23:59:59.999"),
       (1, "X", "2020-07-01 00:00:00", "2020-08-02 23:59:59.999"),
@@ -916,7 +916,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeCombine dropped column" should "return expected results" in {
+  "rangeCombine dropped column" should "combine the rows of dfRight with column add/drop" in {
     val actual = dfRight
       .withColumn("test_column", lit("please drop me"))
       .drop("test_column")
@@ -957,7 +957,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeCombine_dirtyTimeRanges" should "return expected results" in {
+  "rangeRoundDiscreteTime and rangeCombine" should "combine dfDirtyTimeRanges" in {
     val actual = dfDirtyTimeRanges.rangeRoundDiscreteTime.rangeCombine()
     val rowsExpected = Seq(
       (0, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),
@@ -973,11 +973,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("rangeCombine_dirtyTimeRanges", dfMapToCombine)(actual, expected)
+    if (!result) printFailedTestResult("rangeCombine_dirtyTimeRanges", dfDirtyTimeRanges)(actual, expected)
     result shouldBe true
   }
 
-  "rangeCombine_documentation" should "return expected results" in {
+  "rangeRoundDiscreteTime and rangeCombine" should "combine dfDocumentation" in {
     val actual = dfDocumentation.rangeRoundDiscreteTime.rangeCombine()
     val rowsExpected = Seq(
       (1, "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.124", 2.72), // overlaps with previous record
@@ -1031,7 +1031,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeUnifyRanges dfMap" should "return expected results" in {
+  "rangeUnifyRanges" should "split properly the ranges of dfMap" in {
     val actual = dfMap.rangeUnifyRanges(Seq("id"))
     val expected = Seq(
       // img = {A,B}
@@ -1063,26 +1063,27 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeUnifyRanges dfMicrosecTimeRanges" should "return expected results" in {
-    logger.info(
-      "\n*** Educational test case to highlight the behaviour of rangeUnifyRanges when the time has a granularity of smaller than 1ms. ***"
-    )
-    logger.info("\n*** Argument = ")
-    dfMicrosecTimeRanges.orderBy("id", "valid_from").show(false)
-    val actual = dfMicrosecTimeRanges.rangeUnifyRanges(Seq("id"))
-    logger.info("\n*** Argument.rangeUnifyRanges(Seq(\"id\")) = ")
-    actual.orderBy("id", "valid_from").show(false)
-    val expected = Seq(
-      (0, 3.14, "2018-06-01 00:00:00       ", "2018-06-01 09:00:00"),
-      (0, 42.0, "2018-06-01 09:00:00.000124", "2018-06-01 09:00:00"),
-      (0, 2.72, "2018-06-01 09:00:00.000130", "2018-06-01 09:00:00"),
-      (0, 2.72, "2018-06-01 09:00:00.001",    "2018-06-01 17:00:00.123")
-    ).map(makeRowsWithTimeRangeEnd[Int, Double])
-      .toDF("id", "value", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-    val result = dfEqual(actual, expected)
+  "rangeUnifyRanges dfMicrosecTimeRanges" should
+    "show what happens when time is more precise than the granularity of 1ms " in {
+      logger.info(
+        "\n*** Educational test case to highlight the behaviour of rangeUnifyRanges when the time has a granularity of smaller than 1ms. ***"
+      )
+      logger.info("\n*** Argument = ")
+      dfMicrosecTimeRanges.orderBy("id", "valid_from").show(false)
+      val actual = dfMicrosecTimeRanges.rangeUnifyRanges(Seq("id"))
+      logger.info("\n*** Argument.rangeUnifyRanges(Seq(\"id\")) = ")
+      actual.orderBy("id", "valid_from").show(false)
+      val expected = Seq(
+        (0, 3.14, "2018-06-01 00:00:00       ", "2018-06-01 09:00:00"),
+        (0, 42.0, "2018-06-01 09:00:00.000124", "2018-06-01 09:00:00"),
+        (0, 2.72, "2018-06-01 09:00:00.000130", "2018-06-01 09:00:00"),
+        (0, 2.72, "2018-06-01 09:00:00.001",    "2018-06-01 17:00:00.123")
+      ).map(makeRowsWithTimeRangeEnd[Int, Double])
+        .toDF("id", "value", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
+      val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("rangeUnifyRanges dfMicrosecTimeRanges", dfMicrosecTimeRanges)(actual, expected)
-    result shouldBe true
-  }
+      if (!result) printFailedTestResult("rangeUnifyRanges dfMicrosecTimeRanges", dfMicrosecTimeRanges)(actual, expected)
+      result shouldBe true
+    }
 
 }
