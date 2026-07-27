@@ -50,7 +50,7 @@ val dfLeft = Seq((0, Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf
 val dfRight = Seq((0, Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999"), 5))
   .toDF("id", "valid_from", "valid_to", "value_r")
 // use multivarRange* functions
-dfLeft.multivarRangeInnerJoin(dfRight, Seq("id"))
+dfLeft.rangeInnerJoin(dfRight, Seq("id"))
 ```
 
 ### linear queries
@@ -78,7 +78,7 @@ val dfLeft = Seq((0, 0.0, 100.0, 4.2))
 val dfRight = Seq((0, 50.0, 200.0, 5))
   .toDF("id", "pos_from", "pos_to", "value_r")
 // use multivarRange* functions
-dfLeft.multivarRangeInnerJoin(dfRight, Seq("id"))
+dfLeft.rangeInnerJoin(dfRight, Seq("id"))
 ```
 
 ### bi-temporal and 2D range queries
@@ -102,7 +102,7 @@ implicit val btqc: BiLinearClosedIntervalQueryConfig = BiLinearClosedIntervalQue
 implicit val sss = spark
 import sss.implicits._
 
-dfLeft.multivarRangeInnerJoin(dfRight, Seq("id"))
+dfLeft.rangeInnerJoin(dfRight, Seq("id"))
 ```
 
 ## Precondition
@@ -116,8 +116,8 @@ The axis starts at `intervalDef.lowerHorizon` and ends at `intervalDef.upperHori
 Before using the operations below you must ensure that your data satisfies the requirements of the chosen `intervalDef` configuration.
 Moreover the data frame must not contain temporally overlapping entries or entries where validTo < validFrom as this will lead to confusing results.
 
-### multivarRangeCombine() to clean up data frames
-You may use the method `multivarRangeCleanupExtend` and `multivarRangeCombine()` in order to clean up your data frame. For example
+### rangeCombine() to clean up data frames
+You may use the method `rangeCleanupExtend` and `rangeCombine()` in order to clean up your data frame. For example
 <table>
     <tr><th>Id</th><th>val</th><th>validFrom</th><th>validTo</th><th>comment</th></tr>
     <tr><td>1</td><td>2.72</td><td>2019-01-05 12:34:56.123456789</td><td>2019-02-01 02:34:56.1235</td><td>nanoseconds</td></tr>
@@ -135,50 +135,50 @@ is cleaned up to
 
 ## Operations
 You can then use the following additional functions on Dataset/DataFrame
-- `multivarRangeInnerJoin( df2:DataFrame, keys:Seq[String] )`
+- `rangeInnerJoin( df2:DataFrame, keys:Seq[String] )`
   Inner Join of two interval datasets using a list of key-columns named the same as condition (using-join). "Inner join" means that the result for a given key contains only periods which are defined in both DataFrames.
-- `multivarRangeInnerJoin( df2:DataFrame, keyCondition:Column )`
+- `rangeInnerJoin( df2:DataFrame, keyCondition:Column )`
   Inner Join of two interval datasets using a given expression as join condition.
-- `multivarRangeFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Nil, additionalJoinFilterCondition:Column = lit(true), doCleanupExtend:Boolean = true )`
+- `rangeFullJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Nil, additionalJoinFilterCondition:Column = lit(true), doCleanupExtend:Boolean = true )`
   Full Outer Join of two interval datasets using a list of key-columns named the same as condition (using-join). "Outer join" means that the result for a given key contains all periods from DataFrame 1, 2 respectively, with null values for attributes of DataFrame 2, 1 respectively, where the period is missing from Data Frame 2, 1 respectively.
   - rnkExpressions: In case df1 or df2 are not a 1-to-1 or many-to-1 mapping, this parameter is used to select a sub-dataFrame which constitutes a 1-1 mapping:
    by ordering for each key according to rnkExpressions and selecting the first row. In case df1 or df2 are a to-many relation you need to skip this cleaning by not setting the parameter rnkExpressions or by setting it to the empty sequence.
   - additionalJoinFilterCondition: you can provide additional non-equi-join conditions which will be combined with the conditions generated from the list of keys.
-  - doCleanupExtend: set to false if `multivarRangeCleanupExtend` has already been applied to both input DataFrames (default=true).
-- `multivarRangeLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Nil, additionalJoinFilterCondition:Column = lit(true), doCleanupExtend:Boolean = true )`
+  - doCleanupExtend: set to false if `rangeCleanupExtend` has already been applied to both input DataFrames (default=true).
+- `rangeLeftJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Nil, additionalJoinFilterCondition:Column = lit(true), doCleanupExtend:Boolean = true )`
   Left Outer Join of two interval datasets using a list of key-columns named the same as condition (using-join). "Left join" means that the result for a given key contains all periods from DataFrame 1 with null values for attributes of DataFrame 2 where the period is missing from Data Frame 2.
   - rnkExpressions: In case df2 is not a 1-to-1 or many-to-1 mapping, this parameter is used to select a sub-dataFrame which constitutes a 1-1 mapping:
    by ordering for each key according to rnkExpressions and selecting the first row. In case df2 is a to-many relation you need to skip this cleaning by not setting the parameter rnkExpressions or by setting it to the empty sequence.
   - additionalJoinFilterCondition: you can provide additional non-equi-join conditions which will be combined with the conditions generated from the list of keys.
-  - doCleanupExtend: set to false if `multivarRangeCleanupExtend` has already been applied to df2 (default=true).
-- `multivarRangeRightJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Nil, additionalJoinFilterCondition:Column = lit(true), doCleanupExtend:Boolean = true )`
+  - doCleanupExtend: set to false if `rangeCleanupExtend` has already been applied to df2 (default=true).
+- `rangeRightJoin( df2:DataFrame, keys:Seq[String], rnkExpressions:Seq[Column] = Nil, additionalJoinFilterCondition:Column = lit(true), doCleanupExtend:Boolean = true )`
   Right Outer Join of two interval datasets using a list of key-columns named the same as condition (using-join). "Right join" means that the result for a given key contains all periods from DataFrame 2 with null values for attributes of DataFrame 1 where the period is missing from Data Frame 1.
   - rnkExpressions: In case df1 is not a 1-to-1 or many-to-1 mapping, this parameter is used to select a sub-dataFrame which constitutes a 1-1 mapping:
    by ordering for each key according to rnkExpressions and selecting the first row. In case df1 is a to-many relation you need to skip this cleaning by not setting the parameter rnkExpressions or by setting it to the empty sequence.
   - additionalJoinFilterCondition: you can provide additional non-equi-join conditions which will be combined with the conditions generated from the list of keys.
-  - doCleanupExtend: set to false if `multivarRangeCleanupExtend` has already been applied to df1 (default=true).
-- `multivarRangeLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true))`
+  - doCleanupExtend: set to false if `rangeCleanupExtend` has already been applied to df1 (default=true).
+- `rangeLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true))`
   Left Anti Join of two interval datasets using a list of key-columns named the same as condition (using-join). "Anti left join" means that the result contains all periods from DataFrame 1 which do not occur in DataFrame 2 for the given joinColumns.
   - additionalJoinFilterCondition: you can provide additional non-equi-join conditions which will be combined with the conditions generated from the list of keys.
   Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
-- `multivarRangeCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Nil, rnkFilter:Boolean = true, extend:Boolean = true, fillGapsWithNull:Boolean = true )`
+- `rangeCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Nil, rnkFilter:Boolean = true, extend:Boolean = true, fillGapsWithNull:Boolean = true )`
   Resolve interval overlaps by prioritizing records according to rnkExpressions and extend the range of each key to cover the whole configured horizon. The resulting DataFrame has an additional column `_defined` which is false for extended ranges.
   - aggExpressions: Aggregates to be calculated on overlapping records (e.g. count)
   - rnkFilter: Flag if overlapping records should be tagged or filtered (default=filtered=true)
   - extend: If true and fillGapsWithNull=true, every key is extended with additional records with null values so that for every key the whole horizon [lowerHorizon, upperHorizon] is covered (default=true)
   - fillGapsWithNull: If true, gaps in history are filled with records with null values for every key (default=true)
   - Note: extend=true needs fillGapsWithNull=true in order to work
-- `multivarRangeCombine( ignoreColNames:Seq[String] = Nil )`
+- `rangeCombine( ignoreColNames:Seq[String] = Nil )`
   Combines successive records if there are no changes on the non-technical attributes.
   - ignoreColNames: A list of columns to be ignored in change detection
-- `multivarRangeUnifyRanges( keys:Seq[String], extend:Boolean = false, fillGapsWithNull:Boolean = false )`
+- `rangeUnifyRanges( keys:Seq[String], extend:Boolean = false, fillGapsWithNull:Boolean = false )`
   Unify interval ranges in a group of records defined by 'keys' by cutting records at overlap boundaries (needed for interval aggregations).
-- `multivarRangeExtendRange( keys:Seq[String] = Nil, extendMin:Boolean = true, extendMax:Boolean = true )`
+- `rangeExtendRange( keys:Seq[String] = Nil, extendMin:Boolean = true, extendMax:Boolean = true )`
   Extend interval range to lowerHorizon/upperHorizon according to the configured intervalDef.
-- `multivarRangeContinuous2discrete`
+- `rangeContinuous2discrete`
   Transforms a DataFrame with continuous, half-open time intervals to discrete, closed intervals.
   Note: this function only works on intervalDef's of type ClosedInterval.
-- `multivarRangeRoundDiscreteTime`
+- `rangeRoundDiscreteTime`
   Sets the discreteness of the time scale to the discrete step size configured in the intervalDef.
   Note: this function only works on intervalDef's of type ClosedInterval.
 - `toSvg( valueCol:String )`

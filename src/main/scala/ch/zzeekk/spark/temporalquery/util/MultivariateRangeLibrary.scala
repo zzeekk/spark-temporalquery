@@ -15,7 +15,7 @@ object MultivariateRangeLibrary extends Logging {
    * Pimp-my-library pattern for Columns
    */
   implicit class MultivarRangeColumnExtensions(value: Column) {
-    def isInMultivariateRange[T: Ordering: TypeTag](implicit mrqc: MultivarRangeQueryConfig[T, _]): Column =
+    def isInRange[T: Ordering: TypeTag](implicit mrqc: MultivarRangeQueryConfig[T, _]): Column =
       mrqc.isInIntervalExpr(List(value))
   }
 
@@ -27,7 +27,7 @@ object MultivariateRangeLibrary extends Logging {
     /**
      * Implements an inner join of historical data over a list of equally named columns
      */
-    def multivarRangeInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keys: Seq[String])(implicit
+    def rangeInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keys: Seq[String])(implicit
         mrqc: MultivarRangeQueryConfig[T, _],
         logger: Logger
     ): DataFrame = MultivarRangeQueryImpl.joinIntervalsWithKeysImpl(df1, df2, keys)
@@ -35,7 +35,7 @@ object MultivariateRangeLibrary extends Logging {
     /**
      * Implements an inner join of historical data over an explicit join condition
      */
-    def multivarRangeInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keyCondition: Column)(implicit
+    def rangeInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keyCondition: Column)(implicit
         mrqc: MultivarRangeQueryConfig[T, _],
         logger: Logger
     ): DataFrame = MultivarRangeQueryImpl.joinIntervals(df1, df2, keys = Nil, joinType = "inner", keyCondition)
@@ -56,7 +56,7 @@ object MultivariateRangeLibrary extends Logging {
      *   Can be set to false if the cleanupExtend operation has already been applied to both input
      *   DataFrames (default = true)
      */
-    def multivarRangeFullJoin[T: Ordering: TypeTag](
+    def rangeFullJoin[T: Ordering: TypeTag](
         df2: DataFrame,
         keys: Seq[String],
         rnkExpressions: Seq[Column] = Nil,
@@ -80,7 +80,7 @@ object MultivariateRangeLibrary extends Logging {
      *   Can be set to false if the cleanupExtend operation has already been applied to input
      *   DataFrame dfRight (default = true)
      */
-    def multivarRangeLeftJoin[T: Ordering: TypeTag](
+    def rangeLeftJoin[T: Ordering: TypeTag](
         df2: DataFrame,
         keys: Seq[String],
         rnkExpressions: Seq[Column] = Nil,
@@ -106,7 +106,7 @@ object MultivariateRangeLibrary extends Logging {
      *   Can be set to false if the cleanupExtend operation has already been applied to input
      *   DataFrame dfLeft (default = true)
      */
-    def multivarRangeRightJoin[T: Ordering: TypeTag](
+    def rangeRightJoin[T: Ordering: TypeTag](
         df2: DataFrame,
         keys: Seq[String],
         rnkExpressions: Seq[Column] = Nil,
@@ -123,7 +123,7 @@ object MultivariateRangeLibrary extends Logging {
      *
      * Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
      */
-    def multivarRangeLeftAntiJoin[T: Ordering: TypeTag](
+    def rangeLeftAntiJoin[T: Ordering: TypeTag](
         df2: DataFrame,
         joinColumns: Seq[String],
         additionalJoinFilterCondition: Column = lit(true)
@@ -149,7 +149,7 @@ object MultivariateRangeLibrary extends Logging {
      *   : if true, gaps in the history are filled with null rows. fillGapsWithNull must be set to
      *   true for extend=true to have any effect
      */
-    def multivarRangeCleanupExtend[T: Ordering: TypeTag](
+    def rangeCleanupExtend[T: Ordering: TypeTag](
         keys: Seq[String],
         rnkExpressions: Seq[Column],
         aggExpressions: Seq[(String, Column)] = Nil,
@@ -161,9 +161,9 @@ object MultivariateRangeLibrary extends Logging {
 
     /**
      * Combines consecutive records when there is no change in the non-technical columns. The
-     * dataframe is first cleaned up via [[multivarRangeRoundDiscreteTime]], see its description.
+     * dataframe is first cleaned up via [[rangeRoundDiscreteTime]], see its description.
      */
-    def multivarRangeCombine[T: Ordering: TypeTag](ignoreColNames: Seq[String] = Nil)(implicit
+    def rangeCombine[T: Ordering: TypeTag](ignoreColNames: Seq[String] = Nil)(implicit
         mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
         logger: Logger
     ): DataFrame = MultivarRangeQueryImpl.combineMultivarRanges(df1, ignoreColNames, mrqc)
@@ -172,7 +172,7 @@ object MultivariateRangeLibrary extends Logging {
      * Cuts records into pieces at overlaps, so that at the start of each overlap all active records
      * are split
      */
-    def multivarRangeUnifyRanges[T: Ordering: TypeTag](
+    def rangeUnifyRanges[T: Ordering: TypeTag](
         keys: Seq[String],
         extend: Boolean = false,
         fillGapsWithNull: Boolean = false
@@ -184,7 +184,7 @@ object MultivariateRangeLibrary extends Logging {
     /**
      * Extends the history of the smallest value per key to minDate
      */
-    def multivarRangeExtendRange[T: Ordering: TypeTag](
+    def rangeExtendRange[T: Ordering: TypeTag](
         keys: Seq[String] = Nil,
         extendMin: Boolean = true,
         extendMax: Boolean = true
@@ -205,7 +205,7 @@ object MultivariateRangeLibrary extends Logging {
      * @return
      *   temporal dataframe with a discreteness of milliseconds
      */
-    def multivarRangeRoundDiscreteTime[T: Ordering: TypeTag](implicit clmrqc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
+    def rangeRoundDiscreteTime[T: Ordering: TypeTag](implicit clmrqc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
       MultivarRangeQueryImpl.roundIntervalsToDiscreteTime(df1, clmrqc)
 
     /**
@@ -217,7 +217,7 @@ object MultivariateRangeLibrary extends Logging {
      * @return
      *   [[DataFrame]] with discrete time axis
      */
-    def multivarRangeContinuous2discrete[T: Ordering: TypeTag](implicit clmrqc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
+    def rangeContinuous2discrete[T: Ordering: TypeTag](implicit clmrqc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
       MultivarRangeQueryImpl.transformHalfOpenToClosedIntervals(df1, clmrqc)
 
     /**

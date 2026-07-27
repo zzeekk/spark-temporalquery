@@ -18,10 +18,10 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
   logger.info(s"BiTemporalQueryUtilTest: defaultBiTemporalConfig = $defaultBiTemporalConfig")
   private val fromCols: List[Column] = defaultBiTemporalConfig.intervalDimensions.map(_.fromCol)
 
-  "multivarRangeCleanupExtend and multivarRangeCombine" should "extend and combine dfLeft" in {
+  "rangeCleanupExtend and rangeCombine" should "extend and combine dfLeft" in {
     val actual = dfLeft
-      .multivarRangeCleanupExtend(keys = Seq("id"), rnkExpressions = fromCols)
-      .multivarRangeCombine()
+      .rangeCleanupExtend(keys = Seq("id"), rnkExpressions = fromCols)
+      .rangeCombine()
       .orderBy(fromCols: _*)
     val expected = List(
       (0, initiumTemporisString, finisTemporisString, initiumTemporisString, "2017-12-09 23:59:59.999", None),
@@ -31,19 +31,19 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_l")
       .withColumn(defaultBiTemporalConfig.definedColName, $"value_l".isNotNull)
     val result = dfEqual(reorderCols(actual, expected), expected)
-    if (!result) printFailedTestResult("multivarRangeCleanupExtend", dfLeft)(reorderCols(actual, expected), expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend", dfLeft)(reorderCols(actual, expected), expected)
     result shouldBe true
   }
 
-  "multivarRangeCleanupExtend and multivarRangeCombine" should
+  "rangeCleanupExtend and rangeCombine" should
     "combine ranges while removing overlaps of dfRight" +
     " without extending or filling gaps" in {
-      val actual = dfRight.multivarRangeCleanupExtend(
+      val actual = dfRight.rangeCleanupExtend(
         keys = Seq("id"),
         rnkExpressions = fromCols,
         extend = false,
         fillGapsWithNull = false
-      ).multivarRangeCombine()
+      ).rangeCombine()
       val expected = List(
         (0, initiumTemporisString,     finisTemporisString,   "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15)),
         (0, "2018-01-01 00:00:00",     "2018-06-01 00:00:00", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
@@ -56,18 +56,18 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
         .withColumn(defaultBiTemporalConfig.definedColName, lit(true))
       val result = dfEqual(actual, expected)
-      if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
+      if (!result) printFailedTestResult("rangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
       result shouldBe true
     }
 
-  "multivarRangeCleanupExtend and multivarRangeCombine" should
+  "rangeCleanupExtend and rangeCombine" should
     "combine ranges while removing overlaps" +
     " and filling gaps of dfRight without extending" in {
-      val actual = dfRight.multivarRangeCleanupExtend(
+      val actual = dfRight.rangeCleanupExtend(
         keys = Seq("id"),
         rnkExpressions = fromCols,
         extend = false
-      ).multivarRangeCombine()
+      ).rangeCombine()
       val expected = List(
         (0, initiumTemporisString,     finisTemporisString,   "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15),  true),
         (0, "2018-01-01 00:00:00",     "2018-06-01 00:00:00", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15),  true),
@@ -81,18 +81,18 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       ).map(makeRowsBiTemporalDefined).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r",
         defaultBiTemporalConfig.definedColName)
       val result = dfEqual(actual, expected)
-      if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_fillGaps", dfRight)(actual, expected)
+      if (!result) printFailedTestResult("rangeCleanupExtend_dfRight_noExtend_fillGaps", dfRight)(actual, expected)
       result shouldBe true
     }
 
-  "multivarRangeCleanupExtend and multivarRangeCombine" should
+  "rangeCleanupExtend and rangeCombine" should
     "combine ranges while removing overlaps of dfRight without extending or filling gaps" +
     " since extend is ignore if not(fillGapsWithNull)" in {
-      val actual = dfRight.multivarRangeCleanupExtend(
+      val actual = dfRight.rangeCleanupExtend(
         keys = Seq("id"),
         rnkExpressions = fromCols,
         fillGapsWithNull = false
-      ).multivarRangeCombine()
+      ).rangeCombine()
       val expected = List(
         (0, initiumTemporisString,     finisTemporisString,   "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15)),
         (0, "2018-01-01 00:00:00",     "2018-06-01 00:00:00", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
@@ -105,17 +105,17 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
         .withColumn(defaultBiTemporalConfig.definedColName, lit(true))
       val result = dfEqual(actual, expected)
-      if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
+      if (!result) printFailedTestResult("rangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
       result shouldBe true
     }
 
-  "multivarRangeCleanupExtend and multivarRangeCombine" should
+  "rangeCleanupExtend and rangeCombine" should
     "combine, extend ranges, fill gaps" +
     " and remove overlaps of dfRight" in {
-      val actual = dfRight.multivarRangeCleanupExtend(
+      val actual = dfRight.rangeCleanupExtend(
         keys = Seq("id"),
         rnkExpressions = fromCols
-      ).multivarRangeCombine()
+      ).rangeCombine()
       val expected = List(
         (0, initiumTemporisString,     "2017-12-31 23:59:59.999", initiumTemporisString, "2018-06-01 05:24:10.999", None,         false),
         (0, initiumTemporisString,     "2020-05-31 23:59:59.999", "2020-01-01 00:00:00", finisTemporisString,       None,         false),
@@ -134,15 +134,15 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       ).map(makeRowsBiTemporalDefined)
         .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r", defaultBiTemporalConfig.definedColName)
       val result = dfEqual(actual, expected)
-      if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
+      if (!result) printFailedTestResult("rangeCleanupExtend_dfRight_noExtend_nofillGaps", dfRight)(actual, expected)
       result shouldBe true
     }
 
-  "multivarRangeCleanupExtend and multivarRangeCombine" should
+  "rangeCleanupExtend and rangeCombine" should
     "combine, extend ranges, fill gaps and remove overlaps of dfMap," +
     " and then convert dfMap to a 1-1-relation by selecting the smallest value of img" in {
-      val actual = dfMap.multivarRangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq($"img"))
-        .multivarRangeCombine()
+      val actual = dfMap.rangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq($"img"))
+        .rangeCombine()
       val expected = List(
         (0, initiumTemporisString, "2017-12-31 23:59:59.999", "2018-01-01 00:00:00", "2018-02-28 23:59:59.999", Some("B")),
         (0, initiumTemporisString, "2018-02-04 23:59:59.999", "2018-03-01 00:00:00", finisTemporisString,       None),
@@ -158,12 +158,12 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
         .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "img")
         .withColumn(defaultBiTemporalConfig.definedColName, $"img".isNotNull)
       val result = dfEqual(actual, expected)
-      if (!result) printFailedTestResult("multivarRangeCleanupExtend_dfMap", dfMap)(actual, expected)
+      if (!result) printFailedTestResult("rangeCleanupExtend_dfMap", dfMap)(actual, expected)
       result shouldBe true
     }
 
-  "multivarRangeContinuous2discrete" should "round to ms without adding gaps or overlaps" in {
-    val actual = dfContinuousTime.multivarRangeContinuous2discrete
+  "rangeContinuous2discrete" should "round to ms without adding gaps or overlaps" in {
+    val actual = dfContinuousTime.rangeContinuous2discrete
     val expected = Seq(
       (0, "2019-01-01 08:00:00", "2019-03-14 23:59:59.999", "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),
       (0, "2019-03-15 00:00:00", finisTemporisString,       "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.123", 2.72),
@@ -176,20 +176,20 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value")
 
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("multivarRangeContinuous2discrete", Seq(dfContinuousTime))(actual, expected)
+    if (!result) printFailedTestResult("rangeContinuous2discrete", Seq(dfContinuousTime))(actual, expected)
     result shouldBe true
   }
 
-  "multivarRangeRoundDiscreteTime" should "not modify dfLeft" in {
-    val actual = dfLeft.multivarRangeRoundDiscreteTime
+  "rangeRoundDiscreteTime" should "not modify dfLeft" in {
+    val actual = dfLeft.rangeRoundDiscreteTime
     val expected = dfLeft
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("multivarRangeRoundDiscreteTime", Seq(dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeRoundDiscreteTime", Seq(dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "multivarRangeRoundDiscreteTime" should "round timestamps of dfDirtyTimeRanges" in {
-    val actual = dfDirtyTimeRanges.multivarRangeRoundDiscreteTime
+  "rangeRoundDiscreteTime" should "round timestamps of dfDirtyTimeRanges" in {
+    val actual = dfDirtyTimeRanges.rangeRoundDiscreteTime
     val rowsExpected = Seq(
       (0, "2020-01-01 00:00:00.124", "2020-01-05 12:34:56.123", "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),
       (0, "2020-01-05 12:34:56.124", "2020-02-01 02:34:56.123", "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.123", 2.72),
@@ -210,21 +210,21 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value")
 
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("multivarRangeRoundDiscreteTime", Seq(dfDirtyTimeRanges))(actual, expected)
+    if (!result) printFailedTestResult("rangeRoundDiscreteTime", Seq(dfDirtyTimeRanges))(actual, expected)
     result shouldBe true
   }
 
-  "multivarRangeUnifyRanges" should "not modify dfMoment as extend and fillGapsWithNull are false" in {
-    val actual = dfMoment.multivarRangeUnifyRanges(keys = Seq("id"))
+  "rangeUnifyRanges" should "not modify dfMoment as extend and fillGapsWithNull are false" in {
+    val actual = dfMoment.rangeUnifyRanges(keys = Seq("id"))
       .select(dfMoment.columns.map(col): _*) // re-order columns
     val expected = dfMoment
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("multivarRangeUnifyRanges dfMoment", dfMoment)(actual, expected)
+    if (!result) printFailedTestResult("rangeUnifyRanges dfMoment", dfMoment)(actual, expected)
     result shouldBe true
   }
 
-  "multivarRangeUnifyRanges" should "extend dfMoment" in {
-    val actual = dfMoment.multivarRangeUnifyRanges(keys = Seq("id"), extend = true, fillGapsWithNull = true)
+  "rangeUnifyRanges" should "extend dfMoment" in {
+    val actual = dfMoment.rangeUnifyRanges(keys = Seq("id"), extend = true, fillGapsWithNull = true)
       .select(dfMoment.columns.map(col): _*) // re-order columns
     val expected = List(
       (0, initiumTemporisString,     "2019-11-30 23:59:59.999", initiumTemporisString,     finisTemporisString,       None),
@@ -234,11 +234,11 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       (0, "2019-12-01 00:00:00.001", finisTemporisString,       initiumTemporisString,     finisTemporisString,       None)
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "img")
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("multivarRangeUnifyRanges dfMoment", dfMoment)(actual, expected)
+    if (!result) printFailedTestResult("rangeUnifyRanges dfMoment", dfMoment)(actual, expected)
     result shouldBe true
   }
 
-  "multivarRangeCombine" should "combine everything possible" in {
+  "rangeCombine" should "combine everything possible" in {
     val argument = Seq(
       (0, initiumTemporisString, "2017-12-31 23:59:59.999", initiumTemporisString,     "2017-12-31 23:59:59.999", None),
       (0, initiumTemporisString, "2017-12-31 23:59:59.999", "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999", Some("B")),
@@ -282,7 +282,7 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       (0, "2018-03-16 00:00:00", finisTemporisString,       "2018-03-01 00:00:00",     "2018-03-31 23:59:59.999", Some("D")),
       (0, "2018-03-16 00:00:00", finisTemporisString,       "2018-04-01 00:00:00",     finisTemporisString,       None)
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "img")
-    val actual = argument.multivarRangeCombine()
+    val actual = argument.rangeCombine()
     val expected = Seq(
       (0, initiumTemporisString, "2017-12-31 23:59:59.999", "2018-01-01 00:00:00", "2018-02-28 23:59:59.999", Some("B")),
       (0, initiumTemporisString, "2018-02-04 23:59:59.999", "2018-03-01 00:00:00", finisTemporisString,       None),
@@ -301,7 +301,7 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       saveString2File("argument.svg")(argument.toSvg("img"))
       saveString2File("actual.svg")(actual.toSvg("img"))
       saveString2File("expected.svg")(expected.toSvg("img"))
-      printFailedTestResult("multivarRangeUnifyRanges dfMoment", dfMoment)(actual, expected)
+      printFailedTestResult("rangeUnifyRanges dfMoment", dfMoment)(actual, expected)
     }
     result shouldBe true
   }

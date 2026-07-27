@@ -42,9 +42,9 @@ class SVGexportTest extends AnyFlatSpec with Matchers with TestUtils {
 
   "toSvg" should "produce a well-formed SVG for dfContinuousTime (id=0) discretised with closed intervals" in {
     // defaultBiTemporalConfig is implicit in scope; timeOrdering and TypeTag[Timestamp] resolve implicitly.
-    // multivarRangeContinuous2discrete drops the 8-nanosecond pulse (sub-millisecond, collapses after rounding),
+    // rangeContinuous2discrete drops the 8-nanosecond pulse (sub-millisecond, collapses after rounding),
     // leaving 6 rows for id=0.
-    val argument = dfContinuousTime.where($"id" === 0).multivarRangeContinuous2discrete
+    val argument = dfContinuousTime.where($"id" === 0).rangeContinuous2discrete
     val actual = argument.toSvg[Timestamp]("value")
     argument.orderBy(defaultBiTemporalConfig.intervalDimensions.map(dim => col(dim.fromColName)): _*).show(false)
     println(actual)

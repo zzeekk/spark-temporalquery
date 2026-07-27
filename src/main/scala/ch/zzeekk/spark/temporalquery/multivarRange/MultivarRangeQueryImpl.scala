@@ -446,7 +446,7 @@ object MultivarRangeQueryImpl extends Logging {
 
   /**
    * Combines consecutive records when there is no change in the non-technical columns. The
-   * dataframe is first cleaned up via [[multivarRangeRoundDiscreteTime]], see its description.
+   * dataframe is first cleaned up via [[rangeRoundDiscreteTime]], see its description.
    */
   private[temporalquery] def combineMultivarRanges[T: Ordering: TypeTag](
       df: DataFrame,
