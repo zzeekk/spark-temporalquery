@@ -12,9 +12,9 @@ import scala.reflect.runtime.universe.TypeTag
 
 package object temporalquery extends Serializable with Logging {
 
-  def saveString2File(fileName: String)(s: String): Unit =
+  def saveString2File(fileName: String)(str: String): Unit =
     new PrintWriter(fileName) {
-      try write(s)
+      try write(str)
       finally close()
     }
 

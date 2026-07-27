@@ -200,20 +200,22 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       result shouldBe true
     }
 
-  "rangeCleanupExtend_dfMap_NoExtendFillgaps" should "return expected results" in {
-    val actual = dfMap.rangeCleanupExtend(Seq("id"), Seq($"img"), extend = false, fillGapsWithNull = false)
-      .rangeCombine()
-    val expected = Seq(
-      (0, Some("A"), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
-      (0, Some("B"), "2018-02-01 00:00:00", "2018-02-28 23:59:59.999"),
-      (0, Some("D"), "2018-03-01 00:00:00", "2018-03-31 23:59:59.999")
-    ).map(makeRowsWithTimeRangeEnd[Int, Option[String]])
-      .toDF("id", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
-      .withColumn(defaultTemporalConfig.definedColName, lit(true))
-    val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeCleanupExtend_dfMap_NoExtendFillgaps", dfMap)(actual, expected)
-    result shouldBe true
-  }
+  "rangeCleanupExtend_dfMap_NoExtendFillgaps" should
+    "combine and remove overlaps of dfMap," +
+    " and then convert dfMap to a 1-1-relation by selecting the smallest value of img" in {
+      val actual = dfMap.rangeCleanupExtend(Seq("id"), Seq($"img"), extend = false, fillGapsWithNull = false)
+        .rangeCombine()
+      val expected = Seq(
+        (0, Some("A"), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+        (0, Some("B"), "2018-02-01 00:00:00", "2018-02-28 23:59:59.999"),
+        (0, Some("D"), "2018-03-01 00:00:00", "2018-03-31 23:59:59.999")
+      ).map(makeRowsWithTimeRangeEnd[Int, Option[String]])
+        .toDF("id", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
+        .withColumn(defaultTemporalConfig.definedColName, lit(true))
+      val result = dfEqual(actual, expected)
+      if (!result) printFailedTestResult("rangeCleanupExtend_dfMap_NoExtendFillgaps", dfMap)(actual, expected)
+      result shouldBe true
+    }
 
   "rangeCleanupExtend_dfMsOverlap" should "return expected results" in {
     val actual = dfMsOverlap.rangeCleanupExtend(Seq("id"), Seq(defaultTemporalConfig.fromCol))

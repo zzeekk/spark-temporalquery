@@ -1,5 +1,6 @@
 package ch.zzeekk.spark.temporalquery
 
+import ch.zzeekk.spark.temporalquery.multivarRange.MultivarRangeQueryConfig
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{col, lit, when}
 import org.scalacheck.Gen
@@ -70,37 +71,41 @@ trait TestUtils extends Logging {
       throw e
   }
 
-  def printFailedTestResult(testName: String, arguments: Seq[DataFrame])(actual: DataFrame, expected: DataFrame): Unit = {
+  def printFailedTestResult[T](testName: String, arguments: Seq[DataFrame])(actual: DataFrame, expected: DataFrame)(implicit
+      logger: Logger
+  ): Unit = {
     def printDf(df: DataFrame): Unit = {
-      println(df.schema.simpleString)
+      logger.error(df.schema.simpleString)
       df.orderBy(df.columns.map(col): _*).show(false)
     }
 
     val actualReordered = reorderCols(actual, expected)
 
-    println(s"!!!! Test $testName Failed !!!")
-    println("   Arguments ")
+    logger.error(s"!!!! Test $testName Failed !!!")
+    logger.error("   Arguments ")
     arguments.foreach(printDf)
-    println("   Actual ")
-    println(s"  actual.count() =  ${actualReordered.count()}")
+    logger.error("   Actual ")
+    logger.error(s"  actual.count() =  ${actualReordered.count()}")
     printDf(actualReordered)
-    println("   Expected ")
-    println(s"  expected.count() =  ${expected.count()}")
+    logger.error("   Expected ")
+    logger.error(s"  expected.count() =  ${expected.count()}")
     printDf(expected)
-    println(s"  schemata equal =  ${schemaEqual(actualReordered, expected)}")
+    logger.error(s"  schemata equal =  ${schemaEqual(actualReordered, expected)}")
     if (schemaEqual(actualReordered, expected)) {
       val dfSymDiff = symmetricDifference(actualReordered, expected)
         .select(when($"_in_first_df", "actual").otherwise("expected").as("_df") +: actual.columns.map(col): _*)
-      println(s"   symmetric Difference, dfSymDiff.count = ${dfSymDiff.count()} ")
+      logger.error(s"   symmetric Difference, dfSymDiff.count = ${dfSymDiff.count()} ")
       printDf(dfSymDiff)
     } else {
-      println(s"actual.schema:${actualReordered.schema.treeString}")
-      println(s"expected.schema:${expected.schema.treeString}")
+      logger.error(s"actual.schema:${actualReordered.schema.treeString}")
+      logger.error(s"expected.schema:${expected.schema.treeString}")
     }
 
   }
 
-  def printFailedTestResult(testName: String, argument: DataFrame)(actual: DataFrame, expected: DataFrame): Unit =
+  def printFailedTestResult[T](testName: String, argument: DataFrame)(actual: DataFrame, expected: DataFrame)(implicit
+      logger: Logger
+  ): Unit =
     printFailedTestResult(testName, Seq(argument))(actual, expected)
 
   def testArgumentExpectedMapWithComment[K, V](experiendum: K => V, argExpMapComm: Map[(String, K), V]): Set[Boolean] = {
