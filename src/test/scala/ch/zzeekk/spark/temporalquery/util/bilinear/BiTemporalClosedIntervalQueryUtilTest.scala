@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery.util.bilinear
 
-import BiTemporalTestUtils._
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
+import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalTestUtils._
 import ch.zzeekk.spark.temporalquery.util.timestampOrdering
 import ch.zzeekk.spark.temporalquery.{saveString2File, TestUtils}
 import org.apache.spark.sql.Column

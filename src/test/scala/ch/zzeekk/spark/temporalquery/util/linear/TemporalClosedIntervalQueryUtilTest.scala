@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery.util.linear
 
-import TemporalTestUtils._
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
+import ch.zzeekk.spark.temporalquery.util.linear.TemporalTestUtils._
 import ch.zzeekk.spark.temporalquery.util.timestampOrdering
 import ch.zzeekk.spark.temporalquery.{udf_durationInMillis, TestUtils}
 import org.apache.spark.sql.functions.{col, lit}
@@ -178,7 +178,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
         .toDF("id", "value_r", defaultTemporalConfig.definedColName, defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
       val result = dfEqual(actual, expected)
 
-      if (!result) printFailedTestResult("temporalCleanupExtend_dfRight_extend_fillGaps", dfRight)(actual, expected)
+      if (!result) printFailedTestResult("rangeCleanupExtend_dfRight_extend_fillGaps", dfRight)(actual, expected)
       result shouldBe true
     }
 
@@ -200,7 +200,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       result shouldBe true
     }
 
-  "temporalCleanupExtend_dfMap_NoExtendFillgaps" should "return expected results" in {
+  "rangeCleanupExtend_dfMap_NoExtendFillgaps" should "return expected results" in {
     val actual = dfMap.rangeCleanupExtend(Seq("id"), Seq($"img"), extend = false, fillGapsWithNull = false)
       .rangeCombine()
     val expected = Seq(
@@ -211,11 +211,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
       .withColumn(defaultTemporalConfig.definedColName, lit(true))
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalCleanupExtend_dfMap_NoExtendFillgaps", dfMap)(actual, expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend_dfMap_NoExtendFillgaps", dfMap)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCleanupExtend_dfMsOverlap" should "return expected results" in {
+  "rangeCleanupExtend_dfMsOverlap" should "return expected results" in {
     val actual = dfMsOverlap.rangeCleanupExtend(Seq("id"), Seq(defaultTemporalConfig.fromCol))
       .rangeCombine()
     val expected = Seq(
@@ -227,11 +227,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "img", defaultTemporalConfig.definedColName, defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
 
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalCleanupExtend_dfMap", dfMap)(actual, expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend_dfMap", dfMap)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCleanupExtend_dfDirtyTimeRanges" should "return expected results" in {
+  "rangeCleanupExtend_dfDirtyTimeRanges" should "return expected results" in {
     val actual =
       dfDirtyTimeRanges.rangeRoundDiscreteTime.rangeCleanupExtend(Seq("id"), Seq(defaultTemporalConfig.fromCol, $"value"))
         .rangeCombine()
@@ -256,11 +256,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "value", defaultTemporalConfig.definedColName, defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalCleanupExtend_dfDirtyTimeRanges", dfDirtyTimeRanges)(actual, expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend_dfDirtyTimeRanges", dfDirtyTimeRanges)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps" should "return expected results" in {
+  "rangeCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps" should "return expected results" in {
     val actual =
       dfDirtyTimeRanges.rangeRoundDiscreteTime.rangeCleanupExtend(Seq("id"), Seq(defaultTemporalConfig.fromCol, $"value"),
         extend = false, fillGapsWithNull = false)
@@ -280,11 +280,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .withColumn(defaultTemporalConfig.definedColName, lit(true))
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps", dfDirtyTimeRanges)(actual, expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps", dfDirtyTimeRanges)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCleanupExtend_validityDuration" should "return expected results" in {
+  "rangeCleanupExtend_validityDuration" should "return expected results" in {
     val argument = Seq(
       (1, "A", "2020-07-01 00:00:00", "2020-07-03 23:59:59.999"),
       (1, "A", "2020-07-05 00:00:00", "2020-07-07 23:59:59.999"),
@@ -305,11 +305,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Option[String], Boolean])
       .toDF("id", "val", defaultTemporalConfig.definedColName, defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalCleanupExtend_validityDuration", argument)(actual, expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend_validityDuration", argument)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCleanupExtend_rankExprFromColOnly" should "return expected results" in {
+  "rangeCleanupExtend_rankExprFromColOnly" should "return expected results" in {
     val argument = Seq(
       (1, "S", initiumTemporisString, finisTemporisString),
       (1, "X", "2020-07-01 00:00:00", finisTemporisString)
@@ -323,11 +323,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "val", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
       .withColumn(defaultTemporalConfig.definedColName, lit(true))
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalCleanupExtend_rankExprFromColOnly", argument)(actual, expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend_rankExprFromColOnly", argument)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCleanupExtend_rankExpr2Cols" should "return expected results" in {
+  "rangeCleanupExtend_rankExpr2Cols" should "return expected results" in {
     val argument = Seq(
       (1, "S", initiumTemporisString, "2020-06-30 23:59:59.999"),
       (1, "X", "2020-07-01 00:00:00", "2020-09-23 23:59:59.999"),
@@ -346,11 +346,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "val", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
       .withColumn(defaultTemporalConfig.definedColName, lit(true))
     val result2 = dfEqual(actual, expected)
-    if (!result2) printFailedTestResult("temporalCleanupExtend_rankExpr2Cols", argument)(actual, expected)
+    if (!result2) printFailedTestResult("rangeCleanupExtend_rankExpr2Cols", argument)(actual, expected)
     result2 shouldBe true
   }
 
-  "temporalExtendRange_dfLeft" should "return expected results" in {
+  "rangeExtendRange_dfLeft" should "return expected results" in {
     // argument: dfLeft from object TestUtils
     val actual = dfLeft.rangeExtendRange(Seq("id"))
     val rowsExpected = Seq((0, 4.2, defaultTemporalConfig.lowerHorizon, defaultTemporalConfig.upperHorizon))
@@ -358,11 +358,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     val expectedWithActualColumns = expected.select(actual.columns.map(col): _*)
     val result = dfEqual(actual, expectedWithActualColumns)
 
-    if (!result) printFailedTestResult("temporalExtendRange_dfLeft", dfLeft)(actual, expectedWithActualColumns)
+    if (!result) printFailedTestResult("rangeExtendRange_dfLeft", dfLeft)(actual, expectedWithActualColumns)
     result shouldBe true
   }
 
-  "temporalExtendRange_dfRight_id" should "return expected results" in {
+  "rangeExtendRange_dfRight_id" should "return expected results" in {
     val actual = dfRight.rangeExtendRange(Seq("id"))
     val expected = Seq(
       (0, Some(97.15),  initiumTemporisString,   "2018-01-31 23:59:59.999"),
@@ -377,11 +377,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val expectedWithActualColumns = expected.select(actual.columns.map(col): _*)
     val result = dfEqual(actual, expectedWithActualColumns)
-    if (!result) printFailedTestResult("temporalExtendRange_dfRight_id", dfRight)(actual, expectedWithActualColumns)
+    if (!result) printFailedTestResult("rangeExtendRange_dfRight_id", dfRight)(actual, expectedWithActualColumns)
     result shouldBe true
   }
 
-  "temporalExtendRange_dfRight" should "return expected results" in {
+  "rangeExtendRange_dfRight" should "return expected results" in {
     // argument: dfRight from object TestUtils
     val actual = dfRight.rangeExtendRange()
     val expected = Seq(
@@ -397,11 +397,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val expectedWithActualColumns = expected.select(actual.columns.map(col): _*)
     val result = dfEqual(actual, expectedWithActualColumns)
-    if (!result) printFailedTestResult("temporalExtendRange_dfRight", dfRight)(actual, expectedWithActualColumns)
+    if (!result) printFailedTestResult("rangeExtendRange_dfRight", dfRight)(actual, expectedWithActualColumns)
     result shouldBe true
   }
 
-  "temporalInnerJoin dfRight 'on' semantics" should "return expected results" in {
+  "rangeInnerJoin dfRight 'on' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin(dfRight.as("dfR"), $"dfL.id" === $"dfR.id")
     actual.columns.count(_ == "id") shouldBe 2
     val expected = Seq(
@@ -411,11 +411,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Double, Int, Option[Double]])
       .toDF("id", "value_l", "id", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalInnerJoin dfRight 'on' semantics", Seq(dfLeft, dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeInnerJoin dfRight 'on' semantics", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalInnerJoin dfRight with 'using' semantics" should "return expected results" in {
+  "rangeInnerJoin dfRight with 'using' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin(dfRight.as("dfR"), Seq("id"))
     assert(3 == actual.select($"id", $"dfL.value_l", $"dfR.value_r").count())
     val expected = Seq(
@@ -425,11 +425,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Double, Option[Double]])
       .toDF("id", "value_l", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalInnerJoin dfRight with 'using' semantics", Seq(dfLeft, dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeInnerJoin dfRight with 'using' semantics", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalInnerJoin dfRightDouble 'on' semantics" should "return expected results" in {
+  "rangeInnerJoin dfRightDouble 'on' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin(dfRightDouble.as("dfR"), $"dfL.id" === $"dfR.id")
     assert(actual.columns.count(_ == "id") == 2)
     val expected = Seq(
@@ -439,11 +439,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Double, Double, Option[Double]])
       .toDF("id", "value_l", "id", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected) // && actual.schema == expectedSchema
-    if (!result) printFailedTestResult("temporalInnerJoin dfRightDouble 'on' semantics", Seq(dfLeft, dfRightDouble))(actual, expected)
+    if (!result) printFailedTestResult("rangeInnerJoin dfRightDouble 'on' semantics", Seq(dfLeft, dfRightDouble))(actual, expected)
     result shouldBe true
   }
 
-  "temporalInnerJoin dfRightDouble with 'using' semantics" should "return expected results" in {
+  "rangeInnerJoin dfRightDouble with 'using' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin(dfRightDouble.as("dfR"), Seq("id"))
     assert(3 == actual.select($"id", $"dfL.value_l", $"dfR.value_r").count())
     val expected = Seq(
@@ -454,11 +454,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "value_l", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
     if (!result)
-      printFailedTestResult("temporalInnerJoin dfRightDouble with 'using' semantics", Seq(dfLeft, dfRightDouble))(actual, expected)
+      printFailedTestResult("rangeInnerJoin dfRightDouble with 'using' semantics", Seq(dfLeft, dfRightDouble))(actual, expected)
     result shouldBe true
   }
 
-  "temporalInnerJoin with equally named columns apart join columns" should "return expected results" in {
+  "rangeInnerJoin with equally named columns apart join columns" should "return expected results" in {
     val dfL = dfLeft.withColumnRenamed("value_l", "value").as("dfL")
     val dfR = dfRight.withColumnRenamed("value_r", "value").as("dfR")
     val actual = dfL.rangeInnerJoin(dfR, Seq("id"))
@@ -470,11 +470,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Double, Option[Double]])
       .toDF("id", "value", "value", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalInnerJoin with equally named columns apart join columns", Seq(dfL, dfR))(actual, expected)
+    if (!result) printFailedTestResult("rangeInnerJoin with equally named columns apart join columns", Seq(dfL, dfR))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftAntiJoin_dfRight" should "return expected results" in {
+  "rangeLeftAntiJoin_dfRight" should "return expected results" in {
     val actual = dfLeft.rangeLeftAntiJoin(dfRight, Seq("id"))
     val expected = Seq(
       (0, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
@@ -483,11 +483,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_l")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalLeftAntiJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftAntiJoin_dfMap" should "return expected results" in {
+  "rangeLeftAntiJoin_dfMap" should "return expected results" in {
     val actual = dfLeft.rangeLeftAntiJoin(dfMap, Seq("id"))
     val expected = Seq(
       (0, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
@@ -496,11 +496,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_l")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalLeftAntiJoin_dfMap", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfMap", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftAntiJoin_dfRight_dfMap" should "return expected results" in {
+  "rangeLeftAntiJoin_dfRight_dfMap" should "return expected results" in {
     val actual = dfRight.rangeLeftAntiJoin(dfMap, Seq("id"))
     val rowsExpected: Seq[(Int, String, String, Option[Double])] = Seq(
       (0, "2018-06-01 05:24:11", "2018-10-23 03:50:09.999", Some(97.15)),
@@ -515,11 +515,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_r")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalLeftAntiJoin_dfRight_dfMap", Seq(dfRight, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfRight_dfMap", Seq(dfRight, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftAntiJoin_dfMap_dfRight" should "return expected results" in {
+  "rangeLeftAntiJoin_dfMap_dfRight" should "return expected results" in {
     val actual = dfMap.rangeLeftAntiJoin(dfRight, Seq("id"))
     val rowsExpected: Seq[(Int, String, String, String)] = Seq(
       (0, "2018-02-01 00:00:00",     "2018-02-28 23:59:59.999", "B"),
@@ -531,11 +531,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "img")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalLeftAntiJoin_dfMap_dfRight", Seq(dfMap, dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfMap_dfRight", Seq(dfMap, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftAntiJoin_segmented" should "return expected results" in {
+  "rangeLeftAntiJoin_segmented" should "return expected results" in {
     val minuend = Seq(
       (1, "2019-01-01 00:00:0", "2020-01-01 00:00:0"),
       (2, "2019-01-01 00:00:0", "2020-01-01 00:00:5"),
@@ -572,11 +572,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalLeftAntiJoin_segmented", Seq(minuend, subtrahend))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftAntiJoin_segmented", Seq(minuend, subtrahend))(actual, expected)
     result shouldBe true
   }
 
-  "temporalFullJoin_dfRight" should "return expected results" in {
+  "rangeFullJoin_dfRight" should "return expected results" in {
     val actual = dfLeft.rangeFullJoin(dfRight, Seq("id")).rangeCombine()
       .rangeCombine()
       .orderBy($"id", defaultTemporalConfig.fromCol)
@@ -596,12 +596,12 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Option[Int], Option[Double], Option[Double]])
       .toDF("id", "value_l", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalFullJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalFullJoin_rightMap" should "return expected results" in {
-    // Testing temporalFullJoin where the right dataFrame is not unique for join attributes
+  "rangeFullJoin_rightMap" should "return expected results" in {
+    // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.rangeFullJoin(df2 = dfMap, keys = Seq("id"))
       .rangeCombine()
     val expected = Seq(
@@ -618,12 +618,12 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Option[Int], Option[Double], Option[String]])
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalFullJoin_rightMap", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_rightMap", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "temporalFullJoin_rightMapWithrnkExpressions" should "return expected results" in {
-    // Testing temporalFullJoin where the right dataFrame is not unique for join attributes
+  "rangeFullJoin_rightMapWithrnkExpressions" should "return expected results" in {
+    // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.rangeFullJoin(df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultTemporalConfig.fromCol))
       .rangeCombine()
     val expected = Seq(
@@ -642,12 +642,12 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Option[Int], Option[Double], Option[String]])
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalFullJoin_rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "temporalFullJoin_rightMapWithGapsAndRnkExpressions" should "return expected results" in {
-    // Testing temporalFullJoin where the right dataFrame is not unique for join attributes
+  "rangeFullJoin_rightMapWithGapsAndRnkExpressions" should "return expected results" in {
+    // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
     val argumentRight = Seq(
       (0, "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "A"),
       (0, "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999", "B"),
@@ -678,11 +678,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Option[Int], Option[Double], Option[String]])
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalFullJoin_rightMapWithGapsAndRnkExpressions", Seq(dfLeft, argumentRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_rightMapWithGapsAndRnkExpressions", Seq(dfLeft, argumentRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftJoin_dfRight" should "return expected results" in {
+  "rangeLeftJoin_dfRight" should "return expected results" in {
     val actual = dfLeft.rangeLeftJoin(dfRight, Seq("id"))
       .rangeCombine()
     val expected = Seq(
@@ -693,21 +693,21 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Double, Option[Double]])
       .toDF("id", "value_l", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalLeftJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftJoin_dfEmpty" should "return expected results" in {
+  "rangeLeftJoin_dfEmpty" should "return expected results" in {
     val dfEmpty = dfRight.where(lit(false))
     val actual = dfLeft.rangeLeftJoin(dfEmpty, Seq("id"))
     val expected = dfLeft.withColumn("value_r", lit(null).cast("double"))
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalLeftJoin_dfEmpty", Seq(dfLeft, dfEmpty))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftJoin_dfEmpty", Seq(dfLeft, dfEmpty))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftJoin_rightMap" should "return expected results" in {
-    // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
+  "rangeLeftJoin_rightMap" should "return expected results" in {
+    // Testing rangeLeftJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.rangeLeftJoin(df2 = dfMap, keys = Seq("id"))
       .rangeCombine()
     val expected = Seq(
@@ -722,12 +722,12 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Double, Option[String]])
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalLeftJoin_rightMap", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftJoin_rightMap", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftJoin_rightMapWithrnkExpressions" should "return expected results" in {
-    // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
+  "rangeLeftJoin_rightMapWithrnkExpressions" should "return expected results" in {
+    // Testing rangeLeftJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.rangeLeftJoin(df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultTemporalConfig.fromCol))
       .rangeCombine()
     val expected = Seq(
@@ -745,12 +745,12 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalLeftJoin_rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftJoin_rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftJoin_rightMapWithGapsAndRnkExpressions" should "return expected results" in {
-    // Testing temporalLeftJoin where the right dataFrame is not unique for join attributes
+  "rangeLeftJoin_rightMapWithGapsAndRnkExpressions" should "return expected results" in {
+    // Testing rangeLeftJoin where the right dataFrame is not unique for join attributes
     val argumentRight = Seq(
       (0, "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "A"),
       (0, "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999", "B"),
@@ -780,15 +780,15 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .map(makeRowsWithTimeRangeEnd[Int, Double, Option[String]])
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalLeftJoin_rightMapWithGapsAndRnkExpressions", Seq(dfLeft, argumentRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftJoin_rightMapWithGapsAndRnkExpressions", Seq(dfLeft, argumentRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalLeftJoin with equally named columns apart join columns" should "return expected results" in {
+  "rangeLeftJoin with equally named columns apart join columns" should "return expected results" in {
     val dfL = dfLeft.withColumnRenamed("value_l", "value").as("dfL")
     val dfR = dfRight.withColumnRenamed("value_r", "value").as("dfR")
     val actual = dfL.rangeLeftJoin(dfR, Seq("id"))
-      // .temporalCombine() // temporal combine not possible with equally named columns in the same DataFrame.
+      // .rangeCombine() // temporal combine not possible with equally named columns in the same DataFrame.
       .orderBy($"id", defaultTemporalConfig.fromCol)
     assert(5 == actual.select($"id", $"dfL.value", $"dfR.value").count())
     val expected = Seq(
@@ -801,11 +801,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "value", "value", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
     if (!result)
-      printFailedTestResult("temporalLeftJoin with equally named columns apart join columns", Seq(dfLeft, dfRight))(actual, expected)
+      printFailedTestResult("rangeLeftJoin with equally named columns apart join columns", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalRightJoin_dfRight" should "return expected results" in {
+  "rangeRightJoin_dfRight" should "return expected results" in {
     val actual = dfLeft.rangeRightJoin(dfRight, Seq("id"))
       .rangeCombine()
     val expected = Seq(
@@ -821,12 +821,12 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Option[Double]])
       .toDF("id", "value_l", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalRightJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeRightJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalRightJoin_rightMap" should "return expected results" in {
-    // Testing temporalRightJoin where the right dataFrame is not unique for join attributes
+  "rangeRightJoin_rightMap" should "return expected results" in {
+    // Testing rangeRightJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.rangeRightJoin(df2 = dfMap, keys = Seq("id"))
       .rangeCombine()
     val expected = Seq(
@@ -839,12 +839,12 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Option[String]])
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalRightJoin_rightMap", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeRightJoin_rightMap", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "temporalRightJoin_rightMapWithrnkExpressions" should "return expected results" in {
-    // Testing temporalRightJoin where the right dataFrame is not unique for join attributes
+  "rangeRightJoin_rightMapWithrnkExpressions" should "return expected results" in {
+    // Testing rangeRightJoin where the right dataFrame is not unique for join attributes
     // but in a right join rnkExpressions are applied to left data frame
     val actual = dfLeft.rangeRightJoin(df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultTemporalConfig.fromCol))
       .rangeCombine()
@@ -859,12 +859,12 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalRightJoin_rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeRightJoin_rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "temporalRightJoin_rightMapWithGapsAndRnkExpressions" should "return expected results" in {
-    // Testing temporalRightJoin where the right dataFrame is not unique for join attributes
+  "rangeRightJoin_rightMapWithGapsAndRnkExpressions" should "return expected results" in {
+    // Testing rangeRightJoin where the right dataFrame is not unique for join attributes
     // but in a right join rnkExpressions are applied to left data frame
     // and gaps are of the left frame only are filled
     val argumentRight = Seq(
@@ -892,11 +892,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     val result = dfEqual(actual, expected)
 
     if (!result)
-      printFailedTestResult("temporalRightJoin_rightMapWithGapsAndRnkExpressions", Seq(dfLeft, argumentRight))(actual, expected)
+      printFailedTestResult("rangeRightJoin_rightMapWithGapsAndRnkExpressions", Seq(dfLeft, argumentRight))(actual, expected)
     result shouldBe true
   }
 
-  "temporalCombine_dfRight" should "return expected results" in {
+  "rangeCombine_dfRight" should "return expected results" in {
     val actual = dfRight.rangeCombine()
     val rowsExpected = Seq(
       (0, "2018-01-01 00:00:00.0", "2018-01-31 23:59:59.999", Some(97.15)),
@@ -910,11 +910,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_r")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalCombine_dfRight", dfRight)(actual, expected)
+    if (!result) printFailedTestResult("rangeCombine_dfRight", dfRight)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCombine dropped column" should "return expected results" in {
+  "rangeCombine dropped column" should "return expected results" in {
     val actual = dfRight
       .withColumn("test_column", lit("please drop me"))
       .drop("test_column")
@@ -931,11 +931,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_r")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalCombine dropped column", dfRight)(actual, expected)
+    if (!result) printFailedTestResult("rangeCombine dropped column", dfRight)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCombine_dfMapToCombine" should "return expected results" in {
+  "rangeCombine_dfMapToCombine" should "return expected results" in {
     val actual = dfMapToCombine.rangeCombine()
     val rowsExpected = Seq(
       (0, "2018-01-01 00:00:00",     "2018-12-31 23:59:59.999", Some("A")),
@@ -951,11 +951,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "img")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalCombine_dfMapToCombine", dfMapToCombine)(actual, expected)
+    if (!result) printFailedTestResult("rangeCombine_dfMapToCombine", dfMapToCombine)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCombine_dirtyTimeRanges" should "return expected results" in {
+  "rangeCombine_dirtyTimeRanges" should "return expected results" in {
     val actual = dfDirtyTimeRanges.rangeRoundDiscreteTime.rangeCombine()
     val rowsExpected = Seq(
       (0, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),
@@ -971,11 +971,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalCombine_dirtyTimeRanges", dfMapToCombine)(actual, expected)
+    if (!result) printFailedTestResult("rangeCombine_dirtyTimeRanges", dfMapToCombine)(actual, expected)
     result shouldBe true
   }
 
-  "temporalCombine_documentation" should "return expected results" in {
+  "rangeCombine_documentation" should "return expected results" in {
     val actual = dfDocumentation.rangeRoundDiscreteTime.rangeCombine()
     val rowsExpected = Seq(
       (1, "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.124", 2.72), // overlaps with previous record
@@ -985,22 +985,22 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalCombine_documentation", dfDocumentation)(actual, expected)
+    if (!result) printFailedTestResult("rangeCombine_documentation", dfDocumentation)(actual, expected)
     result shouldBe true
   }
 
-  "temporalUnifyRanges" should "not modify dfMoment as extend and fillGapsWithNull are false" in {
+  "rangeUnifyRanges" should "not modify dfMoment as extend and fillGapsWithNull are false" in {
     val actual = dfMoment.rangeUnifyRanges(Seq("id"))
       .select(dfMoment.columns.map(col): _*) // re-order columns
     val expected = dfMoment
     logger.info("expected:")
     expected.show(false)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalUnifyRanges dfMoment", dfMoment)(actual, expected)
+    if (!result) printFailedTestResult("rangeUnifyRanges dfMoment", dfMoment)(actual, expected)
     result shouldBe true
   }
 
-  "temporalUnifyRanges" should "extend dfMoment" in {
+  "rangeUnifyRanges" should "extend dfMoment" in {
     val actual = dfMoment.rangeUnifyRanges(keys = Seq("id"), extend = true, fillGapsWithNull = true)
       .select(dfMoment.columns.map(col): _*) // re-order columns
     val expected = List(
@@ -1010,11 +1010,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     )
       .map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "img")
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalUnifyRanges dfMoment", dfMoment)(actual, expected)
+    if (!result) printFailedTestResult("rangeUnifyRanges dfMoment", dfMoment)(actual, expected)
     result shouldBe true
   }
 
-  "temporalUnifyRanges dfMsOverlap" should "return expected results" in {
+  "rangeUnifyRanges dfMsOverlap" should "return expected results" in {
     val actual = dfMsOverlap.rangeUnifyRanges(Seq("id"))
     val expected = Seq(
       // img = {A,B}
@@ -1025,11 +1025,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, String])
       .toDF("id", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("temporalUnifyRanges dfMsOverlap", dfMsOverlap)(actual, expected)
+    if (!result) printFailedTestResult("rangeUnifyRanges dfMsOverlap", dfMsOverlap)(actual, expected)
     result shouldBe true
   }
 
-  "temporalUnifyRanges dfMap" should "return expected results" in {
+  "rangeUnifyRanges dfMap" should "return expected results" in {
     val actual = dfMap.rangeUnifyRanges(Seq("id"))
     val expected = Seq(
       // img = {A,B}
@@ -1057,18 +1057,18 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalUnifyRanges dfMap", dfMap)(actual, expected)
+    if (!result) printFailedTestResult("rangeUnifyRanges dfMap", dfMap)(actual, expected)
     result shouldBe true
   }
 
-  "temporalUnifyRanges dfMicrosecTimeRanges" should "return expected results" in {
+  "rangeUnifyRanges dfMicrosecTimeRanges" should "return expected results" in {
     logger.info(
-      "\n*** Educational test case to highlight the behaviour of temporalUnifyRanges when the time has a granularity of smaller than 1ms. ***"
+      "\n*** Educational test case to highlight the behaviour of rangeUnifyRanges when the time has a granularity of smaller than 1ms. ***"
     )
     logger.info("\n*** Argument = ")
     dfMicrosecTimeRanges.orderBy("id", "valid_from").show(false)
     val actual = dfMicrosecTimeRanges.rangeUnifyRanges(Seq("id"))
-    logger.info("\n*** Argument.temporalUnifyRanges(Seq(\"id\")) = ")
+    logger.info("\n*** Argument.rangeUnifyRanges(Seq(\"id\")) = ")
     actual.orderBy("id", "valid_from").show(false)
     val expected = Seq(
       (0, 3.14, "2018-06-01 00:00:00       ", "2018-06-01 09:00:00"),
@@ -1079,7 +1079,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "value", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("temporalUnifyRanges dfMicrosecTimeRanges", dfMicrosecTimeRanges)(actual, expected)
+    if (!result) printFailedTestResult("rangeUnifyRanges dfMicrosecTimeRanges", dfMicrosecTimeRanges)(actual, expected)
     result shouldBe true
   }
 
