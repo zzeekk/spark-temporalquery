@@ -9,10 +9,12 @@ import java.time.temporal.ChronoUnit
 package object util {
 
   // The time begins with bigBangDay: What happened before cannot be known as there is no before.
-  val bigBangDay: Timestamp = Timestamp.valueOf("1970-01-01 00:00:00")
+  val initiumTemporisString: String = "1970-01-01 00:00:00"
+  val bigBangDay: Timestamp = Timestamp.valueOf(initiumTemporisString)
 
   // The time ends with doomsDay: What will happen afterwards cannot be known as there is no afterwards.
-  val doomsDay: Timestamp = Timestamp.valueOf("9999-12-31 00:00:00")
+  val finisTemporisString: String = "9999-12-31 00:00:00"
+  val doomsDay: Timestamp = Timestamp.valueOf(finisTemporisString)
 
   val timestampOrdering: Ordering[Timestamp] = Ordering.fromLessThan[Timestamp]((a, b) => a.before(b))
 

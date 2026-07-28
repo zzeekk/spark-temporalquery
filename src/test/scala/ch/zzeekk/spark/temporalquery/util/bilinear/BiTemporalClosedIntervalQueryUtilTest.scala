@@ -1,8 +1,8 @@
 package ch.zzeekk.spark.temporalquery.util.bilinear
 
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
+import ch.zzeekk.spark.temporalquery.util._
 import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalTestUtils._
-import ch.zzeekk.spark.temporalquery.util.timestampOrdering
 import ch.zzeekk.spark.temporalquery.{saveString2File, TestUtils}
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.{col, lit}
@@ -390,16 +390,46 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
     result shouldBe true
   }
 
-  "rangeInnerJoin dfLeft with dfRight 'on' semantics" should "return expected results" in {
+  "rangeInnerJoin dfLeft with dfRight with 'on' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin(df2 = dfRight.as("dfR"), keyCondition = $"dfL.id" === $"dfR.id")
     debugLog(s"${actual.columns.length} actual.columns: ${actual.columns.mkString(",")}")
     actual.columns.count(_ == "id") shouldBe 2
     val expected = List(
       (0, 4.2, 0, Some(97.15),
-        Timestamp.valueOf(initiumTemporisString), Timestamp.valueOf(finisTemporisString),
-        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999"))
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2018-10-23 03:50:09.999")),
+      (0,                                         4.2, 0, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-10-23 03:50:10"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         4.2, 0, Some(97.15),
+        Timestamp.valueOf("2028-01-01 00:00:00"), Timestamp.valueOf("2028-06-01 00:00:00"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,                                         4.2, 0, Some(98d),
+        Timestamp.valueOf("2028-06-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"))
     ).toDF("id", "value_l", "id", "value_r", "known_from", "known_to", "valid_from", "valid_to")
-    // struct<id:int,value_l:double,id:int,value_r:double,known_from:timestamp,known_to:timestamp,valid_from:timestamp,valid_to:timestamp>
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeInnerJoin dfRight 'on' semantics", Seq(dfLeft, dfRight))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeInnerJoin dfLeft with dfRight with 'using' semantics" should "return expected results" in {
+    val actual = dfLeft.as("dfL").rangeInnerJoin(df2 = dfRight.as("dfR"), keys = Seq("id"))
+    debugLog(s"${actual.columns.length} actual.columns: ${actual.columns.mkString(",")}")
+    val expected = List(
+      (0, 4.2, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2018-10-23 03:50:09.999")),
+      (0,                                         4.2, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-10-23 03:50:10"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         4.2, Some(97.15),
+        Timestamp.valueOf("2028-01-01 00:00:00"), Timestamp.valueOf("2028-06-01 00:00:00"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,                                         4.2, Some(98d),
+        Timestamp.valueOf("2028-06-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"))
+    ).toDF("id", "value_l", "value_r", "known_from", "known_to", "valid_from", "valid_to")
     val result = dfEqual(actual, expected)
     if (!result) printFailedTestResult("rangeInnerJoin dfRight 'on' semantics", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true

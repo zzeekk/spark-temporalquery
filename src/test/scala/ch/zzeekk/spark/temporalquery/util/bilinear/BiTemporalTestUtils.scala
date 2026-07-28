@@ -3,7 +3,7 @@ package ch.zzeekk.spark.temporalquery.util.bilinear
 import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalClosedIntervalQueryUtil._
 import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalHalfOpenIntervalQueryUtil.defaultHalfOpenIntervalDef
-import ch.zzeekk.spark.temporalquery.util.{bigBangDay, doomsDay}
+import ch.zzeekk.spark.temporalquery.util.{finisTemporisString, initiumTemporisString}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.DoubleType
 
@@ -20,9 +20,6 @@ object BiTemporalTestUtils extends TestUtils {
   val halfopenBiTemporalConfig: BiLinearHalfOpenIntervalQueryConfig = BiLinearHalfOpenIntervalQueryConfig
     .withDefaultIntervalDef(fstFromColName = "known_from", fstToColName = "known_to",
       sndFromColName = "valid_from", sndToColName = "valid_to")
-
-  val initiumTemporisString: String = bigBangDay.toString
-  val finisTemporisString: String = doomsDay.toString
 
   // helper: (id, known_from, known_to, valid_from, valid_to, value)
   def makeRowsBiTemporal[A, B](row: (A, String, String, String, String, B)): (A, Timestamp, Timestamp, Timestamp, Timestamp, B) =
@@ -119,7 +116,7 @@ object BiTemporalTestUtils extends TestUtils {
    *   "B": always known to be valid in February since bigBangDay
    *   "C": recorded beginning February but deleted mid March
    *   "D": recorded on February 20: valid from that day until the end of March
-   *   "X": some typo mistake which remained in the data solely on March 1st: valid for a milli second on Feb 25
+   *   "X": some typo mistake which remained in the data solely on March 1st: valid for a millisecond on Feb 25
    */
   val dfMap: DataFrame = List(
     (0, initiumTemporisString, finisTemporisString,       "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999", "B"),
@@ -190,8 +187,8 @@ object BiTemporalTestUtils extends TestUtils {
     (0, "2019-12-01 00:00:00", "2019-12-01 00:00:00", "2019-11-25 11:12:13.005", "2019-11-25 11:12:13.005", "A")
   ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "img")
 
-  // in January we believe overlap for 1ms, namely [10:00:00.000,10:00:00.001[, the image set is {A,B}
-  // from February onwards we believe overlap does not exists anymore
+  // in January, we believe overlap for 1ms, namely [10:00:00.000,10:00:00.001[, the image set is {A,B}
+  // from February onwards we believe overlap does not exist anymore
   // but overlap in known-axis during the first ms in february
   val dfMsOverlap: DataFrame = Seq(
     (0, "2019-01-01 00:00:00", "2019-02-01 00:00:00", "2019-01-01 00:00:00", "2019-01-01 10:00:00",     "A"),
