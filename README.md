@@ -2,7 +2,7 @@
 Implicit functions for querying interval data with Apache Spark/Scala.
 Features:
 - support for closed interval and half open intervals (closed-from, open-to)
-- support for discrete (timestamp, integer) and continuous (double, float) interval axis datatype
+- support for discrete (timestamp, integer) and dense (double, float) interval axis datatype
 
 Breaking changes in version 3.x:
 - Default lower horizon of TemporalClosedIntervalQueryConfig set to 1970-01-01 instead of 0001-01-01 for better compatibility.
@@ -175,8 +175,8 @@ You can then use the following additional functions on Dataset/DataFrame
   Unify interval ranges in a group of records defined by 'keys' by cutting records at overlap boundaries (needed for interval aggregations).
 - `rangeExtendRange( keys:Seq[String] = Nil, extendMin:Boolean = true, extendMax:Boolean = true )`
   Extend interval range to lowerHorizon/upperHorizon according to the configured intervalDef.
-- `rangeContinuous2discrete`
-  Transforms a DataFrame with continuous, half-open time intervals to discrete, closed intervals.
+- `rangeDense2discrete`
+  Transforms a DataFrame with dense, half-open time intervals to discrete, closed intervals.
   Note: this function only works on intervalDef's of type ClosedInterval.
 - `rangeRoundDiscreteTime`
   Sets the discreteness of the time scale to the discrete step size configured in the intervalDef.

@@ -5,7 +5,7 @@ import org.apache.spark.sql.Column
 import scala.reflect.runtime.universe.TypeTag
 
 /**
- * Lower bound is included, upper bound is excluded Use this mainly for continuous interval axis.
+ * Lower bound is included, upper bound is excluded Use this mainly for dense interval axis.
  *
  * @param lowerHorizon
  *   negative infinity value of the interval axis. This value is used to denote intervals which have
@@ -14,7 +14,7 @@ import scala.reflect.runtime.universe.TypeTag
  *   positive infinity value of the interval axis. This value is used to denote intervals which have
  *   no upper bound.
  * @tparam T
- *   : scala type for continuous interval axis, e.g. Float, Double...
+ *   : scala type for dense interval axis, e.g. Float, Double...
  */
 case class HalfOpenInterval[T: Ordering: TypeTag](
     override val lowerHorizon: T,

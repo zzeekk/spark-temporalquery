@@ -188,9 +188,8 @@ object MultivariateRangeLibrary extends Logging {
         keys: Seq[String] = Nil,
         extendMin: Boolean = true,
         extendMax: Boolean = true
-    )(implicit
-        mrqc: MultivarRangeQueryConfig[T, _]
-    ): DataFrame = MultivarRangeQueryImpl.extendIntervalRanges(df1, keys, extendMin, extendMax)
+    )(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]], logger: Logger): DataFrame = MultivarRangeQueryImpl
+      .extendMultivarRanges(df1, keys, extendMin, extendMax)
 
     /**
      * Sets the discreteness of the time scale to milliseconds. Hereby the validity intervals may be
@@ -209,15 +208,15 @@ object MultivariateRangeLibrary extends Logging {
       MultivarRangeQueryImpl.roundIntervalsToDiscreteTime(df1, clmrqc)
 
     /**
-     * Transforms [[DataFrame]] with continuous time, half open time intervals [fromColName ,
-     * toColName [, to discrete time ([fromColName , toColName])
+     * Transforms [[DataFrame]] with dense time, half open time intervals [fromColName , toColName
+     * [, to discrete time ([fromColName , toColName])
      *
      * Note: This function needs TemporalQueryConfig with a ClosedInterval definition
      *
      * @return
      *   [[DataFrame]] with discrete time axis
      */
-    def rangeContinuous2discrete[T: Ordering: TypeTag](implicit clmrqc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
+    def rangeDense2discrete[T: Ordering: TypeTag](implicit clmrqc: ClosedMultivarRangeQueryConfig[T]): DataFrame =
       MultivarRangeQueryImpl.transformHalfOpenToClosedIntervals(df1, clmrqc)
 
     /**

@@ -17,57 +17,6 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
 
   logger.info(s"TemporalQueryUtilTest: defaultTemporalConfig = $defaultTemporalConfig")
 
-  "rangeContinuous2discrete" should "round to ms without adding gaps or overlaps" in {
-    val actual = dfContinuousTime.rangeContinuous2discrete
-    val expected = Seq(
-      (0, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),
-      (0, "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.123", 2.72),
-      (0, "2019-02-01 02:34:56.124", "2019-02-01 02:34:56.124", 42.0),
-      (0, "2019-02-01 02:34:56.125", "2019-03-02 23:59:59.999", 13.0),
-      (0, "2019-03-03 00:00:0",      "2019-04-03 23:59:59.999", 12.0),
-      (0, "2020-01-01 01:00:0",      finisTemporisString,       18.17),
-      (1, "2019-01-01 00:00:0.124",  "2019-02-01 23:59:59.999", -1.0),
-      (1, "2019-03-03 01:00:0",      "2021-12-01 02:34:56.099", -2.0)
-    ).map(makeRowsWithTimeRange[Int, Double]).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value")
-
-    val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeContinuous2discrete", Seq(dfContinuousTime))(actual, expected)
-    result shouldBe true
-  }
-
-  "rangeRoundDiscreteTime" should "not modify dfLeft" in {
-    val actual = dfLeft.rangeRoundDiscreteTime
-    val expected = dfLeft
-
-    val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeRoundDiscreteTime", Seq(dfRight))(actual, expected)
-    result shouldBe true
-  }
-
-  "rangeRoundDiscreteTime" should "round timestamps of dfDirtyTimeRanges" in {
-    val actual = dfDirtyTimeRanges.rangeRoundDiscreteTime
-    val rowsExpected: Seq[(Int, String, String, Double)] = Seq(
-      (0, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),
-      (0, "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.123", 2.72),
-      (0, "2019-02-01 01:00:0",      "2019-02-01 02:34:56.124", 2.72),
-      (0, "2019-02-01 02:34:56.125", "2019-03-03 00:00:0",      13.0),
-      (0, "2019-03-03 00:00:0",      "2019-04-04 00:00:0",      13.0),
-      (0, "2020-01-01 01:00:0",      finisTemporisString,       18.17),
-      (1, "2019-03-01 00:00:0",      "2019-03-01 00:00:0",      0.1), // duration extended to 1 millisecond
-      (1, "2019-03-01 00:00:0.001",  "2019-03-01 00:00:0.001",  0.1), // duration extended to 1 millisecond
-      (1, "2019-03-01 00:00:1.001",  "2019-03-01 00:00:01.002", 1.2), // duration extended to 2 milliseconds
-      (1, "2019-01-01 00:00:0.124",  "2019-02-02 00:00:0",      -1.0),
-      (1, "2019-03-03 01:00:0",      "2021-12-01 02:34:56.1",   -2.0)
-    )
-    val expected =
-      rowsExpected.map(makeRowsWithTimeRange[Int, Double]).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName,
-        "value")
-
-    val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeRoundDiscreteTime", Seq(dfDirtyTimeRanges))(actual, expected)
-    result shouldBe true
-  }
-
   "rangeCleanupExtend and rangeCombine" should "extend and combine dfLeft" in {
     val actual = dfLeft.rangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq(defaultTemporalConfig.fromCol))
       .rangeCombine()
@@ -352,6 +301,83 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result2 shouldBe true
   }
 
+  "rangeCombine_dfRight" should "return expected results" in {
+    val actual = dfRight.rangeCombine()
+    val rowsExpected = Seq(
+      (0, "2018-01-01 00:00:00.0", "2018-01-31 23:59:59.999", Some(97.15)),
+      (0, "2018-06-01 05:24:11.0", finisTemporisString,       Some(97.15)),
+      (1, "2018-01-01 00:00:00.0", "2018-12-31 23:59:59.999", None),
+      (1, "2019-01-01 00:00:00.0", "2019-12-31 23:59:59.999", Some(2019.0)),
+      (1, "2020-01-01 00:00:00.0", "2020-12-31 23:59:59.999", Some(2020.0)),
+      (1, "2021-01-01 00:00:00.0", "2099-12-31 23:59:59.999", None)
+    )
+    val expected =
+      rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_r")
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("rangeCombine_dfRight", dfRight)(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeCombine dropped column" should "combine the rows of dfRight with column add/drop" in {
+    val actual = dfRight
+      .withColumn("test_column", lit("please drop me"))
+      .drop("test_column")
+      .rangeCombine()
+    val rowsExpected = Seq(
+      (0, "2018-01-01 00:00:00.0", "2018-01-31 23:59:59.999", Some(97.15)),
+      (0, "2018-06-01 05:24:11.0", finisTemporisString,       Some(97.15)),
+      (1, "2018-01-01 00:00:00.0", "2018-12-31 23:59:59.999", None),
+      (1, "2019-01-01 00:00:00.0", "2019-12-31 23:59:59.999", Some(2019.0)),
+      (1, "2020-01-01 00:00:00.0", "2020-12-31 23:59:59.999", Some(2020.0)),
+      (1, "2021-01-01 00:00:00.0", "2099-12-31 23:59:59.999", None)
+    )
+    val expected =
+      rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_r")
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("rangeCombine dropped column", dfRight)(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeCombine_dfMapToCombine" should "return expected results" in {
+    val actual = dfMapToCombine.rangeCombine()
+    val rowsExpected = Seq(
+      (0, "2018-01-01 00:00:00",     "2018-12-31 23:59:59.999", Some("A")),
+      (0, "2018-01-01 00:00:00",     "2018-02-03 23:59:59.999", Some("B")),
+      (0, "2018-02-01 00:00:00",     "2020-04-30 23:59:59.999", None),
+      (0, "2020-06-01 00:00:00",     "2020-12-31 23:59:59.999", None),
+      (1, "2018-02-01 00:00:00",     "2020-04-30 23:59:59.999", Some("one")),
+      (1, "2020-06-01 00:00:00",     "2020-12-31 23:59:59.999", Some("one")),
+      (0, "2018-02-20 00:00:00",     "2018-03-31 23:59:59.999", Some("D")),
+      (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", Some("X"))
+    )
+    val expected =
+      rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "img")
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("rangeCombine_dfMapToCombine", dfMapToCombine)(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeDense2discrete" should "round to ms without adding gaps or overlaps" in {
+    val actual = dfDenseTime.rangeDense2discrete
+    val expected = Seq(
+      (0, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),
+      (0, "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.123", 2.72),
+      (0, "2019-02-01 02:34:56.124", "2019-02-01 02:34:56.124", 42.0),
+      (0, "2019-02-01 02:34:56.125", "2019-03-02 23:59:59.999", 13.0),
+      (0, "2019-03-03 00:00:0",      "2019-04-03 23:59:59.999", 12.0),
+      (0, "2020-01-01 01:00:0",      finisTemporisString,       18.17),
+      (1, "2019-01-01 00:00:0.124",  "2019-02-01 23:59:59.999", -1.0),
+      (1, "2019-03-03 01:00:0",      "2021-12-01 02:34:56.099", -2.0)
+    ).map(makeRowsWithTimeRange[Int, Double]).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value")
+
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeDense2discrete", Seq(dfDenseTime))(actual, expected)
+    result shouldBe true
+  }
+
   "rangeExtendRange_dfLeft" should "return expected results" in {
     // argument: dfLeft from object TestUtils
     val actual = dfLeft.rangeExtendRange(Seq("id"))
@@ -383,8 +409,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeExtendRange_dfRight" should "return expected results" in {
-    // argument: dfRight from object TestUtils
+  "rangeExtendRange" should "extend the ranges of dfRight" in {
     val actual = dfRight.rangeExtendRange()
     val expected = Seq(
       (0, Some(97.15),  initiumTemporisString,   "2018-01-31 23:59:59.999"),
@@ -898,62 +923,36 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeCombine_dfRight" should "return expected results" in {
-    val actual = dfRight.rangeCombine()
-    val rowsExpected = Seq(
-      (0, "2018-01-01 00:00:00.0", "2018-01-31 23:59:59.999", Some(97.15)),
-      (0, "2018-06-01 05:24:11.0", finisTemporisString,       Some(97.15)),
-      (1, "2018-01-01 00:00:00.0", "2018-12-31 23:59:59.999", None),
-      (1, "2019-01-01 00:00:00.0", "2019-12-31 23:59:59.999", Some(2019.0)),
-      (1, "2020-01-01 00:00:00.0", "2020-12-31 23:59:59.999", Some(2020.0)),
-      (1, "2021-01-01 00:00:00.0", "2099-12-31 23:59:59.999", None)
-    )
-    val expected =
-      rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_r")
-    val result = dfEqual(actual, expected)
+  "rangeRoundDiscreteTime" should "not modify dfLeft" in {
+    val actual = dfLeft.rangeRoundDiscreteTime
+    val expected = dfLeft
 
-    if (!result) printFailedTestResult("rangeCombine_dfRight", dfRight)(actual, expected)
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeRoundDiscreteTime", Seq(dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "rangeCombine dropped column" should "combine the rows of dfRight with column add/drop" in {
-    val actual = dfRight
-      .withColumn("test_column", lit("please drop me"))
-      .drop("test_column")
-      .rangeCombine()
-    val rowsExpected = Seq(
-      (0, "2018-01-01 00:00:00.0", "2018-01-31 23:59:59.999", Some(97.15)),
-      (0, "2018-06-01 05:24:11.0", finisTemporisString,       Some(97.15)),
-      (1, "2018-01-01 00:00:00.0", "2018-12-31 23:59:59.999", None),
-      (1, "2019-01-01 00:00:00.0", "2019-12-31 23:59:59.999", Some(2019.0)),
-      (1, "2020-01-01 00:00:00.0", "2020-12-31 23:59:59.999", Some(2020.0)),
-      (1, "2021-01-01 00:00:00.0", "2099-12-31 23:59:59.999", None)
+  "rangeRoundDiscreteTime" should "round timestamps of dfDirtyTimeRanges" in {
+    val actual = dfDirtyTimeRanges.rangeRoundDiscreteTime
+    val rowsExpected: Seq[(Int, String, String, Double)] = Seq(
+      (0, "2019-01-01 00:00:00.124", "2019-01-05 12:34:56.123", 3.14),
+      (0, "2019-01-05 12:34:56.124", "2019-02-01 02:34:56.123", 2.72),
+      (0, "2019-02-01 01:00:0",      "2019-02-01 02:34:56.124", 2.72),
+      (0, "2019-02-01 02:34:56.125", "2019-03-03 00:00:0",      13.0),
+      (0, "2019-03-03 00:00:0",      "2019-04-04 00:00:0",      13.0),
+      (0, "2020-01-01 01:00:0",      finisTemporisString,       18.17),
+      (1, "2019-03-01 00:00:0",      "2019-03-01 00:00:0",      0.1), // duration extended to 1 millisecond
+      (1, "2019-03-01 00:00:0.001",  "2019-03-01 00:00:0.001",  0.1), // duration extended to 1 millisecond
+      (1, "2019-03-01 00:00:1.001",  "2019-03-01 00:00:01.002", 1.2), // duration extended to 2 milliseconds
+      (1, "2019-01-01 00:00:0.124",  "2019-02-02 00:00:0",      -1.0),
+      (1, "2019-03-03 01:00:0",      "2021-12-01 02:34:56.1",   -2.0)
     )
     val expected =
-      rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value_r")
+      rowsExpected.map(makeRowsWithTimeRange[Int, Double]).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName,
+        "value")
+
     val result = dfEqual(actual, expected)
-
-    if (!result) printFailedTestResult("rangeCombine dropped column", dfRight)(actual, expected)
-    result shouldBe true
-  }
-
-  "rangeCombine_dfMapToCombine" should "return expected results" in {
-    val actual = dfMapToCombine.rangeCombine()
-    val rowsExpected = Seq(
-      (0, "2018-01-01 00:00:00",     "2018-12-31 23:59:59.999", Some("A")),
-      (0, "2018-01-01 00:00:00",     "2018-02-03 23:59:59.999", Some("B")),
-      (0, "2018-02-01 00:00:00",     "2020-04-30 23:59:59.999", None),
-      (0, "2020-06-01 00:00:00",     "2020-12-31 23:59:59.999", None),
-      (1, "2018-02-01 00:00:00",     "2020-04-30 23:59:59.999", Some("one")),
-      (1, "2020-06-01 00:00:00",     "2020-12-31 23:59:59.999", Some("one")),
-      (0, "2018-02-20 00:00:00",     "2018-03-31 23:59:59.999", Some("D")),
-      (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", Some("X"))
-    )
-    val expected =
-      rowsExpected.map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "img")
-    val result = dfEqual(actual, expected)
-
-    if (!result) printFailedTestResult("rangeCombine_dfMapToCombine", dfMapToCombine)(actual, expected)
+    if (!result) printFailedTestResult("rangeRoundDiscreteTime", Seq(dfDirtyTimeRanges))(actual, expected)
     result shouldBe true
   }
 

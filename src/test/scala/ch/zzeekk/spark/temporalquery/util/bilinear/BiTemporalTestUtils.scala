@@ -38,7 +38,7 @@ object BiTemporalTestUtils extends TestUtils {
   def wrapAlwaysKnown[A, B](row: (A, String, String, B)): (A, String, String, String, String, B) =
     (row._1, initiumTemporisString, finisTemporisString, row._2, row._3, row._4)
 
-  val dfContinuousTime: DataFrame = Seq(
+  val dfDenseTime: DataFrame = Seq(
     // entity 0, Jan 1–5: original entry on day 1, corrected on Mar 15 (known_to marks the correction)
     (0, "2019-01-01 08:00:00", "2019-03-15 00:00:00", "2019-01-01 00:00:00.123456789", "2019-01-05 12:34:56.123456789", 3.14),
     // entity 0, Jan 5–Feb 1: corrected record, known from the correction date onward
@@ -205,9 +205,9 @@ object BiTemporalTestUtils extends TestUtils {
   val dfRight: DataFrame = List(
     (0, initiumTemporisString, finisTemporisString,   "2018-06-01 05:24:11", "2018-10-23 03:50:09.999", Some(97.15)),
     (0, initiumTemporisString, finisTemporisString,   "2018-10-23 03:50:10", "2019-12-31 23:59:59.999", Some(97.15)),
-    (0, "2018-01-01 00:00:00", "2018-06-01 00:00:00", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
-    (0, "2018-06-01 00:00:00", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00)),
-    (0, "2020-06-01 00:00:00", finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
+    (0, "2028-01-01 00:00:00", "2028-06-01 00:00:00", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
+    (0, "2028-06-01 00:00:00", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00)),
+    (0, "2030-06-01 00:00:00", finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
     (1, initiumTemporisString, finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
     (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
     (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
@@ -215,33 +215,5 @@ object BiTemporalTestUtils extends TestUtils {
   ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
 
   val dfRightDouble: DataFrame = dfRight.withColumn("id", $"id".cast(DoubleType))
-
-  /*
-   * "KnownOnly" fixtures: some operations reused from the single-dimensional linear implementation
-   * (e.g. rangeExtendRange) only ever act on the first interval dimension sorted by fromColName,
-   * which for BiLinearClosedIntervalQueryConfig is the known dimension ("known_from" < "valid_from"
-   * alphabetically). These fixtures put the interesting/varying data on the known dimension and pin
-   * the valid dimension to a constant, distinctive instant, so that a test can verify both that the
-   * known dimension is extended exactly as its uni-temporal counterpart would be, and that the valid
-   * dimension is left completely untouched.
-   */
-  val dfLeftKnownOnly: DataFrame = Seq(
-    (0, "2017-12-10 00:00:00", "2018-12-08 23:59:59.999", "2020-06-15 00:00:00", "2020-06-15 00:00:00", 4.2)
-  ).map(makeRowsBiTemporal)
-    .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_l")
-
-  val dfRightKnownOnly: DataFrame = Seq(
-    (0, "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15)),
-    // gap in history
-    (0, "2018-06-01 05:24:11", "2018-10-23 03:50:09.999", Some(97.15)),
-    (0, "2018-10-23 03:50:10", "2019-12-31 23:59:59.999", Some(97.15)),
-    (0, "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
-    (1, "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
-    (1, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
-    (1, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
-    (1, "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
-  ).map { case (id, kf, kt, v) => (id, kf, kt, "2020-06-15 00:00:00", "2020-06-15 00:00:00", v) }
-    .map(makeRowsBiTemporal)
-    .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
 
 }

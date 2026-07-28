@@ -196,8 +196,8 @@ trait TestUtils extends Logging {
     (rect.lowerLeftPoint.x, rect.upperRightPoint.x, rect.lowerLeftPoint.y, rect.upperRightPoint.y, value)
 
   /**
-   * generates data frames with two continuous dimensions of which the domain is the unit square
-   * with constant string value
+   * generates data frames with two dense dimensions of which the domain is the unit square with
+   * constant string value
    *
    * @param value
    *   the constant string value

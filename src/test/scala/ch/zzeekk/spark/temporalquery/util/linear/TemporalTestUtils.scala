@@ -106,7 +106,7 @@ object TemporalTestUtils extends TestUtils {
     (1, "2019-01-01 00:00:0",            "2019-12-31 23:59:59.999",  42.0)
   ).map(makeRowsWithTimeRange).toDF("id", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName, "value")
 
-  val dfContinuousTime: DataFrame = Seq(
+  val dfDenseTime: DataFrame = Seq(
     (0, "2019-01-01 00:00:00.123456789", "2019-01-05 12:34:56.123456789", 3.14),
     (0, "2019-01-05 12:34:56.123456789", "2019-02-01 02:34:56.1235",      2.72),
     (0, "2019-02-01 02:34:56.1235",      "2019-02-01 02:34:56.1245",      42.0),

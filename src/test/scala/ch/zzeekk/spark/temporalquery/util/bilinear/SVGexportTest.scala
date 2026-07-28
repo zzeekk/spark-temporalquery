@@ -17,14 +17,14 @@ class SVGexportTest extends AnyFlatSpec with Matchers with TestUtils {
   private implicit val timeOrdering: Ordering[Timestamp] = timestampOrdering
   logger.info(s"SVGexportTest: defaultBiTemporalConfig = $defaultBiTemporalConfig")
 
-  "toSvg" should "produce a well-formed SVG for dfContinuousTime (id=0) with half-open intervals" in {
+  "toSvg" should "produce a well-formed SVG for dfDenseTime (id=0) with half-open intervals" in {
     logger.info(s"SVGexportTest: halfopenBiTemporalConfig = $halfopenBiTemporalConfig")
     // Both timeOrdering and typeTag are required alongside the mrqc implicit.
     // We pass all three explicitly to avoid the ambiguity between defaultBiTemporalConfig
     // (from the class-level wildcard import) and halfopenBiTemporalConfig as MultivarRangeQueryConfig[Timestamp,_].
-    val argument = dfContinuousTime.where($"id" === 0)
+    val argument = dfDenseTime.where($"id" === 0)
     val actual = argument.toSvg[Timestamp]("value")(timeOrdering, typeTag[Timestamp], halfopenBiTemporalConfig)
-    logger.info(s"Voilà df dfContinuousTime as SVG:")
+    logger.info(s"Voilà df dfDenseTime as SVG:")
     argument.orderBy(halfopenBiTemporalConfig.intervalDimensions.map(dim => col(dim.fromColName)): _*).show(false)
     println(actual)
     // structural checks
@@ -40,11 +40,11 @@ class SVGexportTest extends AnyFlatSpec with Matchers with TestUtils {
     actual should include("fill=\"#")
   }
 
-  "toSvg" should "produce a well-formed SVG for dfContinuousTime (id=0) discretised with closed intervals" in {
+  "toSvg" should "produce a well-formed SVG for dfDenseTime (id=0) discretised with closed intervals" in {
     // defaultBiTemporalConfig is implicit in scope; timeOrdering and TypeTag[Timestamp] resolve implicitly.
-    // rangeContinuous2discrete drops the 8-nanosecond pulse (sub-millisecond, collapses after rounding),
+    // rangeDense2discrete drops the 8-nanosecond pulse (sub-millisecond, collapses after rounding),
     // leaving 6 rows for id=0.
-    val argument = dfContinuousTime.where($"id" === 0).rangeContinuous2discrete
+    val argument = dfDenseTime.where($"id" === 0).rangeDense2discrete
     val actual = argument.toSvg[Timestamp]("value")
     argument.orderBy(defaultBiTemporalConfig.intervalDimensions.map(dim => col(dim.fromColName)): _*).show(false)
     println(actual)

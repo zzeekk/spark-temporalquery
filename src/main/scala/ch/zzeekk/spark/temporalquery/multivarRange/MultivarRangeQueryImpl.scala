@@ -551,28 +551,64 @@ object MultivarRangeQueryImpl extends Logging {
   }
 
   /**
-   * extend valid_from/to to min/maxDate
+   * extend ranges
    */
-  private[temporalquery] def extendIntervalRanges[T: Ordering: TypeTag](
+  private[temporalquery] def extendDimensionRanges[T: Ordering: TypeTag](
       df: DataFrame,
       keys: Seq[String],
+      dim: IntervalQueryDimension[T, _ <: IntervalDef[T]],
       extendMin: Boolean,
       extendMax: Boolean
-  )(implicit mrqc: MultivarRangeQueryConfig[T, _]): DataFrame = {
-    val fromMinColName = s"_${mrqc.fromColName}_min"
-    val toMaxColName = s"_${mrqc.toColName}_max"
+  )(implicit logger: Logger): DataFrame = {
+    val fromMinColName = s"_${dim.fromColName}_min"
+    val toMaxColName = s"_${dim.toColName}_max"
     require(
       !df.columns.contains(fromMinColName) && !df.columns.contains(toMaxColName),
       s"(extendIntervalRanges) Your dataframe must not contain columns named $fromMinColName or $toMaxColName! df.columns = ${df.columns.mkString(",")}"
     )
-    val keyCols = if (keys.nonEmpty) keys.map(col) else Seq(lit(1)) // if no keys are given, we work with the global minimum.
+    debugLog("if no keys are given, we work with the global min/maximum.")
+    val keyCols = if (keys.nonEmpty) keys.map(col) else Seq(lit(false))
+    debugLog(s"(extendDimensionRanges) extendMin = $extendMin ; extendMax = $extendMax ;" +
+      s" df.schema = ${df.schema.catalogString} ; keyCols = ${keyCols.mkString(",")} ; dim = $dim")
     val df_prep = df
-      .withColumn(fromMinColName, if (extendMin) min(mrqc.fromCol).over(Window.partitionBy(keyCols: _*)) else lit(null))
-      .withColumn(toMaxColName, if (extendMax) max(mrqc.toCol).over(Window.partitionBy(keyCols: _*)) else lit(null))
-    val selCols = df.columns.filter(c => c != mrqc.fromColName && c != mrqc.toColName).map(col) :+
-      when(mrqc.fromCol === col(fromMinColName), lit(mrqc.lowerHorizon)).otherwise(mrqc.fromCol).as(mrqc.fromColName) :+
-      when(mrqc.toCol === col(toMaxColName), lit(mrqc.upperHorizon)).otherwise(mrqc.toCol).as(mrqc.toColName)
+      .withColumn(fromMinColName, if (extendMin) min(col(dim.fromColName)).over(Window.partitionBy(keyCols: _*)) else lit(null))
+      .withColumn(toMaxColName, if (extendMax) max(col(dim.toColName)).over(Window.partitionBy(keyCols: _*)) else lit(null))
+    if (logger.isDebugEnabled()) df_prep.createdLog("df_prep", showRows = true)
+    val selCols = df.columns.filter(c => c != dim.fromColName && c != dim.toColName).map(col) :+
+      when(dim.fromCol === col(fromMinColName), lit(dim.lowerHorizon)).otherwise(dim.fromCol).as(dim.fromColName) :+
+      when(dim.toCol === col(toMaxColName), lit(dim.upperHorizon)).otherwise(dim.toCol).as(dim.toColName)
+    debugLog(s"(extendDimensionRanges) selCols = ${selCols.mkString(",")}")
     df_prep.select(selCols: _*)
+  }
+
+  /**
+   * extend valid_from/to to min/maxDate
+   */
+  private[temporalquery] def extendMultivarRanges[T: Ordering: TypeTag](
+      df: DataFrame,
+      keys: Seq[String],
+      extendMin: Boolean,
+      extendMax: Boolean
+  )(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]], logger: Logger): DataFrame = {
+    debugLog(s"(extendIntervalRanges) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
+    debugLog(s"(extendIntervalRanges) extendMin = $extendMin ; extendMax = $extendMax")
+    debugLog(s"(extendIntervalRanges) mrqc = $mrqc")
+    if (extendMin || extendMax) {
+      val dims = mrqc.intervalDimensions
+      dims.foldLeft(df) { case (df, dim) =>
+        extendDimensionRanges[T](
+          df = df,
+          keys = keys,
+          dim = dim,
+          extendMin = extendMin,
+          extendMax = extendMax
+        )
+      }
+    } else {
+      logger.warn(s"(extendIntervalRanges) extendMin = $extendMin and extendMax = $extendMax ==> Nothing to do!" +
+        s" Why did you call me?")
+      df
+    }
   }
 
   /**
