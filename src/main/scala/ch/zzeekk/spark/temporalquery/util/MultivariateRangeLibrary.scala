@@ -30,7 +30,7 @@ object MultivariateRangeLibrary extends Logging {
     def rangeInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keys: Seq[String])(implicit
         mrqc: MultivarRangeQueryConfig[T, _],
         logger: Logger
-    ): DataFrame = MultivarRangeQueryImpl.joinIntervalsWithKeysImpl(df1, df2, keys)
+    ): DataFrame = MultivarRangeQueryImpl.joinIntervalsWithKeysImpl(df1 = df1, df2 = df2, keys = keys)
 
     /**
      * Implements an inner join of historical data over an explicit join condition
@@ -38,7 +38,8 @@ object MultivariateRangeLibrary extends Logging {
     def rangeInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keyCondition: Column)(implicit
         mrqc: MultivarRangeQueryConfig[T, _],
         logger: Logger
-    ): DataFrame = MultivarRangeQueryImpl.joinIntervals(df1, df2, keys = Nil, joinType = "inner", keyCondition)
+    ): DataFrame = MultivarRangeQueryImpl
+      .joinIntervals(df1 = df1, df2 = df2, keys = Nil, additionalJoinCondition = keyCondition)
 
     /**
      * Implements a full outer join of historical data over a list of equally named columns

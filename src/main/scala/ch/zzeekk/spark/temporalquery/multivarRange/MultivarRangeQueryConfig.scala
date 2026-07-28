@@ -31,7 +31,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   require(dimensionMap.nonEmpty, "at least one fromCol name must be specified!")
   val numDimensions: Int = dimensionMap.size
 
-  def fromToColnames: List[String] = (dimensionMap.keys ++ dimensionMap.values.map(_._1)).toList
+  def fromToColnames: List[String] = (dimensionMap.keys ++ dimensionMap.values.map(_._1)).toList.sorted
   def additionalTechnicalColNames: List[String]
 
   // copy of configuration with 2nd pair of from/to column names used as main column pair
@@ -39,7 +39,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   def config2: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
 
   // TODO: change type to SET[String] if possible
-  def fromToColnames2: List[String] = fromToColnames.map(increaseColNameNb)
+  def fromToColnames2: List[String] = fromToColnames.map(increaseColNameNb).sorted
 
   // technical column names to be excluded in some operations
   val technicalColNames: List[String] = fromToColnames ++ additionalTechnicalColNames

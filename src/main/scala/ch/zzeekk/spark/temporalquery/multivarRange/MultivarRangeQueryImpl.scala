@@ -107,10 +107,11 @@ object MultivarRangeQueryImpl extends Logging {
       additionalJoinCondition: Column = lit(true)
   )(implicit mrqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = {
     debugLog(
-      s"joinIntervals: joinType = $joinType , additionalJoinCondition = $additionalJoinCondition , keys = (${keys.mkString(",")})"
+      s"(joinIntervals) joinType = $joinType ; additionalJoinCondition = $additionalJoinCondition ;" +
+        s" keys = (${keys.mkString(",")}) ; joinColPostFix1 = $joinColPostFix1 ; joinColPostFix2 = $joinColPostFix2"
     )
-    debugLog(s"joinIntervals: df1.schema = ${df1.schema.catalogString}")
-    debugLog(s"joinIntervals: df2.schema = ${df2.schema.catalogString}")
+    debugLog(s"(joinIntervals) df1.schema = ${df1.schema.catalogString}")
+    debugLog(s"(joinIntervals) df2.schema = ${df2.schema.catalogString}")
     require(
       df2.columns.intersect(mrqc.fromToColnames2).isEmpty,
       s"(joinIntervals) Your right-dataframe must not contain columns named {${mrqc.fromToColnames2}}! df.columns = ${df2.columns.mkString(",")}"
@@ -126,15 +127,15 @@ object MultivarRangeQueryImpl extends Logging {
 
     // interval join
     // rename keys to avoid column ambiguous errors
-    val df1Renamed = renameKeys(df1, keys, joinColPostFix1)
-    val df2Renamed = renameKeys(renameIntervalCols2nd(df2), keys, joinColPostFix2)
+    val df1Renamed = renameKeys(df = df1, keys = keys, postFix = joinColPostFix1)
+    val df2Renamed = renameKeys(df = renameIntervalCols2nd(df2), keys = keys, postFix = joinColPostFix2)
     val keyCondition = createRenamedKeyCondition(keys)
-    debugLog(s"joinIntervals: df1Renamed.schema = ${df1Renamed.schema.catalogString}")
-    debugLog(s"joinIntervals: df2Renamed.schema = ${df2Renamed.schema.catalogString}")
-    debugLog(s"joinIntervals: keyCondition      = $keyCondition")
+    debugLog(s"(joinIntervals) df1Renamed.schema = ${df1Renamed.schema.catalogString}")
+    debugLog(s"(joinIntervals) df2Renamed.schema = ${df2Renamed.schema.catalogString}")
+    debugLog(s"(joinIntervals) keyCondition      = $keyCondition")
     val dfJoined = df1Renamed
       .join(df2Renamed, keyCondition and additionalJoinCondition and mrqc.joinMultivarRangeExpr(df1Renamed, df2Renamed), joinType)
-    debugLog(s"joinIntervals: dfJoined.schema   = ${dfJoined.schema.catalogString}")
+    debugLog(s"(joinIntervals) dfJoined.schema   = ${dfJoined.schema.catalogString}")
 
     // select final schema
     val commonColNames = keys
@@ -147,7 +148,7 @@ object MultivarRangeQueryImpl extends Logging {
       List(greatest(dim.fromCol, dim.fromCol2).as(dim.fromColName), least(dim.toCol, dim.toCol2).as(dim.toColName))
     }.reduce((x, y) => x ++ y)
     val selCols = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
-    debugLog(s"joinIntervals: selCols = ${selCols.mkString(",")}")
+    debugLog(s"(joinIntervals) selCols = ${selCols.mkString(",")}")
     dfJoined.select(selCols: _*)
   }
 
@@ -629,9 +630,21 @@ object MultivarRangeQueryImpl extends Logging {
    * IntervalQueryConfig
    */
   private def renameIntervalCols2nd[T: Ordering: TypeTag](df: DataFrame)(implicit mrqc: MultivarRangeQueryConfig[T, _]): DataFrame = {
-    assert(df.columns.contains(mrqc.fromColName) && df.columns.contains(mrqc.toColName))
-    assert(!df.columns.contains(mrqc.fromColName2) && !df.columns.contains(mrqc.toColName2))
-    df.withColumnRenamed(mrqc.fromColName, mrqc.fromColName2).withColumnRenamed(mrqc.toColName, mrqc.toColName2)
+    val dfColumns = df.columns
+    require(
+      mrqc.fromToColnames.forall(dfColumns.contains),
+      s"(renameIntervalCols2nd) DataFrame df must contain all columns ${mrqc.fromToColnames.mkString(",")}" +
+        s" but df.schema = ${df.schema.catalogString}!"
+    )
+    require(
+      !mrqc.fromToColnames2.exists(dfColumns.contains),
+      s"(renameIntervalCols2nd) DataFrame df must not contain any column of ${mrqc.fromToColnames2.mkString(",")}" +
+        s" but df.schema = ${df.schema.catalogString}!"
+    )
+//    df.withColumnRenamed(mrqc.fromColName, mrqc.fromColName2).withColumnRenamed(mrqc.toColName, mrqc.toColName2)
+    df.withColumnsRenamed(mrqc.intervalDimensions.flatMap { d =>
+      List((d.fromColName, d.fromCol2Name), (d.toColName, d.toCol2Name))
+    }.toMap)
   }
 
   /**

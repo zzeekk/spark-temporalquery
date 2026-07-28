@@ -33,6 +33,11 @@ object BiTemporalTestUtils extends TestUtils {
       : (A, Timestamp, Timestamp, Timestamp, Timestamp, B, Boolean) =
     (row._1, Timestamp.valueOf(row._2), Timestamp.valueOf(row._3), Timestamp.valueOf(row._4), Timestamp.valueOf(row._5), row._6, row._7)
 
+  // helper: (id, known_from, known_to, valid_from, valid_to, value_l, value_r)
+  def makeRowsBiTemporal2values[A, B, C](row: (A, String, String, String, String, B, C))
+      : (A, Timestamp, Timestamp, Timestamp, Timestamp, B, C) =
+    (row._1, Timestamp.valueOf(row._2), Timestamp.valueOf(row._3), Timestamp.valueOf(row._4), Timestamp.valueOf(row._5), row._6, row._7)
+
   // helper: turns a uni-temporal (id, valid_from, valid_to, value) row into a bi-temporal row which
   // is always known, i.e. known_from = initiumTemporisString, known_to = finisTemporisString
   def wrapAlwaysKnown[A, B](row: (A, String, String, B)): (A, String, String, String, String, B) =

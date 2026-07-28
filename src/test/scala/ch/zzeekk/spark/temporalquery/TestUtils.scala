@@ -62,12 +62,14 @@ trait TestUtils extends Logging {
 
   def dfEqual(df1: DataFrame, df2: DataFrame): Boolean = Try {
     val df1reordered = reorderCols(df1, df2)
-    // symmetricDifference ignores duplicates, so compare cardinalities as well
+    debugLog("(dfEqual) symmetricDifference ignores duplicates, so compare cardinalities as well")
     (0 == symmetricDifference(df1reordered, df2).count) && (df1reordered.count == df2.count) && schemaEqual(df1reordered, df2)
   } match {
     case Success(p) => p
     case Failure(e) =>
-      logger.error("!!! dfEqual: Comparison of df1 and df2 failed !!!")
+      logger.error("(dfEqual) Comparison of df1 and df2 failed !!!")
+      logger.error(s"(dfEqual) df1.schema = ${df1.schema.catalogString}")
+      logger.error(s"(dfEqual) df2.schema = ${df2.schema.catalogString}")
       throw e
   }
 
@@ -76,7 +78,14 @@ trait TestUtils extends Logging {
   ): Unit = {
     def printDf(df: DataFrame): Unit = {
       logger.error(df.schema.simpleString)
-      df.orderBy(df.columns.map(col): _*).show(false)
+      Try(df.orderBy(df.columns.map(col): _*).show(false)) match {
+        case Success(_) =>
+        case Failure(_) =>
+          logger.error(s"(printFailedTestResult.printDf) Cannot show ordered df!" +
+            s" df.schema = ${df.schema.catalogString}")
+          logger.error(s"(printFailedTestResult.printDf) Showing df unordered!")
+          df.show(false)
+      }
     }
 
     val actualReordered = reorderCols(actual, expected)
@@ -91,12 +100,19 @@ trait TestUtils extends Logging {
     logger.error(s"  expected.count() =  ${expected.count()}")
     printDf(expected)
     logger.error(s"  schemata equal =  ${schemaEqual(actualReordered, expected)}")
-    if (schemaEqual(actualReordered, expected)) {
+    if (schemaEqual(actualReordered, expected)) Try {
       val dfSymDiff = symmetricDifference(actualReordered, expected)
         .select(when($"_in_first_df", "actual").otherwise("expected").as("_df") +: actual.columns.map(col): _*)
       logger.error(s"   symmetric Difference, dfSymDiff.count = ${dfSymDiff.count()} ")
       printDf(dfSymDiff)
-    } else {
+    } match {
+      case Success(_) =>
+      case Failure(e) =>
+        logger.error(s"(printFailedTestResult) Cannot show symmetric difference!" +
+          s" You need to find the differences on your own!!!")
+        logger.error(s"(printFailedTestResult) ${e.getMessage}")
+    }
+    else {
       logger.error(s"actual.schema:${actualReordered.schema.treeString}")
       logger.error(s"expected.schema:${expected.schema.treeString}")
     }

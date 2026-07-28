@@ -428,8 +428,8 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeInnerJoin dfRight 'on' semantics" should "return expected results" in {
-    val actual = dfLeft.as("dfL").rangeInnerJoin(dfRight.as("dfR"), $"dfL.id" === $"dfR.id")
+  "rangeInnerJoin dfLeft with dfRight 'on' semantics" should "return expected results" in {
+    val actual = dfLeft.as("dfL").rangeInnerJoin(df2 = dfRight.as("dfR"), keyCondition = $"dfL.id" === $"dfR.id")
     actual.columns.count(_ == "id") shouldBe 2
     val expected = Seq(
       (0, 4.2, 0, Some(97.15), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
@@ -442,7 +442,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeInnerJoin dfRight with 'using' semantics" should "return expected results" in {
+  "rangeInnerJoin dfLeft with dfRight with 'using' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin(dfRight.as("dfR"), Seq("id"))
     assert(3 == actual.select($"id", $"dfL.value_l", $"dfR.value_r").count())
     val expected = Seq(
