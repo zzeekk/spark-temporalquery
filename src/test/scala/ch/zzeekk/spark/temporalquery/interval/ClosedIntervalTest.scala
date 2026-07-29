@@ -2,7 +2,7 @@ package ch.zzeekk.spark.temporalquery.interval
 
 import ch.zzeekk.spark.temporalquery.axis.{DiscreteNumericAxis, DiscreteTimeAxis}
 import ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedIntervalQueryUtil._
-import ch.zzeekk.spark.temporalquery.{intervalComplement, TestUtils}
+import ch.zzeekk.spark.temporalquery.{rangeComplement, TestUtils}
 import org.apache.spark.sql.Row
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -179,7 +179,8 @@ class ClosedIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
     }
       .toMap
     val results: Set[Boolean] = testArgumentExpectedMapWithComment[(Timestamp, Timestamp), Seq[(Timestamp, Timestamp)]](x =>
-        intervalComplement(x._1, x._2, subtrahends), argExpMap)
+        rangeComplement(validFrom = x._1, validTo = x._2, subtrahends = subtrahends),
+      argExpMap)
     results.forall(p => p) shouldBe true
   }
 

@@ -501,8 +501,8 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeLeftAntiJoin_dfRight" should "return expected results" in {
-    val actual = dfLeft.rangeLeftAntiJoin(dfRight, Seq("id"))
+  "rangeLeftAntiJoin dfLeft with dfRight" should "return expected results" in {
+    val actual = dfLeft.rangeLeftAntiJoin(df2 = dfRight, joinColumns = Seq("id"))
     val expected = Seq(
       (0, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
       (0, "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", 4.2)

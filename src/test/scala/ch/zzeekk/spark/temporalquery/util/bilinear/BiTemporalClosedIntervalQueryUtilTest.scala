@@ -501,6 +501,17 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
     result shouldBe true
   }
 
+  "rangeLeftAntiJoin dfLeft with dfRight" should "return expected results" in {
+    val actual = dfLeft.rangeLeftAntiJoin(df2 = dfRight, joinColumns = Seq("id"))
+    val expected = List(
+      (0, initiumTemporisString, finisTemporisString, "2017-12-10 00:00:00", "2018-12-08 23:59:59.999", 4.2)
+    ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_l")
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    result shouldBe true
+  }
+
   "rangeRoundDiscreteTime, rangeCleanupExtend and rangeCombine" should
     "combine, extend ranges, fill gaps and remove overlaps of dfDirtyTimeRanges," +
     " and then convert dfMap to a 1-1-relation by selecting the smallest value" in {

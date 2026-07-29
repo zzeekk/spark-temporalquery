@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery.multivarRange
 
 import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, IntervalDef, IntervalQueryDimension}
-import ch.zzeekk.spark.temporalquery.{getUdfIntervalComplement, Logging}
+import ch.zzeekk.spark.temporalquery.{Logging, getUdfRangeComplement}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, SubqueryAlias, UnaryNode}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
@@ -99,7 +99,7 @@ object MultivarRangeQueryImpl extends Logging {
    * consolidated in the result frame with df1 precedence over df2 using coalesce. This is used to
    * implement "natural join" and "join using" SQL behaviour.
    */
-  private[temporalquery] def joinIntervals[T: Ordering: TypeTag](
+  private[temporalquery] def joinRanges[T: Ordering: TypeTag](
       df1: DataFrame,
       df2: DataFrame,
       keys: Seq[String],
@@ -158,7 +158,7 @@ object MultivarRangeQueryImpl extends Logging {
       keys: Seq[String],
       joinType: String = "inner"
   )(implicit mrqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame =
-    joinIntervals(df1, df2, keys, joinType)
+    joinRanges(df1, df2, keys, joinType)
 
   /**
    * build ranges for keys to resolve overlaps, fill holes or extend to min/maxDate
@@ -274,7 +274,7 @@ object MultivarRangeQueryImpl extends Logging {
     if (extend && !fillGapsWithNull) logger.warn("(cleanupExtendIntervals) extend=true has no effect if fillGapsWithNull=false!")
     require(
       df.columns.intersect(mrqc.fromToColnames2 :+ mrqc.definedColName).isEmpty,
-      s"(joinIntervals) Your right-dataframe must not contain columns named {${mrqc.fromToColnames2 :+ mrqc.definedColName}}! df.columns = ${df.columns.mkString(",")}"
+      s"(cleanupExtendIntervals) Your right-dataframe must not contain columns named {${mrqc.fromToColnames2 :+ mrqc.definedColName}}! df.columns = ${df.columns.mkString(",")}"
     )
     val dims = mrqc.intervalDimensions
     def transform(df: DataFrame): DataFrame = {
@@ -358,13 +358,13 @@ object MultivarRangeQueryImpl extends Logging {
         aggExpressions = Nil, rnkFilter = true, mrqc = mrqc).drop(mrqc.definedColName)
     else df2
     // join df1 & df2
-    joinIntervals(df1Extended, df2Extended, keys, joinType, additionalJoinFilterCondition)
+    joinRanges(df1Extended, df2Extended, keys, joinType, additionalJoinFilterCondition)
   }
 
   /**
    * left anti join
    */
-  private[temporalquery] def leftAntiJoinIntervals[T: Ordering: TypeTag](
+  private[temporalquery] def leftAntiJoinRanges[T: Ordering: TypeTag](
       df1: DataFrame,
       df2: DataFrame,
       keys: Seq[String],
@@ -372,36 +372,55 @@ object MultivarRangeQueryImpl extends Logging {
       // TODO: Why we require closed interval? Why not IntervalMultidimQueryConfig[T, _]
   )(implicit mrqc: MultivarRangeQueryConfig[T, ClosedInterval[T]], logger: Logger): DataFrame = {
     debugLog(s"leftAntiJoinIntervals START: keys = ${keys.mkString(", ")}")
-    val df1Cols = df1.columns.map(df1(_))
+    debugLog(
+      s"(leftAntiJoinRanges) START: additionalJoinFilterCondition = $additionalJoinFilterCondition ;" +
+        s" keys = (${keys.mkString(",")})")
+    debugLog(s"(leftAntiJoinRanges) df1.schema = ${df1.schema.catalogString}")
+    debugLog(s"(leftAntiJoinRanges) df2.schema = ${df2.schema.catalogString}")
+    val df1Cols: Array[Column] = df1.columns.map(df1(_))
     val df2Renamed = renameIntervalCols2nd(df2)
 
     val joinCondition: Column = createAliasKeyCondition(df1, df2Renamed, keys)
       .and(mrqc.joinMultivarRangeExpr(df1, df2Renamed))
       .and(additionalJoinFilterCondition)
+    debugLog(s"(leftAntiJoinRanges) joinCondition = $joinCondition")
 
+    debugLog("(leftAntiJoinRanges) dfAntiJoin contains all rows of df1 of which the range does not intersect" +
+      " with any range of df2 for the same keys. dfAntiJoin is thus included completely in the result.")
     val dfAntiJoin = df1.join(df2Renamed, joinCondition, "leftanti")
-    debugLog(s"leftAntiJoinIntervals: dfAntiJoin.schema = ${dfAntiJoin.schema.treeString}")
+    debugLog(s"(leftAntiJoinRanges) dfAntiJoin.schema = ${dfAntiJoin.schema.catalogString}")
 
+    debugLog("(leftAntiJoinRanges) df1ExceptAntiJoin contains all rows of df1 of which the range intersects" +
+      " a range of df2 for the same keys and thus need further treatment.")
     val df1ExceptAntiJoin = df1.except(dfAntiJoin)
-    // We need to combine df2 but without the columns which are used in additionalJoinFilterCondition
-    val dfJoinLeftAnti = df1ExceptAntiJoin.join(df2Renamed, joinCondition, "inner")
-      .select(df1Cols :+ mrqc.fromCol2 :+ mrqc.toCol2: _*)
-    debugLog(s"leftAntiJoinIntervals: dfJoinLeftAnti.schema = ${dfJoinLeftAnti.schema.treeString}")
-    val df2Combined = combineMultivarRanges(df = dfJoinLeftAnti.select(mrqc.fromColName2, mrqc.toColName2 +: keys: _*),
-      ignoreColNames = Nil, mrqc = mrqc.config2)
-    debugLog(s"leftAntiJoinIntervals: df2Combined.schema = ${df2Combined.schema.treeString}")
 
+    val dfJoinLeftAnti = df1ExceptAntiJoin.join(df2Renamed, joinCondition, "inner")
+      .select(df1Cols ++ mrqc.fromToColnames2.map(col): _*)
+    debugLog(s"(leftAntiJoinRanges) dfJoinLeftAnti.schema = ${dfJoinLeftAnti.schema.catalogString}")
+
+    debugLog("(leftAntiJoinRanges) df2Combined contains the combined intersecting ranges of df2.")
+    val df2Combined = combineMultivarRanges(df = dfJoinLeftAnti.select((keys++mrqc.fromToColnames2).map(col): _*),
+      ignoreColNames = Nil, mrqc = mrqc.config2)
+    debugLog(s"(leftAntiJoinRanges) df2Combined.schema = ${df2Combined.schema.catalogString}")
+
+    debugLog("(leftAntiJoinRanges) dfComplementJoin contains the rows of df1ExceptAntiJoin" +
+      " joined with the combined intersecting ranges of df2.")
     val dfComplementJoin = if (keys.isEmpty) df1ExceptAntiJoin.crossJoin(df2Combined)
     else df1ExceptAntiJoin.join(df2Combined, keys, "inner")
-    debugLog(s"leftAntiJoinIntervals: dfComplementJoin.schema = ${dfComplementJoin.schema.treeString}")
+    debugLog(s"(leftAntiJoinRanges) dfComplementJoin.schema = ${dfComplementJoin.schema.catalogString}")
 
-    val udfIntervalComplement = getUdfIntervalComplement[T]
+
+    val rangeCol: Column = array(mrqc.intervalDimensions.map{ d => struct(d.fromCol.as("f"),d.toCol.as("t")).as(d.fromColName)}:_*).as("range")
+    val rangeCol2: Column = array(mrqc.config2.intervalDimensions.map{ d => struct(d.fromCol.as("f"),d.toCol.as("t")).as(d.fromColName)}:_*).as("range")
+    val udfIntervalComplement = getUdfRangeComplement[T]
     val dfComplementJoin_complementArray = dfComplementJoin
-      .groupBy(df1Cols: _*)
-      .agg(collect_set(struct(mrqc.fromCol2.as("_1"), mrqc.toCol2.as("_2"))).as("subtrahend"))
+      .groupBy(keys.map(col) :+ rangeCol: _*)
+//      .agg(collect_set(struct(mrqc.fromCol2.as("_1"), mrqc.toCol2.as("_2"))).as("subtrahend"))
+      .agg(collect_set(rangeCol2).as("subtrahend"))
       .withColumn("complement_array", udfIntervalComplement(mrqc.fromCol, mrqc.toCol, col("subtrahend")))
       .cache()
-    debugLog(s"leftAntiJoinIntervals: dfComplementJoin_complementArray.schema = ${dfComplementJoin_complementArray.schema.treeString}")
+    debugLog(s"(leftAntiJoinRanges) dfComplementJoin_complementArray.schema = ${dfComplementJoin_complementArray.schema.catalogString}")
+    dfComplementJoin_complementArray.printSchema()
 
     val dfComplement = dfComplementJoin_complementArray
       .withColumn("complements", explode(col("complement_array")))
@@ -409,7 +428,7 @@ object MultivarRangeQueryImpl extends Logging {
       .withColumn(mrqc.fromColName, col("complements._1"))
       .withColumn(mrqc.toColName, col("complements._2"))
       .select(df1.columns.map(col): _*)
-    debugLog(s"leftAntiJoinIntervals: dfComplement.schema = ${dfComplement.schema.treeString}")
+    debugLog(s"(leftAntiJoinRanges) dfComplement.schema = ${dfComplement.schema.catalogString}")
 
     dfAntiJoin.union(dfComplement)
   }

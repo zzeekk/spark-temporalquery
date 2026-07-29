@@ -20,7 +20,7 @@ Configuration:
 
       # INFO:
       - name: ch.zzeekk
-        level: INFO
+        level: DEBUG
 
       # ERROR:
       - name: org.apache.spark

@@ -39,7 +39,7 @@ object MultivariateRangeLibrary extends Logging {
         mrqc: MultivarRangeQueryConfig[T, _],
         logger: Logger
     ): DataFrame = MultivarRangeQueryImpl
-      .joinIntervals(df1 = df1, df2 = df2, keys = Nil, additionalJoinCondition = keyCondition)
+      .joinRanges(df1 = df1, df2 = df2, keys = Nil, additionalJoinCondition = keyCondition)
 
     /**
      * Implements a full outer join of historical data over a list of equally named columns
@@ -132,7 +132,7 @@ object MultivariateRangeLibrary extends Logging {
         mrqc: MultivarRangeQueryConfig[T, ClosedInterval[T]],
         logger: Logger
     ): DataFrame =
-      MultivarRangeQueryImpl.leftAntiJoinIntervals(df1, df2, joinColumns, additionalJoinFilterCondition)
+      MultivarRangeQueryImpl.leftAntiJoinRanges(df1, df2, joinColumns, additionalJoinFilterCondition)
 
     /**
      * Resolves temporal overlaps
