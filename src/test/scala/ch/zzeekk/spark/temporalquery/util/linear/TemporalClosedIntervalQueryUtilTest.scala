@@ -456,8 +456,8 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeInnerJoin dfRightDouble 'on' semantics" should "return expected results" in {
-    val actual = dfLeft.as("dfL").rangeInnerJoin(dfRightDouble.as("dfR"), $"dfL.id" === $"dfR.id")
+  "rangeInnerJoinrangeInnerJoin dfLeft with dfRightDouble with 'on' semantics" should "return expected results" in {
+    val actual = dfLeft.as("dfL").rangeInnerJoin(df2 = dfRightDouble.as("dfR"), keyCondition = $"dfL.id" === $"dfR.id")
     assert(actual.columns.count(_ == "id") == 2)
     val expected = Seq(
       (0, 4.2, 0.0, Some(97.15), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
@@ -470,8 +470,8 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeInnerJoin dfRightDouble with 'using' semantics" should "return expected results" in {
-    val actual = dfLeft.as("dfL").rangeInnerJoin(dfRightDouble.as("dfR"), Seq("id"))
+  "rangeInnerJoinrangeInnerJoin dfLeft with dfRightDouble with 'using' semantics" should "return expected results" in {
+    val actual = dfLeft.as("dfL").rangeInnerJoin(df2 = dfRightDouble.as("dfR"), keys = Seq("id"))
     assert(3 == actual.select($"id", $"dfL.value_l", $"dfR.value_r").count())
     val expected = Seq(
       (0.0, 4.2, Some(97.15), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
@@ -488,7 +488,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
   "rangeInnerJoin with equally named columns apart join columns" should "return expected results" in {
     val dfL = dfLeft.withColumnRenamed("value_l", "value").as("dfL")
     val dfR = dfRight.withColumnRenamed("value_r", "value").as("dfR")
-    val actual = dfL.rangeInnerJoin(dfR, Seq("id"))
+    val actual = dfL.rangeInnerJoin(df2 = dfR, keys = Seq("id"))
     assert(3 == actual.select($"id", $"dfL.value", $"dfR.value").count())
     val expected = Seq(
       (0, 4.2, Some(97.15), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),

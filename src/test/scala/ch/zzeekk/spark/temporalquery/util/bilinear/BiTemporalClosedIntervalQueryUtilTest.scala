@@ -435,6 +435,72 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
     result shouldBe true
   }
 
+  "rangeInnerJoinrangeInnerJoin dfLeft with dfRightDouble with 'on' semantics" should "return expected results" in {
+    val actual = dfLeft.as("dfL").rangeInnerJoin(dfRightDouble.as("dfR"), $"dfL.id" === $"dfR.id")
+    assert(actual.columns.count(_ == "id") == 2)
+    val expected = List(
+      (0, 4.2, 0d, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2018-10-23 03:50:09.999")),
+      (0,                                         4.2, 0d, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-10-23 03:50:10"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         4.2, 0d, Some(97.15),
+        Timestamp.valueOf("2028-01-01 00:00:00"), Timestamp.valueOf("2028-06-01 00:00:00"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,                                         4.2, 0d, Some(98d),
+        Timestamp.valueOf("2028-06-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"))
+    ).toDF("id", "value_l", "id", "value_r", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected) // && actual.schema == expectedSchema
+    if (!result) printFailedTestResult("rangeInnerJoin dfRightDouble 'on' semantics", Seq(dfLeft, dfRightDouble))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeInnerJoinrangeInnerJoin dfLeft with dfRightDouble with 'using' semantics" should "return expected results" in {
+    val actual = dfLeft.as("dfL").rangeInnerJoin(df2 = dfRightDouble.as("dfR"), keys = Seq("id"))
+    val expected = List(
+      (0d, 4.2, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2018-10-23 03:50:09.999")),
+      (0d,                                        4.2, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-10-23 03:50:10"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0d,                                        4.2, Some(97.15),
+        Timestamp.valueOf("2028-01-01 00:00:00"), Timestamp.valueOf("2028-06-01 00:00:00"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0d,                                        4.2, Some(98d),
+        Timestamp.valueOf("2028-06-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"))
+    ).toDF("id", "value_l", "value_r", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected) // && actual.schema == expectedSchema
+    if (!result) printFailedTestResult("rangeInnerJoin dfRightDouble 'on' semantics", Seq(dfLeft, dfRightDouble))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeInnerJoin with equally named columns apart join columns" should "return expected results" in {
+    val dfL = dfLeft.withColumnRenamed("value_l", "value").as("dfL")
+    val dfR = dfRight.withColumnRenamed("value_r", "value").as("dfR")
+    val actual = dfL.rangeInnerJoin(df2 = dfR, keys = Seq("id"))
+    val expected = List(
+      (0, 4.2, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2018-10-23 03:50:09.999")),
+      (0,                                         4.2, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-10-23 03:50:10"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         4.2, Some(97.15),
+        Timestamp.valueOf("2028-01-01 00:00:00"), Timestamp.valueOf("2028-06-01 00:00:00"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,                                         4.2, Some(98d),
+        Timestamp.valueOf("2028-06-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"))
+    ).toDF("id", "value", "value", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeInnerJoin with equally named columns apart join columns", Seq(dfL, dfR))(actual, expected)
+    result shouldBe true
+  }
+
   "rangeRoundDiscreteTime, rangeCleanupExtend and rangeCombine" should
     "combine, extend ranges, fill gaps and remove overlaps of dfDirtyTimeRanges," +
     " and then convert dfMap to a 1-1-relation by selecting the smallest value" in {
