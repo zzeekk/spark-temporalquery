@@ -13,6 +13,7 @@ import scala.reflect.runtime.universe.TypeTag
  *   : scala type for interval axis
  */
 abstract class IntervalDef[T: Ordering: TypeTag] extends Serializable {
+  private val ordering: Ordering[T] = implicitly[Ordering[T]]
 
   /**
    * Define lower horizon of the interval axis
@@ -57,9 +58,56 @@ abstract class IntervalDef[T: Ordering: TypeTag] extends Serializable {
     functions.when(valueCol.isNotNull,
       functions.least(functions.greatest(valueCol, functions.lit(lowerHorizon)), functions.lit(upperHorizon)))
 
+  /**
+   * Get the predecessor for a scala value of type T for this interval axis definition
+   */
+  def predecessor(value: T): T
+
   def getPredecessorExpr(valueCol: Column): Column
 
+  /**
+   * Get the successor for a scala value of type T for this interval axis definition
+   */
+  def successor(value: T): T
+
   def getSuccessorExpr(valueCol: Column): Column
+
+  final val isEmpty: ((T, T)) => Boolean = i => ordering.lteq(i._2, successor(i._1))
+
+  /**
+   * calculates the intersection
+   * @param minuend
+   *   endpoints of minuend
+   * @param subtrahend
+   *   endpoints of substrahend
+   * @param ordering
+   *   ordering of type T
+   * @return
+   *   list of intervals in descending order which the union of is the complement minuend \
+   *   subtrahend
+   */
+   qfinal val intersect: ((T, T)) => ((T, T)) => (T, T) = left => right => (ordering.max(left._1, right._1), ordering.min(left._2, right._2))
+
+  /**
+   * calculates the complement
+   * @param minuend
+   *   endpoints of minuend
+   * @param subtrahend
+   *   endpoints of substrahend
+   * @param ordering
+   *   ordering of type T
+   * @return
+   *   list of intervals in descending order which the union of is the complement minuend \
+   *   subtrahend
+   */
+  final def complement(minuend: (T, T) = (lowerHorizon, upperHorizon))(subtrahend: (T, T))
+      : List[(T, T)] =
+    if (ordering.lt(subtrahend._2, minuend._1) || ordering.lt(minuend._2, subtrahend._1)) List(minuend)
+    else
+      List( // need to be in descending order for usage.
+        (successor(subtrahend._2), minuend._2),
+        (minuend._1,               predecessor(subtrahend._1))
+      ).filterNot(i => isEmpty(i))
 
   // Helpers
   @inline private def least(values: T*): T = values.min

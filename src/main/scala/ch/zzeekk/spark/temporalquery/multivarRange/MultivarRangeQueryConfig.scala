@@ -1,5 +1,6 @@
 package ch.zzeekk.spark.temporalquery.multivarRange
 
+import ch.zzeekk.spark.temporalquery.Crossable
 import ch.zzeekk.spark.temporalquery.interval.{IntervalDef, IntervalQueryDimension}
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.{Column, DataFrame}
@@ -13,6 +14,8 @@ import org.slf4j.Logger
  */
 abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Serializable {
   // this is an abstract class because "traits can not have type parameters with context bounds"
+
+  type MultivarRange = List[(T, T)]
 
   // 2nd pair of from/to column names
   protected def increaseColNameNb(colName: String): String = {
@@ -48,7 +51,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   def definedColName: String = "_defined"
   def definedCol: Column = col(definedColName)
 
-  final def intervalDimensions: List[IntervalQueryDimension[T, D]] = dimensionMap.map { case (f, (t, i)) =>
+  final def rangeDimensions: List[IntervalQueryDimension[T, D]] = dimensionMap.map { case (f, (t, i)) =>
     IntervalQueryDimension(
       fromColName = f,
       toColName = t,
@@ -60,53 +63,148 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
     )
   }.toList.sortBy(_.fromColName)
 
+  final def rangeIntervalDefs: List[D] = rangeIntervalDefs
+
+  final def universe: MultivarRange = rangeIntervalDefs.map(d => (d.lowerHorizon, d.upperHorizon))
+
   @deprecated("simply wrong in multi-dimension case")
-  def fromColName: String = intervalDimensions.head.fromColName
+  def fromColName: String = rangeDimensions.head.fromColName
   @deprecated("simply wrong in multi-dimension case")
-  def toColName: String = intervalDimensions.head.toColName
+  def toColName: String = rangeDimensions.head.toColName
   @deprecated("simply wrong in multi-dimension case")
   def fromCol: Column = col(fromColName)
   @deprecated("simply wrong in multi-dimension case")
   def toCol: Column = col(toColName)
   @deprecated("simply wrong in multi-dimension case")
-  def fromColName2: String = intervalDimensions.head.fromCol2Name
+  def fromColName2: String = rangeDimensions.head.fromCol2Name
   @deprecated("simply wrong in multi-dimension case")
-  def toColName2: String = intervalDimensions.head.toCol2Name
+  def toColName2: String = rangeDimensions.head.toCol2Name
   @deprecated("simply wrong in multi-dimension case")
   def fromCol2: Column = col(fromColName2)
   @deprecated("simply wrong in multi-dimension case")
   def toCol2: Column = col(toColName2)
   @deprecated("simply wrong in multi-dimension case")
-  def lowerHorizon: T = intervalDimensions.head.lowerHorizon
+  def lowerHorizon: T = rangeDimensions.head.lowerHorizon
   @deprecated("simply wrong in multi-dimension case")
-  def upperHorizon: T = intervalDimensions.head.upperHorizon
+  def upperHorizon: T = rangeDimensions.head.upperHorizon
   @deprecated("simply wrong in multi-dimension case")
-  def intervalDef: D = intervalDimensions.head.intDef
+  def intervalDef: D = rangeDimensions.head.intDef
 
-  // interval functions
+  // a bit of set theory for ranges
+
+  final def isEmpty(rangeSides: Seq[(T, T)]): Boolean = {
+    require(
+      rangeSides.length == numDimensions,
+      s"Number of range sides must equal number of dimensions, but numDimensions=$numDimensions" +
+        s" and ${rangeSides.length} rangeSides given: ${rangeSides.mkString(",")} "
+    )
+    rangeSides.zip(rangeIntervalDefs).exists { case (r, i) => i.isEmpty(r) }
+  }
+
+  /**
+   * Calculates the intersection of two ranges
+   * @param left
+   *   sequence of range sides, i.e. (start,end) of Interval of type D
+   * @param right
+   *   sequence of range sides, i.e. (start,end) of Interval of type D
+   * @return
+   *   sequence of range sides, i.e. (start,end) of Interval of type D
+   */
+  final def intersect(left: Seq[(T, T)], right: Seq[(T, T)]): Seq[(T, T)] =
+    left.zip(right).zip(rangeIntervalDefs.map(_.intersect)).map { case ((l, r), intersectFun) =>
+      intersectFun(l)(r)
+    }
+
+  /**
+   * Calculates the intersection of a family of ranges
+   * @param rangeFamily
+   *   sequence of sequence of range sides, i.e. (start,end) of Interval of type D
+   * @return
+   *   sequence of range sides, i.e. (start,end) of Interval of type D
+   */
+  final def intersect(rangeFamily: Seq[Seq[(T, T)]]): Seq[(T, T)] = rangeFamily.reduce(intersect)
+
+  /**
+   * returns the complement of subtrahend inside minuend: minuend \ subtrahend
+   * @param subtrahend
+   *   range to be substracted
+   * @param minuend
+   *   range to substract from, default: whole universe
+   * @return
+   *   list of ranges of which the union is minuend \ subtrahend Note that the result ranges overlap
+   *   if 1 < numDimensions
+   */
+  final def complement(minuend: Seq[(T, T)] = universe)(subtrahend: Seq[(T, T)]): List[MultivarRange] = {
+    require(
+      minuend.length == numDimensions,
+      s"Number of minuend range sides must equal number of dimensions, but numDimensions=${numDimensions}" +
+        s" and ${minuend.length} range sides given: ${minuend.mkString(",")} "
+    )
+    require(
+      subtrahend.length == numDimensions,
+      s"Number of subtrahend range sides must equal number of dimensions, but numDimensions=${numDimensions}" +
+        s" and ${subtrahend.length} range sides given: ${subtrahend.mkString(",")} "
+    )
+    val iter = new scala.collection.immutable.NumericRange.Exclusive(start = 0, end = numDimensions, step = 1).toList
+    iter.flatMap { n =>
+      val (prefMinuendSides, nextMinuendSides) = minuend.splitAt(n)
+      List(
+        List((nextMinuendSides.head._1,                         rangeIntervalDefs(n).predecessor(subtrahend(n)._1))),
+        List((rangeIntervalDefs(n).successor(subtrahend(n)._2), nextMinuendSides.head._2))
+      ).map(x => (prefMinuendSides ++ x ++ nextMinuendSides.tail).toList)
+    }
+  }
+
+  /**
+   * returns the complement of subtrahend inside minuend: minuend \ subtrahend
+   * @param subtrahend
+   *   range to be substracted
+   * @param minuend
+   *   range to substract from, default: whole universe
+   * @return
+   *   list of ranges of which the union is minuend \ subtrahend Note that the result ranges overlap
+   *   if 1 < numDimensions
+   */
+  final def complementFamily(minuend: Seq[(T, T)] = universe)(subtrahends: Seq[Seq[(T, T)]]): List[MultivarRange] = {
+    require(
+      minuend.length == numDimensions,
+      s"Number of minuend range sides must equal number of dimensions, but numDimensions=${numDimensions}" +
+        s" and ${minuend.length} range sides given: ${minuend.mkString(",")} !"
+    )
+    require(
+      subtrahends.forall(_.length == numDimensions),
+      s"Number of subtrahend range sides must equal number of dimensions, but numDimensions=${numDimensions}" +
+        s" and dimensions of subtrahends ${subtrahends.map(_.length).mkString(";")} !"
+    )
+    val aaa: Seq[List[MultivarRange]] = subtrahends.map(complement(minuend))
+    val xxx: Seq[(MultivarRange,MultivarRange)] = subtrahends.map(complement(minuend))
+      .reduceLeft[(MultivarRange,MultivarRange)](???)
+ //     .reduceLeft[(MultivarRange,MultivarRange)]{ case (r1:Seq[MultivarRange],r2:Seq[MultivarRange]) => r1.cross(r2)}
+    ???
+  }
 
   // TODO: explain this function
-  def applyBooleanColumnFunctionToIntervalDefs(boolColFun: IntervalQueryDimension[T, D] => Column): Column =
-    intervalDimensions.map(boolColFun).reduce((x, y) => x and y)
+  final def applyBooleanColumnFunctionToIntervalDefs(boolColFun: IntervalQueryDimension[T, D] => Column): Column =
+    rangeDimensions.map(boolColFun).reduce((x, y) => x and y)
 
   // TODO: explain this function
   private def checkValue(checkFun: (Column, IntervalQueryDimension[T, D]) => Column)(values: Seq[Column]): Column = {
     require(values.length == numDimensions,
       s"Please provide as many values as dimensions! values.length=${values.length} , numDimensions=$numDimensions")
-    applyBooleanColumnFunctionToIntervalDefs(dim => checkFun(values(intervalDimensions.indexOf(dim)), dim))
+    applyBooleanColumnFunctionToIntervalDefs(dim => checkFun(values(rangeDimensions.indexOf(dim)), dim))
   }
 
-  val isInIntervalExpr: Seq[Column] => Column = checkValue(checkFun = (valCol, dim) =>
+  val isInRangeExpr: Seq[Column] => Column = checkValue(checkFun = (valCol, dim) =>
     dim.intDef.isInIntervalExpr(valCol, dim.fromCol, dim.toCol))
 
   val isInBoundariesExpr: Seq[Column] => Column = checkValue(checkFun = (valCol, dim) =>
     valCol.between(lit(dim.lowerHorizon), lit(dim.upperHorizon)))
 
-  def isValidMultivarRangeExpr: Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
+  def isValidRangeExpr: Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
     dim.intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)
   )
 
-  def joinMultivarRangeExpr(df1: DataFrame, df2: DataFrame)(implicit logger: Logger): Column = {
+  def joinRangeExpr(df1: DataFrame, df2: DataFrame)(implicit logger: Logger): Column = {
     val joinCol = applyBooleanColumnFunctionToIntervalDefs(dim =>
       dim.intDef.intervalJoinExpr(df1(dim.fromColName), df1(dim.toColName), df2(dim.fromCol2Name), df2(dim.toCol2Name))
     )

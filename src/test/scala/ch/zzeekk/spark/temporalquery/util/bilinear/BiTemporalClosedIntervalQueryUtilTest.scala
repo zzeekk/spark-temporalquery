@@ -16,7 +16,7 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
   import session.implicits._
   private implicit val timeOrdering: Ordering[Timestamp] = timestampOrdering
   logger.info(s"BiTemporalQueryUtilTest: defaultBiTemporalConfig = $defaultBiTemporalConfig")
-  private val fromCols: List[Column] = defaultBiTemporalConfig.intervalDimensions.map(_.fromCol)
+  private val fromCols: List[Column] = defaultBiTemporalConfig.rangeDimensions.map(_.fromCol)
 
   "rangeCleanupExtend and rangeCombine" should "extend and combine dfLeft" in {
     val actual = dfLeft

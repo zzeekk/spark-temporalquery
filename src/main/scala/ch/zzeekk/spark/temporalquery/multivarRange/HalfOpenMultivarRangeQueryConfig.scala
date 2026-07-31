@@ -4,9 +4,9 @@ import ch.zzeekk.spark.temporalquery.interval.HalfOpenInterval
 import org.apache.spark.sql.Column
 
 abstract class HalfOpenMultivarRangeQueryConfig[T: Ordering] extends MultivarRangeQueryConfig[T, HalfOpenInterval[T]] {
-  def getPredecessorIntervalEndExpr(startValue: Column): Column = intervalDimensions
+  def getPredecessorIntervalEndExpr(startValue: Column): Column = rangeDimensions
     .map(_.intDef.getFitToHorizonExpr(startValue)).reduce((x, y) => x and y)
 
-  def getSuccessorIntervalStartExpr(endValue: Column): Column = intervalDimensions
+  def getSuccessorIntervalStartExpr(endValue: Column): Column = rangeDimensions
     .map(_.intDef.getFitToHorizonExpr(endValue)).reduce((x, y) => x and y)
 }

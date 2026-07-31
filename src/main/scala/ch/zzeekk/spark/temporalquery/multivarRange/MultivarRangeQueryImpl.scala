@@ -73,10 +73,10 @@ object MultivarRangeQueryImpl extends Logging {
       df: DataFrame,
       clmrqc: ClosedMultivarRangeQueryConfig[T]
   ): DataFrame = {
-    val dims = clmrqc.intervalDimensions
+    val dims = clmrqc.rangeDimensions
     df.withColumns(colsMap = dims.map(d => (d.fromColName, d.intDef.getCeilExpr(col(d.fromColName)))).toMap)
       .withColumns(colsMap = dims.map(d => (d.toColName, d.intDef.getFloorExpr(col(d.toColName)))).toMap)
-      .where(clmrqc.isValidMultivarRangeExpr)
+      .where(clmrqc.isValidRangeExpr)
       // return columns in same order as provided
       .select(df.columns.map(col): _*)
   }
@@ -85,11 +85,11 @@ object MultivarRangeQueryImpl extends Logging {
       df: DataFrame,
       clmrqc: ClosedMultivarRangeQueryConfig[T]
   ): DataFrame = {
-    val dims = clmrqc.intervalDimensions
+    val dims = clmrqc.rangeDimensions
     df
       .withColumns(colsMap = dims.map(d => (d.fromColName, d.intDef.getCeilExpr(col(d.fromColName)))).toMap)
       .withColumns(colsMap = dims.map(d => (d.toColName, d.intDef.getPredecessorExpr(col(d.toColName)))).toMap)
-      .where(clmrqc.isValidMultivarRangeExpr)
+      .where(clmrqc.isValidRangeExpr)
       // return columns in same order as provided
       .select(df.columns.map(col): _*)
   }
@@ -134,7 +134,7 @@ object MultivarRangeQueryImpl extends Logging {
     debugLog(s"(joinIntervals) df2Renamed.schema = ${df2Renamed.schema.catalogString}")
     debugLog(s"(joinIntervals) keyCondition      = $keyCondition")
     val dfJoined = df1Renamed
-      .join(df2Renamed, keyCondition and additionalJoinCondition and mrqc.joinMultivarRangeExpr(df1Renamed, df2Renamed), joinType)
+      .join(df2Renamed, keyCondition and additionalJoinCondition and mrqc.joinRangeExpr(df1Renamed, df2Renamed), joinType)
     debugLog(s"(joinIntervals) dfJoined.schema   = ${dfJoined.schema.catalogString}")
 
     // select final schema
@@ -144,7 +144,7 @@ object MultivarRangeQueryImpl extends Logging {
     val colsDf1 = df1.columns.diff(commonColNames ++ mrqc.technicalColNames).map(df1(_))
     val colsDf2 = df2.columns.diff(commonColNames ++ mrqc.technicalColNames).map(df2(_))
     // val timeColumns = List(greatest(mrqc.fromCol, mrqc.fromCol2).as(mrqc.fromColName), least(mrqc.toCol, mrqc.toCol2).as(mrqc.toColName))
-    val timeColumns = mrqc.intervalDimensions.map { dim =>
+    val timeColumns = mrqc.rangeDimensions.map { dim =>
       List(greatest(dim.fromCol, dim.fromCol2).as(dim.fromColName), least(dim.toCol, dim.toCol2).as(dim.toColName))
     }.reduce((x, y) => x ++ y)
     val selCols = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
@@ -223,9 +223,9 @@ object MultivarRangeQueryImpl extends Logging {
     )
 
     val keyCols = keys.map(col)
-    debugLog(s"(buildIntervalRanges) get start/end-points for every key: ${mrqc.isValidMultivarRangeExpr}")
+    debugLog(s"(buildIntervalRanges) get start/end-points for every key: ${mrqc.isValidRangeExpr}")
     val dfPoints = df
-      .where(mrqc.isValidMultivarRangeExpr) // filter invalid intervals
+      .where(mrqc.isValidRangeExpr) // filter invalid intervals
       .select(keyCols :+ mrqc.fromCol.as(ptColName): _*).union(
         df.select(keyCols :+
             mrqc.
@@ -276,7 +276,7 @@ object MultivarRangeQueryImpl extends Logging {
       df.columns.intersect(mrqc.fromToColnames2 :+ mrqc.definedColName).isEmpty,
       s"(cleanupExtendIntervals) Your right-dataframe must not contain columns named {${mrqc.fromToColnames2 :+ mrqc.definedColName}}! df.columns = ${df.columns.mkString(",")}"
     )
-    val dims = mrqc.intervalDimensions
+    val dims = mrqc.rangeDimensions
     def transform(df: DataFrame): DataFrame = {
       debugLog(s"(cleanupExtendIntervals.transform) df.schema = ${df.schema.catalogString}")
       debugLog(s"(cleanupExtendIntervals.transform)" +
@@ -381,7 +381,7 @@ object MultivarRangeQueryImpl extends Logging {
     val df2Renamed = renameIntervalCols2nd(df2)
 
     val joinCondition: Column = createAliasKeyCondition(df1, df2Renamed, keys)
-      .and(mrqc.joinMultivarRangeExpr(df1, df2Renamed))
+      .and(mrqc.joinRangeExpr(df1, df2Renamed))
       .and(additionalJoinFilterCondition)
     debugLog(s"(leftAntiJoinRanges) joinCondition = $joinCondition")
 
@@ -410,8 +410,8 @@ object MultivarRangeQueryImpl extends Logging {
     debugLog(s"(leftAntiJoinRanges) dfComplementJoin.schema = ${dfComplementJoin.schema.catalogString}")
 
 
-    val rangeCol: Column = array(mrqc.intervalDimensions.map{ d => struct(d.fromCol.as("f"),d.toCol.as("t")).as(d.fromColName)}:_*).as("range")
-    val rangeCol2: Column = array(mrqc.config2.intervalDimensions.map{ d => struct(d.fromCol.as("f"),d.toCol.as("t")).as(d.fromColName)}:_*).as("range")
+    val rangeCol: Column = array(mrqc.rangeDimensions.map{ d => struct(d.fromCol.as("f"),d.toCol.as("t")).as(d.fromColName)}:_*).as("range")
+    val rangeCol2: Column = array(mrqc.config2.rangeDimensions.map{ d => struct(d.fromCol.as("f"),d.toCol.as("t")).as(d.fromColName)}:_*).as("range")
     val udfIntervalComplement = getUdfRangeComplement[T]
     val dfComplementJoin_complementArray = dfComplementJoin
       .groupBy(keys.map(col) :+ rangeCol: _*)
@@ -481,9 +481,9 @@ object MultivarRangeQueryImpl extends Logging {
     debugLog(s"(combineMultivarRanges(runId=$runId)) df1.schema = ${df.schema.catalogString}")
     debugLog(s"(combineMultivarRanges(runId=$runId)) ignoreColNames = ${ignoreColNames.mkString(",")}")
     debugLog(s"(combineMultivarRanges(runId=$runId)) mrqc = $mrqc")
-    val dims = mrqc.intervalDimensions
-    val resultatCombine = dims.foldLeft(df.where(mrqc.isValidMultivarRangeExpr)) { case (df, dim) =>
-      combineDimensionRanges(df.where(mrqc.isValidMultivarRangeExpr), dim, mrqc.additionalTechnicalColNames, ignoreColNames)
+    val dims = mrqc.rangeDimensions
+    val resultatCombine = dims.foldLeft(df.where(mrqc.isValidRangeExpr)) { case (df, dim) =>
+      combineDimensionRanges(df.where(mrqc.isValidRangeExpr), dim, mrqc.additionalTechnicalColNames, ignoreColNames)
     }
     if (logger.isDebugEnabled()) resultatCombine.createdLog("resultatCombine")
     if (mrqc.numDimensions == 1 || df.except(resultatCombine).isEmpty) {
@@ -557,7 +557,7 @@ object MultivarRangeQueryImpl extends Logging {
     debugLog(s"(unifyMultivarRanges) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
     debugLog(s"(unifyMultivarRanges) extend = $extend ; fillGapsWithNull = $fillGapsWithNull")
     debugLog(s"(unifyMultivarRanges) mrqc = $mrqc")
-    val dims = mrqc.intervalDimensions
+    val dims = mrqc.rangeDimensions
     dims.zip(dims.inits.toSeq.tail.reverse).foldLeft(df) { case (df, (dim, prevDims)) =>
       unifyDimensionRanges(
         df = df,
@@ -614,7 +614,7 @@ object MultivarRangeQueryImpl extends Logging {
     debugLog(s"(extendIntervalRanges) extendMin = $extendMin ; extendMax = $extendMax")
     debugLog(s"(extendIntervalRanges) mrqc = $mrqc")
     if (extendMin || extendMax) {
-      val dims = mrqc.intervalDimensions
+      val dims = mrqc.rangeDimensions
       dims.foldLeft(df) { case (df, dim) =>
         extendDimensionRanges[T](
           df = df,
@@ -661,7 +661,7 @@ object MultivarRangeQueryImpl extends Logging {
         s" but df.schema = ${df.schema.catalogString}!"
     )
 //    df.withColumnRenamed(mrqc.fromColName, mrqc.fromColName2).withColumnRenamed(mrqc.toColName, mrqc.toColName2)
-    df.withColumnsRenamed(mrqc.intervalDimensions.flatMap { d =>
+    df.withColumnsRenamed(mrqc.rangeDimensions.flatMap { d =>
       List((d.fromColName, d.fromCol2Name), (d.toColName, d.toCol2Name))
     }.toMap)
   }

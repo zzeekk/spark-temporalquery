@@ -15,13 +15,13 @@ object TemporalTestUtils extends TestUtils {
   implicit val defaultTemporalConfig: LinearClosedIntervalQueryConfig = LinearClosedIntervalQueryConfig
     .withDefaultIntervalDef(fromColName = "valid_from", toColName = "valid_to")
 
-  val defaultFromColName: String = defaultTemporalConfig.intervalDimensions.head.fromColName
-  val defaultToColName: String = defaultTemporalConfig.intervalDimensions.head.toColName
+  val defaultFromColName: String = defaultTemporalConfig.rangeDimensions.head.fromColName
+  val defaultToColName: String = defaultTemporalConfig.rangeDimensions.head.toColName
   val defaultFromCol: Column = col(defaultFromColName)
   val defaultToCol: Column = col(defaultToColName)
 
-  val defaultLowerHorizon: Timestamp = defaultTemporalConfig.intervalDimensions.head.lowerHorizon
-  val defaultUpperHorizon: Timestamp = defaultTemporalConfig.intervalDimensions.head.upperHorizon
+  val defaultLowerHorizon: Timestamp = defaultTemporalConfig.rangeDimensions.head.lowerHorizon
+  val defaultUpperHorizon: Timestamp = defaultTemporalConfig.rangeDimensions.head.upperHorizon
 
   // some beautiful nasty data frames for testing
 

@@ -25,7 +25,7 @@ class SVGexportTest extends AnyFlatSpec with Matchers with TestUtils {
     val argument = dfDenseTime.where($"id" === 0)
     val actual = argument.toSvg[Timestamp]("value")(timeOrdering, typeTag[Timestamp], halfopenBiTemporalConfig)
     logger.info(s"Voilà df dfDenseTime as SVG:")
-    argument.orderBy(halfopenBiTemporalConfig.intervalDimensions.map(dim => col(dim.fromColName)): _*).show(false)
+    argument.orderBy(halfopenBiTemporalConfig.rangeDimensions.map(dim => col(dim.fromColName)): _*).show(false)
     println(actual)
     // structural checks
     actual should startWith("<svg")
@@ -46,7 +46,7 @@ class SVGexportTest extends AnyFlatSpec with Matchers with TestUtils {
     // leaving 6 rows for id=0.
     val argument = dfDenseTime.where($"id" === 0).rangeDense2discrete
     val actual = argument.toSvg[Timestamp]("value")
-    argument.orderBy(defaultBiTemporalConfig.intervalDimensions.map(dim => col(dim.fromColName)): _*).show(false)
+    argument.orderBy(defaultBiTemporalConfig.rangeDimensions.map(dim => col(dim.fromColName)): _*).show(false)
     println(actual)
     actual should startWith("<svg")
     actual should endWith("</svg>")

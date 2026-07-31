@@ -40,6 +40,14 @@ package object temporalquery extends Serializable with Logging {
   }
   val udf_durationInMillis: UserDefinedFunction = udf(durationInMillis _)
 
+  // Source - https://stackoverflow.com/a/14740340
+  // Posted by Travis Brown
+  // Retrieved 2026-07-30, License - CC BY-SA 3.0
+
+  implicit class Crossable[X](xs: Seq[X]) {
+    def cross[Y](ys: Seq[Y]): Seq[(X, Y)] = xs.flatMap{x => ys.map(y => (x,y))}
+  }
+
   /**
    * returns the complement of union of subtrahends relative to the interval [validFrom, validTo]
    * Hereby we use A ∖ (⋃ B_i) = A ∖ B₀∖ B₁∖ B₂∖ ...
@@ -52,39 +60,66 @@ package object temporalquery extends Serializable with Logging {
    * @return
    *   [validFrom, validTo] ∖ (⋃ subtrahends)
    */
-/*  def rangeComplement[T: Ordering](validFrom: T, validTo: T, subtrahends: Seq[Row])(implicit
-                                                                                    ordering: Ordering[T],
-                                                                                    ic: MultivarRangeQueryConfig[T, ClosedInterval[T]],
-                                                                                    logger:Logger*/
-  def rangeComplement[T: Ordering](range: Seq[(T,T)], subtrahends: Seq[Seq[(T,T)]])(implicit
-                                                                                    ordering: Ordering[T],
-                                                                                    ic: MultivarRangeQueryConfig[T, ClosedInterval[T]],
-                                                                                    logger:Logger
-  ): Seq[Seq[(T, T)]] = {
-    debugLog(s"(rangeComplement) START validity = [$validFrom , $validTo]")
-    val subtrahendsSorted: List[(T, T)] = subtrahends
+  def rangeComplement[T: Ordering](validFrom: T, validTo: T, subtrahends: Seq[Row])(implicit
+      ordering: Ordering[T],
+      mrqc: MultivarRangeQueryConfig[T, ClosedInterval[T]],
+      logger: Logger
+  ): Seq[(T, T)] = {
+    debugLog(s"(rangeComplement) START validity = [$validFrom , $validTo] ; ${subtrahends.length} subtrahends")
+    val subtrahendsSorted= subtrahends
       .map(r => (r.getAs[T](0), r.getAs[T](1)))
-      .sorted(Ordering.Tuple2(ordering, ordering))
       .filterNot(x => ordering.lt(validTo, x._1))
       .filterNot(x => ordering.gt(validFrom, x._2))
+      .sorted(Ordering.Tuple2(ordering, ordering))
       .toList
-    debugLog(s"(rangeComplement) subtrahendsSorted = ${subtrahendsSorted.mkString(" U ")}")
+    debugLog(s"(rangeComplement) ${subtrahendsSorted.length} subtrahendsSorted = ${subtrahendsSorted.mkString(" U ")}")
 
-    def getOneComplement(minuend: (T, T), subtrahend: (T, T)): Seq[(T, T)] =
-      List(
-        (ic.intervalDef.successor(subtrahend._2), minuend._2),
-        (minuend._1,                              ic.intervalDef.predecessor(subtrahend._1))
-      ).filterNot(x => ordering.lt(x._2, x._1))
-
-    def subtractOneSubtrahend(res: Seq[(T, T)], subtrahend: (T, T)): Seq[(T, T)] = {
-      debugLog(s"intervalComplement.subtractOneSubtrahend: START subtrahend = $subtrahend")
-      getOneComplement(res.head, subtrahend) ++ res.tail
+    def subtractOneSubtrahend(minuends: Seq[(T, T)], subtrahend: (T, T)): Seq[(T, T)] = {
+      val res = mrqc.intervalDef. complement(minuends.head)(subtrahend) ++ minuends.tail
+      debugLog(s"(rangeComplement.subtractOneSubtrahend) minuends = ${minuends.mkString(",")} ;" +
+        s" subtrahend = $subtrahend ; res = ${res.mkString(",")}")
+      res
     }
 
     subtrahendsSorted.foldLeft(Seq((validFrom, validTo)))(subtractOneSubtrahend)
   }
+
+
+  /*def rangeComplement[T: Ordering](rangeSides: Seq[(T, T)], subtrahends: Seq[Seq[(T, T)]])(implicit
+      ordering: Ordering[T],
+      mrqc: MultivarRangeQueryConfig[T, ClosedInterval[T]],
+      logger: Logger
+  ) = if (mrqc.isEmpty(rangeSides)) Nil else {
+    debugLog(s"(rangeComplement) START rangeSides = ${rangeSides.mkString(",")}")
+    require(rangeSides.length == mrqc.numDimensions,
+      s"Number of range sides must equal number of dimensions, but mrqc.numDimensions=${mrqc.numDimensions}" +
+        s" and ${rangeSides.length} rangeSides given: ${rangeSides.mkString(",")} ")
+    val subtrahendsSorted: Seq[Seq[(T, T)]] = subtrahends
+      .filterNot(mrqc.isEmpty)
+      //.sorted(Ordering.Seq(ordering))
+      .toList
+    debugLog(s"(rangeComplement) subtrahendsSorted = ${subtrahendsSorted.mkString(" U ")}")
+
+    def subtractOneSubtrahend(minuends: Seq[(T, T)], subtrahend: (T, T)): Seq[(T, T)] = {
+      val res = mrqc.intervalDef.diff(minuends.head)(subtrahend)(ordering) ++ minuends.tail
+      debugLog(s"(rangeComplement.subtractOneSubtrahend) minuends = ${minuends.mkString(",")} ;" +
+        s" subtrahend = $subtrahend ; res = ${res.mkString(",")}")
+      res
+    }
+
+    subtrahendsSorted.foldLeft(Seq((validFrom, validTo)))(subtractOneSubtrahend)
+  }
+*/
   def getUdfRangeComplement[T: Ordering: TypeTag](
-      implicit hc: MultivarRangeQueryConfig[T, ClosedInterval[T]],logger:Logger
+      implicit
+      hc: MultivarRangeQueryConfig[T, ClosedInterval[T]],
+      logger: Logger
   ): UserDefinedFunction = udf(rangeComplement[T] _)
 
 }
+
+/*  def rangeComplement[T: Ordering](range: Seq[(T,T)], subtrahends: Seq[Seq[(T,T)]])(implicit
+                                                                                    ordering: Ordering[T],
+                                                                                    ic: MultivarRangeQueryConfig[T, ClosedInterval[T]],
+                                                                                    logger:Logger
+  ): Seq[Seq[(T, T)]] = {*/

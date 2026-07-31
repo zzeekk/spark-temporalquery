@@ -16,7 +16,7 @@ object MultivariateRangeLibrary extends Logging {
    */
   implicit class MultivarRangeColumnExtensions(value: Column) {
     def isInRange[T: Ordering: TypeTag](implicit mrqc: MultivarRangeQueryConfig[T, _]): Column =
-      mrqc.isInIntervalExpr(List(value))
+      mrqc.isInRangeExpr(List(value))
   }
 
   /**
@@ -247,18 +247,18 @@ object MultivariateRangeLibrary extends Logging {
       require(1 < mrqc.numDimensions,
         s"toSvg works only for multi-dimensional data but, numDimensions=${mrqc.numDimensions}")
 
-      val dim1 = mrqc.intervalDimensions.head
-      val dim2 = mrqc.intervalDimensions(1)
+      val dim1 = mrqc.rangeDimensions.head
+      val dim2 = mrqc.rangeDimensions(1)
       val isClosed = dim1.intDef.isInstanceOf[ClosedInterval[_]]
 
       val clampedDf = {
-        val rawCols = mrqc.intervalDimensions.flatMap { dim =>
+        val rawCols = mrqc.rangeDimensions.flatMap { dim =>
           Seq(
             s"_raw_${dim.fromColName}" -> col(dim.fromColName),
             s"_raw_${dim.toColName}"   -> col(dim.toColName)
           )
         }.toMap
-        val clampCols = mrqc.intervalDimensions.flatMap { dim =>
+        val clampCols = mrqc.rangeDimensions.flatMap { dim =>
           val lo = lit(dim.lowerHorizon)
           val hi = lit(dim.upperHorizon)
           Seq(

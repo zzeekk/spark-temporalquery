@@ -23,7 +23,17 @@ case class HalfOpenInterval[T: Ordering: TypeTag](
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column =
     fromCol <= valueCol && valueCol < toCol
 
+  /**
+   * Get the predecessor for a scala value of type T for this interval axis definition
+   */
+  def predecessor(value: T): T = value
+
   def getPredecessorExpr(valueCol: Column): Column = getFitToHorizonExpr(valueCol)
+
+  /**
+   * Get the successor for a scala value of type T for this interval axis definition
+   */
+  def successor(value: T): T = value
 
   def getSuccessorExpr(valueCol: Column): Column = getFitToHorizonExpr(valueCol)
 
