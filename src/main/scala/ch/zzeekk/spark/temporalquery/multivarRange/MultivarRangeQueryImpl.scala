@@ -1,12 +1,14 @@
 package ch.zzeekk.spark.temporalquery.multivarRange
 
+import ch.zzeekk.spark.temporalquery.Logging
 import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, IntervalDef, IntervalQueryDimension}
-import ch.zzeekk.spark.temporalquery.{Logging, getUdfRangeComplement}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, SubqueryAlias, UnaryNode}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{Column, DataFrame}
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.slf4j.Logger
+import org.slf4j.helpers.NOPLogger
 
 import scala.annotation.tailrec
 import scala.reflect.runtime.universe.TypeTag
@@ -374,7 +376,8 @@ object MultivarRangeQueryImpl extends Logging {
     debugLog(s"leftAntiJoinIntervals START: keys = ${keys.mkString(", ")}")
     debugLog(
       s"(leftAntiJoinRanges) START: additionalJoinFilterCondition = $additionalJoinFilterCondition ;" +
-        s" keys = (${keys.mkString(",")})")
+        s" keys = (${keys.mkString(",")})"
+    )
     debugLog(s"(leftAntiJoinRanges) df1.schema = ${df1.schema.catalogString}")
     debugLog(s"(leftAntiJoinRanges) df2.schema = ${df2.schema.catalogString}")
     val df1Cols: Array[Column] = df1.columns.map(df1(_))
@@ -399,7 +402,7 @@ object MultivarRangeQueryImpl extends Logging {
     debugLog(s"(leftAntiJoinRanges) dfJoinLeftAnti.schema = ${dfJoinLeftAnti.schema.catalogString}")
 
     debugLog("(leftAntiJoinRanges) df2Combined contains the combined intersecting ranges of df2.")
-    val df2Combined = combineMultivarRanges(df = dfJoinLeftAnti.select((keys++mrqc.fromToColnames2).map(col): _*),
+    val df2Combined = combineMultivarRanges(df = dfJoinLeftAnti.select((keys ++ mrqc.fromToColnames2).map(col): _*),
       ignoreColNames = Nil, mrqc = mrqc.config2)
     debugLog(s"(leftAntiJoinRanges) df2Combined.schema = ${df2Combined.schema.catalogString}")
 
@@ -409,28 +412,46 @@ object MultivarRangeQueryImpl extends Logging {
     else df1ExceptAntiJoin.join(df2Combined, keys, "inner")
     debugLog(s"(leftAntiJoinRanges) dfComplementJoin.schema = ${dfComplementJoin.schema.catalogString}")
 
+    // Note: we deliberately avoid Spark's udf()/Encoders here: since T is only known via
+    // Ordering/TypeTag (not a concrete type), Spark's reflection-based encoder derivation can not
+    // build an encoder for MultivarRange = List[(T,T)] (nested inside the path-dependent
+    // MultivarRangeUnion case class), see SPARK's [ENCODER_NOT_FOUND]. We compute the complement
+    // via a plain RDD transformation on Rows instead, which needs no encoder for T at all.
+    val dims1 = mrqc.rangeDimensions
+    val subtrahendRangeCol: Column = array(mrqc.config2.rangeDimensions.map { d =>
+      struct(d.fromCol.as("f"), d.toCol.as("t"))
+    }: _*)
 
-    val rangeCol: Column = array(mrqc.rangeDimensions.map{ d => struct(d.fromCol.as("f"),d.toCol.as("t")).as(d.fromColName)}:_*).as("range")
-    val rangeCol2: Column = array(mrqc.config2.rangeDimensions.map{ d => struct(d.fromCol.as("f"),d.toCol.as("t")).as(d.fromColName)}:_*).as("range")
-    val udfIntervalComplement = getUdfRangeComplement[T]
-    val dfComplementJoin_complementArray = dfComplementJoin
-      .groupBy(keys.map(col) :+ rangeCol: _*)
-//      .agg(collect_set(struct(mrqc.fromCol2.as("_1"), mrqc.toCol2.as("_2"))).as("subtrahend"))
-      .agg(collect_set(rangeCol2).as("subtrahend"))
-      .withColumn("complement_array", udfIntervalComplement(mrqc.fromCol, mrqc.toCol, col("subtrahend")))
-      .cache()
-    debugLog(s"(leftAntiJoinRanges) dfComplementJoin_complementArray.schema = ${dfComplementJoin_complementArray.schema.catalogString}")
-    dfComplementJoin_complementArray.printSchema()
+    debugLog("(leftAntiJoinRanges) dfSubtrahends groups, for every row of df1ExceptAntiJoin," +
+      " all ranges of df2Combined intersecting it.")
+    val dfSubtrahends = dfComplementJoin
+      .groupBy(df1.columns.map(col): _*)
+      .agg(collect_set(subtrahendRangeCol).as("subtrahends"))
+    debugLog(s"(leftAntiJoinRanges) dfSubtrahends.schema = ${dfSubtrahends.schema.catalogString}")
 
-    val dfComplement = dfComplementJoin_complementArray
-      .withColumn("complements", explode(col("complement_array")))
-      .drop("subtrahend", mrqc.fromColName, mrqc.toColName)
-      .withColumn(mrqc.fromColName, col("complements._1"))
-      .withColumn(mrqc.toColName, col("complements._2"))
-      .select(df1.columns.map(col): _*)
+    val resultSchema = StructType(dfSubtrahends.schema.filterNot(_.name == "subtrahends"))
+    val complementRDD = dfSubtrahends.rdd.flatMap { row =>
+      val minuend: mrqc.MultivarRange = dims1.map(d => (row.getAs[T](d.fromColName), row.getAs[T](d.toColName)))
+      // Row.getAs[Seq[_]] on an array column actually yields a mutable.ArraySeq at runtime, which
+      // is not a subtype of the immutable Seq that complementFamily expects. Go via
+      // scala.collection.Seq (the common supertype) and force conversion to List with .toList
+      // instead of relying on the (dynamically dispatched) map result type.
+      val subtrahends: Seq[mrqc.MultivarRange] = row.getAs[scala.collection.Seq[scala.collection.Seq[Row]]]("subtrahends")
+        .map(sub => sub.map(r => (r.getAs[T]("f"), r.getAs[T]("t"))).toList)
+        .toList
+      val complementUnion = mrqc.complementFamily(minuend, subtrahends)(NOPLogger.NOP_LOGGER)
+      complementUnion.rangeFamily.map { mvr =>
+        Row.fromSeq(resultSchema.fields.map { field =>
+          val dimIdx = dims1.indexWhere(d => d.fromColName == field.name || d.toColName == field.name)
+          if (dimIdx < 0) row.getAs[Any](field.name)
+          else if (field.name == dims1(dimIdx).fromColName) mvr(dimIdx)._1 else mvr(dimIdx)._2
+        })
+      }
+    }
+    val dfComplement = df1.sparkSession.createDataFrame(complementRDD, resultSchema)
     debugLog(s"(leftAntiJoinRanges) dfComplement.schema = ${dfComplement.schema.catalogString}")
 
-    dfAntiJoin.union(dfComplement)
+    dfAntiJoin.union(dfComplement.select(df1.columns.map(col): _*))
   }
 
   /**
@@ -472,6 +493,7 @@ object MultivarRangeQueryImpl extends Logging {
    * Combines consecutive records when there is no change in the non-technical columns. The
    * dataframe is first cleaned up via [[rangeRoundDiscreteTime]], see its description.
    */
+  @tailrec
   private[temporalquery] def combineMultivarRanges[T: Ordering: TypeTag](
       df: DataFrame,
       ignoreColNames: Seq[String] = Nil,

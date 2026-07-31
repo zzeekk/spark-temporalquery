@@ -2,7 +2,7 @@ package ch.zzeekk.spark.temporalquery.interval
 
 import ch.zzeekk.spark.temporalquery.axis.{DiscreteNumericAxis, DiscreteTimeAxis}
 import ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedIntervalQueryUtil._
-import ch.zzeekk.spark.temporalquery.{TestUtils, rangeComplement}
+import ch.zzeekk.spark.temporalquery.{rangeComplement, TestUtils}
 import org.apache.spark.sql.Row
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

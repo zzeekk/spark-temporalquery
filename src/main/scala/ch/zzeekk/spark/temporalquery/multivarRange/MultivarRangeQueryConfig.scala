@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery.multivarRange
 
-import ch.zzeekk.spark.temporalquery.Crossable
 import ch.zzeekk.spark.temporalquery.interval.{IntervalDef, IntervalQueryDimension}
+import ch.zzeekk.spark.temporalquery.{Crossable, Logging}
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.{Column, DataFrame}
 import org.slf4j.Logger
@@ -12,10 +12,26 @@ import org.slf4j.Logger
  * @tparam T
  *   : scala type for interval axis
  */
-abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Serializable {
+abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extends Logging {
   // this is an abstract class because "traits can not have type parameters with context bounds"
 
   type MultivarRange = List[(T, T)]
+
+  case class MultivarRangeUnion(rangeFamily: Seq[MultivarRange] = Nil) {
+    override def toString: String = s"MultivarRangeUnion(${rangeFamily.length} ranges: ${rangeFamily.map(_.toString).mkString(" ∪ ")})"
+
+    /**
+     * Calculates the intersection of two family of ranges which are combined by union first
+     * @param that
+     *   sequence of sequence of range sides, i.e. (start,end) of Interval of type D
+     * @return
+     *   sequence of range sides, i.e. (start,end) of Interval of type D
+     */
+    def intersect(that: MultivarRangeUnion): MultivarRangeUnion = MultivarRangeUnion(
+      this.rangeFamily.cross(that.rangeFamily).map { case (l, r) => mvrIntersect(l, r) }.filterNot(isEmpty)
+    )
+
+  }
 
   // 2nd pair of from/to column names
   protected def increaseColNameNb(colName: String): String = {
@@ -63,7 +79,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
     )
   }.toList.sortBy(_.fromColName)
 
-  final def rangeIntervalDefs: List[D] = rangeIntervalDefs
+  final def rangeIntervalDefs: List[D] = rangeDimensions.map(_.intDef)
 
   final def universe: MultivarRange = rangeIntervalDefs.map(d => (d.lowerHorizon, d.upperHorizon))
 
@@ -92,13 +108,13 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
 
   // a bit of set theory for ranges
 
-  final def isEmpty(rangeSides: Seq[(T, T)]): Boolean = {
+  final def isEmpty(r: MultivarRange): Boolean = {
     require(
-      rangeSides.length == numDimensions,
+      r.length == numDimensions,
       s"Number of range sides must equal number of dimensions, but numDimensions=$numDimensions" +
-        s" and ${rangeSides.length} rangeSides given: ${rangeSides.mkString(",")} "
+        s" and ${r.length} rangeSides given: ${r.mkString(",")} "
     )
-    rangeSides.zip(rangeIntervalDefs).exists { case (r, i) => i.isEmpty(r) }
+    r.zip(rangeIntervalDefs).exists { case (rg, i) => i.isEmpty(rg) }
   }
 
   /**
@@ -110,7 +126,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
    * @return
    *   sequence of range sides, i.e. (start,end) of Interval of type D
    */
-  final def intersect(left: Seq[(T, T)], right: Seq[(T, T)]): Seq[(T, T)] =
+  final def mvrIntersect(left: MultivarRange, right: MultivarRange): MultivarRange =
     left.zip(right).zip(rangeIntervalDefs.map(_.intersect)).map { case ((l, r), intersectFun) =>
       intersectFun(l)(r)
     }
@@ -122,7 +138,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
    * @return
    *   sequence of range sides, i.e. (start,end) of Interval of type D
    */
-  final def intersect(rangeFamily: Seq[Seq[(T, T)]]): Seq[(T, T)] = rangeFamily.reduce(intersect)
+  final def mvrIntersect(rangeFamily: Seq[MultivarRange]): MultivarRange = rangeFamily.reduce(mvrIntersect)
 
   /**
    * returns the complement of subtrahend inside minuend: minuend \ subtrahend
@@ -134,30 +150,32 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
    *   list of ranges of which the union is minuend \ subtrahend Note that the result ranges overlap
    *   if 1 < numDimensions
    */
-  final def complement(minuend: Seq[(T, T)] = universe)(subtrahend: Seq[(T, T)]): List[MultivarRange] = {
+  final def complement(minuend: MultivarRange = universe)(subtrahend: MultivarRange)(implicit logger: Logger): MultivarRangeUnion = {
     require(
       minuend.length == numDimensions,
-      s"Number of minuend range sides must equal number of dimensions, but numDimensions=${numDimensions}" +
+      s"Number of minuend range sides must equal number of dimensions, but numDimensions=$numDimensions" +
         s" and ${minuend.length} range sides given: ${minuend.mkString(",")} "
     )
     require(
       subtrahend.length == numDimensions,
-      s"Number of subtrahend range sides must equal number of dimensions, but numDimensions=${numDimensions}" +
+      s"Number of subtrahend range sides must equal number of dimensions, but numDimensions=$numDimensions" +
         s" and ${subtrahend.length} range sides given: ${subtrahend.mkString(",")} "
     )
     val iter = new scala.collection.immutable.NumericRange.Exclusive(start = 0, end = numDimensions, step = 1).toList
-    iter.flatMap { n =>
-      val (prefMinuendSides, nextMinuendSides) = minuend.splitAt(n)
+    val diff = iter.flatMap { n =>
+      val (prefMinuendSides: MultivarRange, nextMinuendSides: MultivarRange) = minuend.splitAt(n)
       List(
         List((nextMinuendSides.head._1,                         rangeIntervalDefs(n).predecessor(subtrahend(n)._1))),
         List((rangeIntervalDefs(n).successor(subtrahend(n)._2), nextMinuendSides.head._2))
-      ).map(x => (prefMinuendSides ++ x ++ nextMinuendSides.tail).toList)
-    }
+      ).map(x => prefMinuendSides ++ x ++ nextMinuendSides.tail)
+    }.filterNot(isEmpty)
+    debugLog(s"(complement) minuend = $minuend ; subtrahend = $subtrahend ; diff = ${diff.mkString(" | ")}")
+    MultivarRangeUnion(diff)
   }
 
   /**
    * returns the complement of subtrahend inside minuend: minuend \ subtrahend
-   * @param subtrahend
+   * @param subtrahends
    *   range to be substracted
    * @param minuend
    *   range to substract from, default: whole universe
@@ -165,22 +183,22 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
    *   list of ranges of which the union is minuend \ subtrahend Note that the result ranges overlap
    *   if 1 < numDimensions
    */
-  final def complementFamily(minuend: Seq[(T, T)] = universe)(subtrahends: Seq[Seq[(T, T)]]): List[MultivarRange] = {
+  final def complementFamily(minuend: MultivarRange = universe, subtrahends: Seq[MultivarRange])(implicit
+      logger: Logger
+  ): MultivarRangeUnion = {
+    debugLog(s"(complementFamily) START minuend = $minuend")
+    debugLog(s"(complementFamily) ${subtrahends.length} subtrahends = ${subtrahends.mkString(" | ")}")
     require(
       minuend.length == numDimensions,
-      s"Number of minuend range sides must equal number of dimensions, but numDimensions=${numDimensions}" +
+      s"Number of minuend range sides must equal number of dimensions, but numDimensions=$numDimensions" +
         s" and ${minuend.length} range sides given: ${minuend.mkString(",")} !"
     )
     require(
       subtrahends.forall(_.length == numDimensions),
-      s"Number of subtrahend range sides must equal number of dimensions, but numDimensions=${numDimensions}" +
+      s"Number of subtrahend range sides must equal number of dimensions, but numDimensions=$numDimensions" +
         s" and dimensions of subtrahends ${subtrahends.map(_.length).mkString(";")} !"
     )
-    val aaa: Seq[List[MultivarRange]] = subtrahends.map(complement(minuend))
-    val xxx: Seq[(MultivarRange,MultivarRange)] = subtrahends.map(complement(minuend))
-      .reduceLeft[(MultivarRange,MultivarRange)](???)
- //     .reduceLeft[(MultivarRange,MultivarRange)]{ case (r1:Seq[MultivarRange],r2:Seq[MultivarRange]) => r1.cross(r2)}
-    ???
+    subtrahends.map(complement(minuend)).reduce[MultivarRangeUnion] { case (r, l) => r.intersect(l) }
   }
 
   // TODO: explain this function

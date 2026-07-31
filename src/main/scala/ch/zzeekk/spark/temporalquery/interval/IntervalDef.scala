@@ -75,18 +75,10 @@ abstract class IntervalDef[T: Ordering: TypeTag] extends Serializable {
   final val isEmpty: ((T, T)) => Boolean = i => ordering.lteq(i._2, successor(i._1))
 
   /**
-   * calculates the intersection
-   * @param minuend
-   *   endpoints of minuend
-   * @param subtrahend
-   *   endpoints of substrahend
-   * @param ordering
-   *   ordering of type T
-   * @return
-   *   list of intervals in descending order which the union of is the complement minuend \
-   *   subtrahend
+   * calculates the intersectio returning list of intervals in descending order which the union of
+   * is the complement minuend \ subtrahend
    */
-   qfinal val intersect: ((T, T)) => ((T, T)) => (T, T) = left => right => (ordering.max(left._1, right._1), ordering.min(left._2, right._2))
+  final val intersect: ((T, T)) => ((T, T)) => (T, T) = left => right => (ordering.max(left._1, right._1), ordering.min(left._2, right._2))
 
   /**
    * calculates the complement
@@ -94,8 +86,6 @@ abstract class IntervalDef[T: Ordering: TypeTag] extends Serializable {
    *   endpoints of minuend
    * @param subtrahend
    *   endpoints of substrahend
-   * @param ordering
-   *   ordering of type T
    * @return
    *   list of intervals in descending order which the union of is the complement minuend \
    *   subtrahend

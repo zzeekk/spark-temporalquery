@@ -17,6 +17,36 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
 
   logger.info(s"TemporalQueryUtilTest: defaultTemporalConfig = $defaultTemporalConfig")
 
+  "MultivarRangeUnion.intersect" should "return the intersection of 2 MultivarRangeUnions" in {
+    val left = defaultTemporalConfig.MultivarRangeUnion(List(
+        List((Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999"))),
+        List((Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")))
+      ))
+    val right = defaultTemporalConfig.MultivarRangeUnion(List(
+        List((Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999")))
+      ))
+    val actual = left.intersect(right)
+    val expected = defaultTemporalConfig.MultivarRangeUnion(List(
+        List((Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999"))),
+        List((Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999")))
+      ))
+    actual shouldBe expected
+  }
+
+  "complementFamily" should "return the complement of a family" in {
+    val minuend = List((Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")))
+    val subtrahends: Seq[List[(Timestamp, Timestamp)]] = Seq(
+      List((Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"))),
+      List((Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2019-12-31 23:59:59.999")))
+    )
+    val actual = defaultTemporalConfig.complementFamily(minuend, subtrahends)
+    val expected = defaultTemporalConfig.MultivarRangeUnion(List(
+        List((Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999"))),
+        List((Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999")))
+      ))
+    actual shouldBe expected
+  }
+
   "rangeCleanupExtend and rangeCombine" should "extend and combine dfLeft" in {
     val actual = dfLeft.rangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq(defaultFromCol))
       .rangeCombine()
