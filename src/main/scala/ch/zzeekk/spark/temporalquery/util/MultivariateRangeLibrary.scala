@@ -167,7 +167,7 @@ object MultivariateRangeLibrary extends Logging {
     def rangeCombine[T: Ordering: TypeTag](ignoreColNames: Seq[String] = Nil)(implicit
         mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
         logger: Logger
-    ): DataFrame = MultivarRangeQueryImpl.combineMultivarRanges(df1, ignoreColNames, mrqc)
+    ): DataFrame = MultivarRangeQueryImpl.combineMultivarRanges(df1, mrqc, ignoreColNames)
 
     /**
      * Cuts records into pieces at overlaps, so that at the start of each overlap all active records

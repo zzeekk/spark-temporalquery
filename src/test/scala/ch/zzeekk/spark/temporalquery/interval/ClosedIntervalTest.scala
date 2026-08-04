@@ -128,8 +128,6 @@ class ClosedIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
   }
 
   "intervalComplement" should "return expected results" in {
-//    implicit val intervalConfig: TemporalClosedIntervalQueryConfig = TemporalClosedIntervalQueryConfig
-//      .withDefaultIntervalDef()(intervalDef = millisIntervalDef, logger)
     implicit val intervalConfig: LinearClosedIntervalQueryConfig = LinearClosedIntervalQueryConfig
       .withDefaultIntervalDef(fromColName = "valid_from", toColName = "valid_to")
 

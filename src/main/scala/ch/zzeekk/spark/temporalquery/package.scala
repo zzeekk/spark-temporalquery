@@ -44,8 +44,8 @@ package object temporalquery extends Serializable with Logging {
   // Posted by Travis Brown
   // Retrieved 2026-07-30, License - CC BY-SA 3.0
 
-  implicit class Crossable[X](xs: Seq[X]) {
-    def cross[Y](ys: Seq[Y]): Seq[(X, Y)] = xs.flatMap(x => ys.map(y => (x, y)))
+  implicit class Crossable[X](xs: Set[X]) {
+    def cross[Y](ys: Set[Y]): Set[(X, Y)] = xs.flatMap(x => ys.map(y => (x, y)))
   }
 
   /**

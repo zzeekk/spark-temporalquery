@@ -18,15 +18,15 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
   logger.info(s"TemporalQueryUtilTest: defaultTemporalConfig = $defaultTemporalConfig")
 
   "MultivarRangeUnion.intersect" should "return the intersection of 2 MultivarRangeUnions" in {
-    val left = defaultTemporalConfig.MultivarRangeUnion(List(
+    val left = defaultTemporalConfig.MultivarRangeUnion(Set(
         List((Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999"))),
         List((Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")))
       ))
-    val right = defaultTemporalConfig.MultivarRangeUnion(List(
+    val right = defaultTemporalConfig.MultivarRangeUnion(Set(
         List((Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999")))
       ))
     val actual = left.intersect(right)
-    val expected = defaultTemporalConfig.MultivarRangeUnion(List(
+    val expected = defaultTemporalConfig.MultivarRangeUnion(Set(
         List((Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999"))),
         List((Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999")))
       ))
@@ -40,7 +40,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       List((Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2019-12-31 23:59:59.999")))
     )
     val actual = defaultTemporalConfig.complementFamily(minuend, subtrahends)
-    val expected = defaultTemporalConfig.MultivarRangeUnion(List(
+    val expected = defaultTemporalConfig.MultivarRangeUnion(Set(
         List((Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999"))),
         List((Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999")))
       ))
@@ -544,7 +544,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeLeftAntiJoin_dfMap" should "return expected results" in {
+  "rangeLeftAntiJoin dfLeft with dfMap" should "return expected results" in {
     val actual = dfLeft.rangeLeftAntiJoin(dfMap, Seq("id"))
     val expected = Seq(
       (0, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
@@ -560,9 +560,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
   "rangeLeftAntiJoin_dfRight_dfMap" should "return expected results" in {
     val actual = dfRight.rangeLeftAntiJoin(dfMap, Seq("id"))
     val rowsExpected: Seq[(Int, String, String, Option[Double])] = Seq(
-      (0, "2018-06-01 05:24:11", "2018-10-23 03:50:09.999", Some(97.15)),
-      (0, "2018-10-23 03:50:10", "2019-12-31 23:59:59.999", Some(97.15)),
-      (0, "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
+      (0, "2018-06-01 05:24:11", finisTemporisString,       Some(97.15)),
       (1, "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
       (1, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019)),
       (1, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020)),

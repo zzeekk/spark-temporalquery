@@ -17,8 +17,8 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
 
   type MultivarRange = List[(T, T)]
 
-  case class MultivarRangeUnion(rangeFamily: Seq[MultivarRange] = Nil) {
-    override def toString: String = s"MultivarRangeUnion(${rangeFamily.length} ranges: ${rangeFamily.map(_.toString).mkString(" ∪ ")})"
+  case class MultivarRangeUnion(rangeFamily: Set[MultivarRange] = Set.empty[MultivarRange]) {
+    override def toString: String = s"MultivarRangeUnion(${rangeFamily.size} ranges: ${rangeFamily.map(_.toString).mkString(" ∪ ")})"
 
     /**
      * Calculates the intersection of two family of ranges which are combined by union first
@@ -161,7 +161,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
       s"Number of subtrahend range sides must equal number of dimensions, but numDimensions=$numDimensions" +
         s" and ${subtrahend.length} range sides given: ${subtrahend.mkString(",")} "
     )
-    val iter = new scala.collection.immutable.NumericRange.Exclusive(start = 0, end = numDimensions, step = 1).toList
+    val iter = new scala.collection.immutable.NumericRange.Exclusive(start = 0, end = numDimensions, step = 1).toSet
     val diff = iter.flatMap { n =>
       val (prefMinuendSides: MultivarRange, nextMinuendSides: MultivarRange) = minuend.splitAt(n)
       List(

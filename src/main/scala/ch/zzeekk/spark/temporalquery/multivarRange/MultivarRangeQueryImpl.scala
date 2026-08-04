@@ -403,7 +403,7 @@ object MultivarRangeQueryImpl extends Logging {
 
     debugLog("(leftAntiJoinRanges) df2Combined contains the combined intersecting ranges of df2.")
     val df2Combined = combineMultivarRanges(df = dfJoinLeftAnti.select((keys ++ mrqc.fromToColnames2).map(col): _*),
-      ignoreColNames = Nil, mrqc = mrqc.config2)
+      mrqc = mrqc.config2)
     debugLog(s"(leftAntiJoinRanges) df2Combined.schema = ${df2Combined.schema.catalogString}")
 
     debugLog("(leftAntiJoinRanges) dfComplementJoin contains the rows of df1ExceptAntiJoin" +
@@ -451,7 +451,7 @@ object MultivarRangeQueryImpl extends Logging {
     val dfComplement = df1.sparkSession.createDataFrame(complementRDD, resultSchema)
     debugLog(s"(leftAntiJoinRanges) dfComplement.schema = ${dfComplement.schema.catalogString}")
 
-    dfAntiJoin.union(dfComplement.select(df1.columns.map(col): _*))
+    combineMultivarRanges(df = dfAntiJoin.union(dfComplement.select(df1.columns.map(col): _*)), mrqc = mrqc)
   }
 
   /**
@@ -496,8 +496,8 @@ object MultivarRangeQueryImpl extends Logging {
   @tailrec
   private[temporalquery] def combineMultivarRanges[T: Ordering: TypeTag](
       df: DataFrame,
-      ignoreColNames: Seq[String] = Nil,
       mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
+      ignoreColNames: Seq[String] = Nil,
       runId: Int = 1
   )(implicit logger: Logger): DataFrame = {
     debugLog(s"(combineMultivarRanges(runId=$runId)) df1.schema = ${df.schema.catalogString}")
@@ -515,7 +515,7 @@ object MultivarRangeQueryImpl extends Logging {
     } else {
       debugLog(s"(combineMultivarRanges(runId=$runId))" +
         s" calling combineMultivarRanges once again to ensure that everything is combined")
-      combineMultivarRanges[T](resultatCombine, ignoreColNames, mrqc, runId + 1)
+      combineMultivarRanges[T](resultatCombine, mrqc, ignoreColNames, runId + 1)
     }
   }
 
