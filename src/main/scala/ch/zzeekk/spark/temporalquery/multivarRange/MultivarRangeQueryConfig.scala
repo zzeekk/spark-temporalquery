@@ -132,15 +132,6 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
     }
 
   /**
-   * Calculates the intersection of a family of ranges
-   * @param rangeFamily
-   *   sequence of sequence of range sides, i.e. (start,end) of Interval of type D
-   * @return
-   *   sequence of range sides, i.e. (start,end) of Interval of type D
-   */
-  final def mvrIntersect(rangeFamily: Seq[MultivarRange]): MultivarRange = rangeFamily.reduce(mvrIntersect)
-
-  /**
    * returns the complement of subtrahend inside minuend: minuend \ subtrahend
    * @param subtrahend
    *   range to be substracted

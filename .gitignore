@@ -1,9 +1,11 @@
 *.iml
 *.svg
+.bloop
 .classpath
 .claude
 .idea
 .metadata
+.metals
 .project
 .settings
 target

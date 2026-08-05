@@ -504,7 +504,7 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
   "rangeLeftAntiJoin dfLeft with dfRight" should "return expected results" in {
     val actual = dfLeft.rangeLeftAntiJoin(df2 = dfRight, joinColumns = Seq("id"))
     val expected = List(
-      (0, initiumTemporisString, "2027-12-31 23:59:59.999", "2017-12-10 00:00:00", "2018-06-01 05:24:10.999", 4.2),
+      (0, initiumTemporisString, "2027-12-31 23:59:59.999", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", 4.2),
       (0, initiumTemporisString, finisTemporisString,       "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
       (0, initiumTemporisString, finisTemporisString,       "2018-02-01 00:00:0",  "2018-06-01 05:24:10.999", 4.2)
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_l")
@@ -515,19 +515,13 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
   }
 
   "rangeLeftAntiJoin dfLeft with dfMap" should "return expected results" in {
-    val actual = dfLeft.rangeLeftAntiJoin(dfMap, Seq("id")).rangeCleanupExtend(
-      keys = Seq("id"),
-      rnkExpressions = fromCols,
-      extend = false,
-      fillGapsWithNull = false
-    ).rangeCombine()
+    val actual = dfLeft.rangeLeftAntiJoin(dfMap, Seq("id"))
     val expected = List(
       (0, initiumTemporisString, "2018-02-04 23:59:59.999", "2018-03-01 00:00:00", "2018-03-03 23:59:59.999", 4.2),
       (0, initiumTemporisString, "2018-02-19 23:59:59.999", "2018-03-04 00:00:00", "2018-03-31 23:59:59.999", 4.2),
       (0, initiumTemporisString, finisTemporisString,       "2017-12-10 00:00:00", "2017-12-31 23:59:59.999", 4.2),
       (0, initiumTemporisString, finisTemporisString,       "2018-04-01 00:00:0",  "2018-12-08 23:59:59.999", 4.2)
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_l")
-      .withColumn("_defined", lit(true))
     val result = dfEqual(actual, expected)
 
     if (!result) printFailedTestResult("rangeLeftAntiJoin_dfMap", Seq(dfLeft, dfMap))(actual, expected)

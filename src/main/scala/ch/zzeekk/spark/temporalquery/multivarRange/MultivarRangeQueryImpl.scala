@@ -257,34 +257,36 @@ object MultivarRangeQueryImpl extends Logging {
   /**
    * cleanup overlaps, fill holes and extend to min/maxDate
    */
-  private[temporalquery] def cleanupExtendIntervals[T: Ordering: TypeTag](
+  private[temporalquery] def cleanupExtendRanges[T: Ordering: TypeTag](
       df: DataFrame,
       keys: Seq[String],
-      rnkExpressions: Seq[Column],
-      aggExpressions: Seq[(String, Column)],
-      rnkFilter: Boolean,
       mrqc: MultivarRangeQueryConfig[T, _],
+      rnkFilter: Boolean = false,
+      rnkExpressions: Seq[Column] = Nil,
+      aggExpressions: Seq[(String, Column)] = Nil,
       extend: Boolean = true,
       fillGapsWithNull: Boolean = true
   )(implicit logger: Logger): DataFrame = {
-    debugLog(s"(cleanupExtendIntervals) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
+    debugLog(s"(cleanupExtendRanges) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
     debugLog(
-      s"(cleanupExtendIntervals) rnkExpressions = ${rnkExpressions.mkString(",")} ; aggExpressions = ${aggExpressions.mkString(",")}"
+      s"(cleanupExtendRanges) rnkExpressions = ${rnkExpressions.mkString(",")} ; aggExpressions = ${aggExpressions.mkString(",")}"
     )
-    debugLog(s"(cleanupExtendIntervals) rnkFilter = $rnkFilter , extend = $extend ; fillGapsWithNull = $fillGapsWithNull")
-    debugLog(s"(cleanupExtendIntervals) mrqc = $mrqc")
-    if (extend && !fillGapsWithNull) logger.warn("(cleanupExtendIntervals) extend=true has no effect if fillGapsWithNull=false!")
+    debugLog(s"(cleanupExtendRanges) rnkFilter = $rnkFilter , extend = $extend ; fillGapsWithNull = $fillGapsWithNull")
+    debugLog(s"(cleanupExtendRanges) mrqc = $mrqc")
+    if (extend && !fillGapsWithNull) logger.warn("(cleanupExtendRanges) extend=true has no effect if fillGapsWithNull=false!")
     require(
       df.columns.intersect(mrqc.fromToColnames2 :+ mrqc.definedColName).isEmpty,
-      s"(cleanupExtendIntervals) Your right-dataframe must not contain columns named {${mrqc.fromToColnames2 :+ mrqc.definedColName}}! df.columns = ${df.columns.mkString(",")}"
+      s"(cleanupExtendRanges) Your dataframe must not contain any column" +
+        s" with one of the following name: {${(mrqc.fromToColnames2 :+ mrqc.definedColName).mkString(",")}}!" +
+        s" df.columns = ${df.columns.mkString(",")}"
     )
     val dims = mrqc.rangeDimensions
     def transform(df: DataFrame): DataFrame = {
-      debugLog(s"(cleanupExtendIntervals.transform) df.schema = ${df.schema.catalogString}")
-      debugLog(s"(cleanupExtendIntervals.transform)" +
+      debugLog(s"(cleanupExtendRanges.transform) df.schema = ${df.schema.catalogString}")
+      debugLog(s"(cleanupExtendRanges.transform)" +
         s" use 2nd pair of from/to column names so that original pair can still be used in rnk- & aggExpressions")
       val df2nd = copyMultivarRangeCols2nd(df, dims)
-      debugLog(s"(cleanupExtendIntervals.transform) df2nd.schema = ${df2nd.schema.catalogString}")
+      debugLog(s"(cleanupExtendRanges.transform) df2nd.schema = ${df2nd.schema.catalogString}")
       val fenestra = Window.partitionBy((keys ++ dims.map(_.fromCol2Name)).map(col): _*)
 
       val dfJoinCleanExtend =
@@ -298,20 +300,20 @@ object MultivarRangeQueryImpl extends Logging {
             mrqc.applyBooleanColumnFunctionToIntervalDefs(boolColFun = dim => col(dim.toColName).isNotNull))
           .withColumns(colsMap = dims.map(d => (d.fromColName, coalesce(col(d.fromColName), col(d.fromCol2Name)))).toMap)
           .withColumns(colsMap = dims.map(d => (d.toColName, coalesce(col(d.toColName), col(d.toCol2Name)))).toMap)
-      if (logger.isDebugEnabled()) dfJoinCleanExtend.createdLog("dfJoinCleanExtend", showRows = true)
+      if (logger.isDebugEnabled()) dfJoinCleanExtend.createdLog("dfJoinCleanExtend")
 
-      debugLog("(cleanupExtendIntervals.transform) add aggregations if defined, implemented as analytical functions...")
+      debugLog("(cleanupExtendRanges.transform) add aggregations if defined, implemented as analytical functions...")
       val dfAgg = aggExpressions.foldLeft(dfJoinCleanExtend) {
         case (df_acc, (name, expr)) => df_acc.withColumn(name, expr.over(fenestra))
       }
 
-      debugLog(s"(cleanupExtendIntervals.transform) Prioritize and clean overlaps:" +
+      debugLog(s"(cleanupExtendRanges.transform) Prioritize and clean overlaps:" +
         s" rnkExpressions=${rnkExpressions.mkString(",")}")
       val rnkColName = "_rnk"
       val dfClean = if (rnkExpressions.nonEmpty) {
         require(
           !df.columns.contains(rnkColName),
-          s"(cleanupExtendIntervals) Your dataframe must not contain columns named $rnkColName" +
+          s"(cleanupExtendRanges) Your dataframe must not contain columns named $rnkColName" +
             s" if rnkExpressions are defined! df.columns = ${df.columns.mkString(",")}"
         )
         val df_rnk = dfAgg.withColumn(rnkColName, row_number.over(fenestra.orderBy(rnkExpressions: _*)))
@@ -325,11 +327,11 @@ object MultivarRangeQueryImpl extends Logging {
         dims.flatMap(d => List(col(d.fromCol2Name).as(d.fromColName), col(d.toCol2Name).as(d.toColName))) :+
         // dfClean(mrqc.fromColName2).as(mrqc.fromColName) :+ dfClean(mrqc.toColName2).as(mrqc.toColName) :+
         mrqc.definedCol
-      debugLog(s"(cleanupExtendIntervals.transform) select final schema: selCols = ${selCols.mkString(",")}")
+      debugLog(s"(cleanupExtendRanges.transform) select final schema: selCols = ${selCols.mkString(",")}")
       dfClean.select(selCols: _*)
     }
     val resultCleanExtend = keepAlias(df, transform)
-    if (logger.isDebugEnabled()) resultCleanExtend.createdLog("resultCleanExtend", showRows = true)
+    if (logger.isDebugEnabled()) resultCleanExtend.createdLog("resultCleanExtend")
     resultCleanExtend
   }
 
@@ -350,14 +352,14 @@ object MultivarRangeQueryImpl extends Logging {
   )(implicit mrqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = {
     // extend data frames
     val df1Extended = if ((joinType == "full" || joinType == "right") && doCleanupExtend)
-      cleanupExtendIntervals(df = df1, keys = keys,
-        rnkExpressions = rnkExpressions.intersect(df1.columns.map(col)),
-        aggExpressions = Nil, rnkFilter = true, mrqc = mrqc
+      cleanupExtendRanges(df = df1, keys = keys, mrqc = mrqc, rnkFilter = true,
+        rnkExpressions = rnkExpressions.intersect(df1.columns.map(col))
       ).drop(mrqc.definedColName)
     else df1
     val df2Extended = if ((joinType == "full" || joinType == "left") && doCleanupExtend)
-      cleanupExtendIntervals(df = df2, keys = keys, rnkExpressions = rnkExpressions.intersect(df2.columns.map(col)),
-        aggExpressions = Nil, rnkFilter = true, mrqc = mrqc).drop(mrqc.definedColName)
+      cleanupExtendRanges(df = df2, keys = keys, mrqc = mrqc, rnkFilter = true,
+        rnkExpressions = rnkExpressions.intersect(df2.columns.map(col))
+      ).drop(mrqc.definedColName)
     else df2
     // join df1 & df2
     joinRanges(df1Extended, df2Extended, keys, joinType, additionalJoinFilterCondition)
@@ -451,7 +453,14 @@ object MultivarRangeQueryImpl extends Logging {
     val dfComplement = df1.sparkSession.createDataFrame(complementRDD, resultSchema)
     debugLog(s"(leftAntiJoinRanges) dfComplement.schema = ${dfComplement.schema.catalogString}")
 
-    combineMultivarRanges(df = dfAntiJoin.union(dfComplement.select(df1.columns.map(col): _*)), mrqc = mrqc)
+    val dfComplementRaw = dfAntiJoin.union(dfComplement.select(df1.columns.map(col): _*))
+    logger.info(s"(leftAntiJoinRanges) dfComplementRaw.schema = ${dfComplementRaw.schema.catalogString}")
+
+    combineMultivarRanges(
+      df = cleanupExtendRanges(df = dfComplementRaw, keys = keys, mrqc = mrqc, extend = false, fillGapsWithNull = false),
+      mrqc = mrqc
+    ).drop("_defined")
+
   }
 
   /**
@@ -544,7 +553,7 @@ object MultivarRangeQueryImpl extends Logging {
         ).as("ranges"),
         keys = keys, postFix = joinColPostFix2
       )
-      if (logger.isDebugEnabled()) df2Ranges.createdLog("df2Ranges", showRows = true)
+      if (logger.isDebugEnabled()) df2Ranges.createdLog("df2Ranges")
       val keyCondition = createRenamedKeyCondition(keys)
       val joinType = if (fillGapsWithNull) "left" else "inner"
       val joinCondition = keyCondition and
@@ -552,17 +561,17 @@ object MultivarRangeQueryImpl extends Logging {
       debugLog(s"(unifyDimensionRanges.transform) join back on input df: df2Ranges.join(df1Renamed) with " +
         s" joinType = $joinType , joinCondition = $joinCondition")
       val dfJoinUnify = df2Ranges.join(right = df1Renamed, joinExprs = joinCondition, joinType = joinType)
-      if (logger.isDebugEnabled()) dfJoinUnify.createdLog("dfJoinUnify", showRows = true)
+      if (logger.isDebugEnabled()) dfJoinUnify.createdLog("dfJoinUnify")
       val selCols = keys.map(key => col(s"$key$joinColPostFix2").as(key)) ++
         df.columns.diff(keys ++ List(dim.fromColName, dim.toColName) ++ additionalTechnicalColNames).map(dfJoinUnify(_)) :+
         dim.fromCol2.as(dim.fromColName) :+ dim.toCol2.as(dim.toColName)
       debugLog(s"(unifyDimensionRanges.transform) select result: selCols = ${selCols.mkString(",")}")
       val resultUnifyTransform = dfJoinUnify.select(selCols: _*)
-      if (logger.isDebugEnabled()) resultUnifyTransform.createdLog("resultUnifyTransform", showRows = true)
+      if (logger.isDebugEnabled()) resultUnifyTransform.createdLog("resultUnifyTransform")
       resultUnifyTransform
     }
     val resultUnify = keepAlias(df, transform)
-    if (logger.isDebugEnabled()) resultUnify.createdLog("resultUnify", showRows = true)
+    if (logger.isDebugEnabled()) resultUnify.createdLog("resultUnify")
     resultUnify
   }
 
@@ -615,7 +624,7 @@ object MultivarRangeQueryImpl extends Logging {
     val df_prep = df
       .withColumn(fromMinColName, if (extendMin) min(col(dim.fromColName)).over(Window.partitionBy(keyCols: _*)) else lit(null))
       .withColumn(toMaxColName, if (extendMax) max(col(dim.toColName)).over(Window.partitionBy(keyCols: _*)) else lit(null))
-    if (logger.isDebugEnabled()) df_prep.createdLog("df_prep", showRows = true)
+    if (logger.isDebugEnabled()) df_prep.createdLog("df_prep")
     val selCols = df.columns.filter(c => c != dim.fromColName && c != dim.toColName).map(col) :+
       when(dim.fromCol === col(fromMinColName), lit(dim.lowerHorizon)).otherwise(dim.fromCol).as(dim.fromColName) :+
       when(dim.toCol === col(toMaxColName), lit(dim.upperHorizon)).otherwise(dim.toCol).as(dim.toColName)

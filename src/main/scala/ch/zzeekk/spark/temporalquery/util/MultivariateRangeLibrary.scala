@@ -158,7 +158,7 @@ object MultivariateRangeLibrary extends Logging {
         extend: Boolean = true,
         fillGapsWithNull: Boolean = true
     )(implicit mrqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = MultivarRangeQueryImpl
-      .cleanupExtendIntervals(df1, keys, rnkExpressions, aggExpressions, rnkFilter, mrqc, extend, fillGapsWithNull)
+      .cleanupExtendRanges(df1, keys, mrqc, rnkFilter, rnkExpressions, aggExpressions, extend, fillGapsWithNull)
 
     /**
      * Combines consecutive records when there is no change in the non-technical columns. The
