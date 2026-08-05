@@ -479,7 +479,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeFullJoin_rightMap" should "return expected results" in {
+  "rangeFullJoin dfLeft with dfMap" should "return expected results" in {
     // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.rangeFullJoin(df2 = dfMap, keys = Seq("id"))
     val expected = Seq(
@@ -494,11 +494,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Option[String]])
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeFullJoin_rightMap", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_dfLeft_dfMap", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "rangeFullJoin_rightMapWithrnkExpressions" should "return expected results" in {
+  "rangeFullJoin dfLeft with dfMap using rnkExpressions" should "return expected results" in {
     // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.rangeFullJoin(df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultTemporalConfig.fromCol))
     val expected = Seq(
@@ -515,7 +515,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Option[String]])
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeFullJoin_rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_dfLeft_dfMap_rnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 

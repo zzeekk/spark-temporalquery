@@ -419,7 +419,7 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       (0, Some(4.2), Some(98d),
         Timestamp.valueOf("2028-06-01 00:00:00"), doomsDay,
         Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
-// id 1: rows from dfRight
+      // id 1: rows from dfRight
       (1, None, None, bigBangDay, doomsDay,
         Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999")),
       (1,                                         None, Some(2019d), bigBangDay, doomsDay,
@@ -431,6 +431,87 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
     ).toDF("id", "value_l", "value_r", "known_from", "known_to", "valid_from", "valid_to")
     val result = dfEqual(actual, expected)
     if (!result) printFailedTestResult("rangeFullJoin_dfLeft_dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeFullJoin dfLeft with dfMap" should "return expected results" in {
+    val actual = dfLeft.rangeFullJoin(df2 = dfMap, keys = Seq("id"))
+    val expected = List(
+      // 4.2, NULL
+      (0, Some(4.2), None,
+        bigBangDay, Timestamp.valueOf("2018-02-04 23:59:59.999"),
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         Some(4.2), None,
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,                                         Some(4.2), None,
+        Timestamp.valueOf("2018-02-05 00:00:00"), Timestamp.valueOf("2018-02-19 23:59:59.999"),
+        Timestamp.valueOf("2018-03-04 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         Some(4.2), None,
+        Timestamp.valueOf("2018-02-20 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-04-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      // 4.2, something
+      (0, Some(4.2), Some("A"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,                                         Some(4.2), Some("B"),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,                                         Some(4.2), Some("C"),
+        Timestamp.valueOf("2018-02-05 00:00:00"), Timestamp.valueOf("2018-03-15 23:59:59.999"),
+        Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-03-03 23:59:59.999")),
+      (0,                                         Some(4.2), Some("D"),
+        Timestamp.valueOf("2018-02-20 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,                                         Some(4.2), Some("X"),
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-01 23:59:59.999"),
+        Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"))
+    ).toDF("id", "value_l", "img", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_dfLeft_dfRight", Seq(dfLeft, dfMap))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeFullJoin dfLeft with dfMap using rnkExpressions" should "return expected results" in {
+    // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
+    val actual = dfLeft.rangeFullJoin(df2 = dfMap, keys = Seq("id"),
+      rnkExpressions = $"img" +: defaultBiTemporalConfig.dimensionMap.keys.toList.sorted.map(col))
+    val expected = List(
+      // 4.2, NULL
+      (0, Some(4.2), None,
+        bigBangDay, Timestamp.valueOf("2018-02-04 23:59:59.999"),
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         Some(4.2), None,
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,                                         Some(4.2), None,
+        Timestamp.valueOf("2018-02-05 00:00:00"), Timestamp.valueOf("2018-02-19 23:59:59.999"),
+        Timestamp.valueOf("2018-03-04 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         Some(4.2), None,
+        Timestamp.valueOf("2018-02-20 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-04-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      // 4.2, something
+      (0, Some(4.2), Some("A"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,                                         Some(4.2), Some("B"),
+        bigBangDay, Timestamp.valueOf("2017-12-31 23:59:59.999"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,                                         Some(4.2), Some("B"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,                                         Some(4.2), Some("C"),
+        Timestamp.valueOf("2018-02-05 00:00:00"), Timestamp.valueOf("2018-03-15 23:59:59.999"),
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-03 23:59:59.999")),
+      (0,                                         Some(4.2), Some("D"),
+        Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-15 23:59:59.999"),
+        Timestamp.valueOf("2018-03-04 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,                                         Some(4.2), Some("D"),
+        Timestamp.valueOf("2018-03-16 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"))
+    ).toDF("id", "value_l", "img", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_dfLeft_dfMap_rnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
