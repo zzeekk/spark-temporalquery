@@ -553,11 +553,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", defaultFromColName, defaultToColName, "value_l")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfMap", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfLeft_dfMap", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "rangeLeftAntiJoin_dfRight_dfMap" should "return expected results" in {
+  "rangeLeftAntiJoin dfRight with dfMap" should "return expected results" in {
     val actual = dfRight.rangeLeftAntiJoin(dfMap, Seq("id"))
     val rowsExpected: Seq[(Int, String, String, Option[Double])] = Seq(
       (0, "2018-06-01 05:24:11", finisTemporisString,       Some(97.15)),
@@ -574,7 +574,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeLeftAntiJoin_dfMap_dfRight" should "return expected results" in {
+  "rangeLeftAntiJoin dfMap with dfRight" should "return expected results" in {
     val actual = dfMap.rangeLeftAntiJoin(dfRight, Seq("id"))
     val rowsExpected: Seq[(Int, String, String, String)] = Seq(
       (0, "2018-02-01 00:00:00",     "2018-02-28 23:59:59.999", "B"),

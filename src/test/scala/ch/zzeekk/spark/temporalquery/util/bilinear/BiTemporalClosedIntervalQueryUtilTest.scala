@@ -524,7 +524,39 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_l")
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfMap", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfLeft_dfMap", Seq(dfLeft, dfMap))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeLeftAntiJoin dfRight with dfMap" should "return expected results" in {
+    val actual = dfRight.rangeLeftAntiJoin(dfMap, Seq("id"))
+    val expected = List(
+      (0, initiumTemporisString, finisTemporisString, "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15)),
+      (0, "2030-06-01 00:00:00", finisTemporisString, "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
+      (1, initiumTemporisString, finisTemporisString, "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
+      (1, initiumTemporisString, finisTemporisString, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
+      (1, initiumTemporisString, finisTemporisString, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+      (1, initiumTemporisString, finisTemporisString, "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
+    ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfRight_dfMap", Seq(dfRight, dfMap))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeLeftAntiJoin dfMap with dfRight" should "return expected results" in {
+    val actual = dfMap.rangeLeftAntiJoin(dfRight, Seq("id"))
+    val expected = List(
+      (0, initiumTemporisString, "2027-12-31 23:59:59.999", "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "B"),
+      (0, initiumTemporisString, finisTemporisString,       "2018-02-01 00:00:00",     "2018-02-28 23:59:59.999", "B"),
+      (0, "2018-01-01 00:00:00", "2027-12-31 23:59:59.999", "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "A"),
+      (0, "2018-02-05 00:00:00", "2018-03-15 23:59:59.999", "2018-02-01 00:00:00",     "2018-03-03 23:59:59.999", "C"),
+      (0, "2018-02-20 00:00:00", finisTemporisString,       "2018-02-20 00:00:00",     "2018-03-31 23:59:59.999", "D"),
+      (0, "2018-03-01 00:00:00", "2018-03-01 23:59:59.999", "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X")
+    ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "img")
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("rangeLeftAntiJoin_dfMap_dfRight", Seq(dfMap, dfRight))(actual, expected)
     result shouldBe true
   }
 
