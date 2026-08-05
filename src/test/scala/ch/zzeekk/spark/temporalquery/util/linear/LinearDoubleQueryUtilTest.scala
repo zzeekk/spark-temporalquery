@@ -1,8 +1,8 @@
 package ch.zzeekk.spark.temporalquery.util.linear
 
-import LinearDoubleTestUtils._
 import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
+import ch.zzeekk.spark.temporalquery.util.linear.LinearDoubleTestUtils._
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

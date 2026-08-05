@@ -7,6 +7,8 @@ package ch.zzeekk.spark.temporalquery.util.linear
 import ch.zzeekk.spark.temporalquery._
 import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 import ch.zzeekk.spark.temporalquery.multivarRange.{ClosedMultivarRangeQueryConfig, HalfOpenMultivarRangeQueryConfig}
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.functions.col
 import org.slf4j.Logger
 
 import scala.reflect.runtime.universe.TypeTag
@@ -31,7 +33,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   case class LinearClosedIntervalQueryConfig(
       dimensionColNameMap: Map[String, String] = Map("position_from" -> "position_to"),
       override val additionalTechnicalColNames: List[String] = Nil,
-      override val intervalDef: ClosedInterval[T]
+      intervalDef: ClosedInterval[T]
   ) extends ClosedMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
     require(
       numDimensions == 1,
@@ -43,6 +45,18 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     }
     override lazy val config2: LinearClosedIntervalQueryConfig = this
       .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
+
+    def fromColName: String = rangeDimensions.head.fromColName
+    def toColName: String = rangeDimensions.head.toColName
+    def fromCol: Column = col(fromColName)
+    def toCol: Column = col(toColName)
+    def fromColName2: String = rangeDimensions.head.fromCol2Name
+    def toColName2: String = rangeDimensions.head.toCol2Name
+    def fromCol2: Column = col(fromColName2)
+    def toCol2: Column = col(toColName2)
+    def lowerHorizon: T = rangeDimensions.head.lowerHorizon
+    def upperHorizon: T = rangeDimensions.head.upperHorizon
+
   }
 
   object LinearClosedIntervalQueryConfig {
@@ -69,7 +83,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   case class LinearHalfOpenIntervalQueryConfig(
       dimensionColNameMap: Map[String, String] = Map("position_from" -> "position_to"),
       override val additionalTechnicalColNames: List[String] = Nil,
-      override val intervalDef: HalfOpenInterval[T]
+      intervalDef: HalfOpenInterval[T]
   ) extends HalfOpenMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
     require(
       numDimensions == 1,
@@ -80,6 +94,18 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
       .map { case (f, t) => (f, (t, intervalDef)) }
     override lazy val config2: LinearHalfOpenIntervalQueryConfig = this
       .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
+
+    def fromColName: String = rangeDimensions.head.fromColName
+    def toColName: String = rangeDimensions.head.toColName
+    def fromCol: Column = col(fromColName)
+    def toCol: Column = col(toColName)
+    def fromColName2: String = rangeDimensions.head.fromCol2Name
+    def toColName2: String = rangeDimensions.head.toCol2Name
+    def fromCol2: Column = col(fromColName2)
+    def toCol2: Column = col(toColName2)
+    def lowerHorizon: T = rangeDimensions.head.lowerHorizon
+    def upperHorizon: T = rangeDimensions.head.upperHorizon
+
   }
 
   object LinearHalfOpenIntervalQueryConfig {

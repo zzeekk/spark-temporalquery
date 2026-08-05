@@ -41,7 +41,7 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
   case class BiLinearClosedIntervalQueryConfig(
       dimensionColNameMap: Map[String, String] = Map("x_from" -> "x_to", "y_from" -> "y_to"),
       override val additionalTechnicalColNames: List[String] = Nil,
-      override val intervalDef: ClosedInterval[T]
+      intervalDef: ClosedInterval[T]
   ) extends ClosedMultivarRangeQueryConfig[T] with BiLinearQueryConfigMarker {
     require(
       numDimensions == 2,
@@ -86,7 +86,7 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
   case class BiLinearHalfOpenIntervalQueryConfig(
       dimensionColNameMap: Map[String, String] = Map("x_from" -> "x_to", "y_from" -> "y_to"),
       override val additionalTechnicalColNames: List[String] = Nil,
-      override val intervalDef: HalfOpenInterval[T]
+      intervalDef: HalfOpenInterval[T]
   ) extends HalfOpenMultivarRangeQueryConfig[T] with BiLinearQueryConfigMarker {
     require(
       numDimensions == 2,

@@ -8,10 +8,4 @@ abstract class ClosedMultivarRangeQueryConfig[T: Ordering] extends MultivarRange
 
   def getCeilExpr(value: Column): List[Column] = rangeDimensions.map(_.intDef.getCeilExpr(value))
 
-  @deprecated("simply wrong in multi-dimension case")
-  def getPredecessorIntervalEndExpr(startValue: Column): Column = intervalDef.getPredecessorExpr(startValue)
-
-  @deprecated("simply wrong in multi-dimension case")
-  def getSuccessorIntervalStartExpr(endValue: Column): Column = intervalDef.getSuccessorExpr(endValue)
-
 }

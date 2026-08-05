@@ -83,29 +83,6 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
 
   final def universe: MultivarRange = rangeIntervalDefs.map(d => (d.lowerHorizon, d.upperHorizon))
 
-  @deprecated("simply wrong in multi-dimension case")
-  def fromColName: String = rangeDimensions.head.fromColName
-  @deprecated("simply wrong in multi-dimension case")
-  def toColName: String = rangeDimensions.head.toColName
-  @deprecated("simply wrong in multi-dimension case")
-  def fromCol: Column = col(fromColName)
-  @deprecated("simply wrong in multi-dimension case")
-  def toCol: Column = col(toColName)
-  @deprecated("simply wrong in multi-dimension case")
-  def fromColName2: String = rangeDimensions.head.fromCol2Name
-  @deprecated("simply wrong in multi-dimension case")
-  def toColName2: String = rangeDimensions.head.toCol2Name
-  @deprecated("simply wrong in multi-dimension case")
-  def fromCol2: Column = col(fromColName2)
-  @deprecated("simply wrong in multi-dimension case")
-  def toCol2: Column = col(toColName2)
-  @deprecated("simply wrong in multi-dimension case")
-  def lowerHorizon: T = rangeDimensions.head.lowerHorizon
-  @deprecated("simply wrong in multi-dimension case")
-  def upperHorizon: T = rangeDimensions.head.upperHorizon
-  @deprecated("simply wrong in multi-dimension case")
-  def intervalDef: D = rangeDimensions.head.intDef
-
   // a bit of set theory for ranges
 
   final def isEmpty(r: MultivarRange): Boolean = {
@@ -220,9 +197,5 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
     logger.debug(s"joinIntervalExpr2: returning joinCol $joinCol")
     joinCol
   }
-
-  def getPredecessorIntervalEndExpr(endValue: Column): Column
-
-  def getSuccessorIntervalStartExpr(endValue: Column): Column
 
 }
