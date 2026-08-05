@@ -8,6 +8,7 @@ import org.apache.spark.sql.{Column, DataFrame}
 import org.slf4j.Logger
 
 import scala.reflect.runtime.universe.TypeTag
+import scala.util.{Failure, Success, Try}
 
 object MultivariateRangeLibrary extends Logging {
 
@@ -28,18 +29,18 @@ object MultivariateRangeLibrary extends Logging {
      * Implements an inner join of historical data over a list of equally named columns
      */
     def rangeInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keys: Seq[String])(implicit
-        mrqc: MultivarRangeQueryConfig[T, _],
+        mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
         logger: Logger
-    ): DataFrame = MultivarRangeQueryImpl.joinIntervalsWithKeysImpl(df1 = df1, df2 = df2, keys = keys)
+    ): DataFrame = MultivarRangeQueryImpl.joinIntervalsWithKeysImpl(df1 = df1, df2 = df2, keys = keys, mrqc = mrqc, joinType = "inner")
 
     /**
      * Implements an inner join of historical data over an explicit join condition
      */
     def rangeInnerJoin[T: Ordering: TypeTag](df2: DataFrame, keyCondition: Column)(implicit
-        mrqc: MultivarRangeQueryConfig[T, _],
+        mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
         logger: Logger
     ): DataFrame = MultivarRangeQueryImpl
-      .joinRanges(df1 = df1, df2 = df2, keys = Nil, additionalJoinCondition = keyCondition)
+      .joinRanges(df1 = df1, df2 = df2, keys = Nil, mrqc = mrqc, additionalJoinCondition = keyCondition)
 
     /**
      * Implements a full outer join of historical data over a list of equally named columns
@@ -63,8 +64,8 @@ object MultivariateRangeLibrary extends Logging {
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit mrqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = MultivarRangeQueryImpl
-      .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend)
+    )(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]], logger: Logger): DataFrame = MultivarRangeQueryImpl
+      .outerJoinRangesWithKey(df1, df2, keys, mrqc, rnkExpressions, additionalJoinFilterCondition, "full", doCleanupExtend)
 
     /**
      * Implements a left outer join of historical data over a list of equally named columns
@@ -87,9 +88,30 @@ object MultivariateRangeLibrary extends Logging {
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit mrqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = MultivarRangeQueryImpl
-      .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions,
-        additionalJoinFilterCondition, "left", doCleanupExtend)
+    )(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]], logger: Logger): DataFrame = Try(
+      MultivarRangeQueryImpl.outerJoinRangesWithKey(
+        df1 = df1,
+        df2 = df2,
+        keys = keys,
+        mrqc = mrqc,
+        rnkExpressions = rnkExpressions,
+        additionalJoinFilterCondition = additionalJoinFilterCondition,
+        joinType = "left",
+        doCleanupExtend = doCleanupExtend
+      )
+    ) match {
+      case Success(df) => df
+      case Failure(e)  =>
+        logger.error(s"(rangeLeftJoin) Could not join the data frames!")
+        logger.error(s"(rangeLeftJoin) df1.schema                    = ${df1.schema.catalogString}")
+        logger.error(s"(rangeLeftJoin) df2.schema                    = ${df2.schema.catalogString}")
+        logger.error(s"(rangeLeftJoin) keys                          = $keys")
+        logger.error(s"(rangeLeftJoin) mrqc                          = $mrqc")
+        logger.error(s"(rangeLeftJoin) rnkExpressions                = $rnkExpressions")
+        logger.error(s"(rangeLeftJoin) additionalJoinFilterCondition = $additionalJoinFilterCondition")
+        logger.error(s"(rangeLeftJoin) doCleanupExtend               = $doCleanupExtend")
+        throw e
+    }
 
     /**
      * Implements a right outer join of historical data over a list of equally named columns
@@ -113,8 +135,8 @@ object MultivariateRangeLibrary extends Logging {
         rnkExpressions: Seq[Column] = Nil,
         additionalJoinFilterCondition: Column = lit(true),
         doCleanupExtend: Boolean = true
-    )(implicit mrqc: MultivarRangeQueryConfig[T, _], logger: Logger): DataFrame = MultivarRangeQueryImpl
-      .outerJoinIntervalsWithKey(df1, df2, keys, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend)
+    )(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]], logger: Logger): DataFrame = MultivarRangeQueryImpl
+      .outerJoinRangesWithKey(df1, df2, keys, mrqc, rnkExpressions, additionalJoinFilterCondition, "right", doCleanupExtend)
 
     /**
      * Implements a left anti join of historical data over a list of equally named columns
@@ -132,7 +154,8 @@ object MultivariateRangeLibrary extends Logging {
         mrqc: MultivarRangeQueryConfig[T, ClosedInterval[T]],
         logger: Logger
     ): DataFrame =
-      MultivarRangeQueryImpl.leftAntiJoinRanges(df1, df2, joinColumns, additionalJoinFilterCondition)
+      MultivarRangeQueryImpl.leftAntiJoinRanges(df1 = df1, df2 = df2, keys = joinColumns, mrqc = mrqc,
+        additionalJoinFilterCondition = additionalJoinFilterCondition)
 
     /**
      * Resolves temporal overlaps

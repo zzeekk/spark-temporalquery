@@ -458,6 +458,100 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
+  "rangeFullJoin dfLeft with dfRight" should "return expected results" in {
+    val actual = dfLeft.rangeFullJoin(df2 = dfRight, keys = Seq("id"))
+    val expected = Seq(
+      // id = 0
+      (0, Some(4.2), None,        "2017-12-10 00:00:00", "2017-12-31 23:59:59.999"),
+      (0, Some(4.2), Some(97.15), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+      (0, Some(4.2), None,        "2018-02-01 00:00:00", "2018-06-01 05:24:10.999"),
+      (0, Some(4.2), Some(97.15), "2018-06-01 05:24:11", "2018-12-08 23:59:59.999"),
+      (0, None,      Some(97.15), "2018-12-09 00:00:00", finisTemporisString),
+      // id = 1
+      (1, None, None,         "2018-01-01 00:00:00", "2018-12-31 23:59:59.999"),
+      (1, None, None,         "2021-01-01 00:00:00", "2099-12-31 23:59:59.999"),
+      (1, None, Some(2019.0), "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
+      (1, None, Some(2020.0), "2020-01-01 00:00:00", "2020-12-31 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Option[Double]])
+      .toDF("id", "value_l", "value_r", defaultFromColName, defaultToColName)
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_dfLeft_dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeFullJoin_rightMap" should "return expected results" in {
+    // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
+    val actual = dfLeft.rangeFullJoin(df2 = dfMap, keys = Seq("id"))
+    val expected = Seq(
+      // img = {}
+      (0, Some(4.2), None,      "2017-12-10 00:00:00",     "2017-12-31 23:59:59.999"),
+      (0, Some(4.2), Some("A"), "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999"),
+      (0, Some(4.2), Some("B"), "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999"),
+      (0, Some(4.2), Some("C"), "2018-02-01 00:00:00",     "2018-02-28 23:59:59.999"),
+      (0, Some(4.2), Some("D"), "2018-02-20 00:00:00",     "2018-03-31 23:59:59.999"),
+      (0, Some(4.2), Some("X"), "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123"),
+      (0, Some(4.2), None,      "2018-04-01 00:00:00",     "2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Option[String]])
+      .toDF("id", "value_l", "img", defaultFromColName, defaultToColName)
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_rightMap", Seq(dfLeft, dfMap))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeFullJoin_rightMapWithrnkExpressions" should "return expected results" in {
+    // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
+    val actual = dfLeft.rangeFullJoin(df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultFromCol))
+    val expected = Seq(
+      // img = {}
+      (0, Some(4.2), None, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999"),
+      // img = {A}
+      (0, Some(4.2), Some("A"), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+      // img = {B}
+      (0, Some(4.2), Some("B"), "2018-02-01 00:00:00", "2018-02-28 23:59:59.999"),
+      // img = {D}
+      (0, Some(4.2), Some("D"), "2018-03-01 00:00:00", "2018-03-31 23:59:59.999"),
+      // img = {}
+      (0, Some(4.2), None, "2018-04-01 00:00:00", "2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Option[String]])
+      .toDF("id", "value_l", "img", defaultFromColName, defaultToColName)
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeFullJoin_rightMapWithGapsAndRnkExpressions" should "return expected results" in {
+    // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
+    val argumentRight = Seq(
+      (0, "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "A"),
+      (0, "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999", "B"),
+      (0, "2018-02-01 00:00:00",     "2018-02-28 23:59:59.999", "C"),
+      (0, "2018-03-30 00:00:00",     "2018-03-31 23:59:59.999", "D"),
+      (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X")
+    )
+      .map(makeRowsWithTimeRange)
+      .toDF("id", defaultFromColName, defaultToColName, "img")
+    val actual =
+      dfLeft.rangeFullJoin(df2 = argumentRight, keys = Seq("id"), rnkExpressions = Seq($"img", defaultFromCol))
+    val expected = Seq(
+      // img = {}
+      (0, Some(4.2), None, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999"),
+      // img = {A}
+      (0, Some(4.2), Some("A"), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
+      // img = {B}
+      (0, Some(4.2), Some("B"), "2018-02-01 00:00:00", "2018-02-28 23:59:59.999"),
+      // img = null
+      (0, Some(4.2), None, "2018-03-01 00:00:00", "2018-03-29 23:59:59.999"),
+      // img = {D}
+      (0, Some(4.2), Some("D"), "2018-03-30 00:00:00", "2018-03-31 23:59:59.999"),
+      // img = {}
+      (0, Some(4.2), None, "2018-04-01 00:00:00", "2018-12-08 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Option[String]])
+      .toDF("id", "value_l", "img", defaultFromColName, defaultToColName)
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_rightMapWithGapsAndRnkExpressions", Seq(dfLeft, argumentRight))(actual, expected)
+    result shouldBe true
+  }
+
   "rangeInnerJoin dfLeft with dfRight with 'on' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin(df2 = dfRight.as("dfR"), keyCondition = $"dfL.id" === $"dfR.id")
     actual.columns.count(_ == "id") shouldBe 2
@@ -631,114 +725,8 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeFullJoin_dfRight" should "return expected results" in {
-    val actual = dfLeft.rangeFullJoin(dfRight, Seq("id")).rangeCombine()
-      .rangeCombine()
-      .orderBy($"id", defaultFromCol)
-    val expected = Seq(
-      // id = 0
-      (Some(0), None,      None,        initiumTemporisString, "2017-12-09 23:59:59.999"),
-      (Some(0), Some(4.2), None,        "2017-12-10 00:00:00", "2017-12-31 23:59:59.999"),
-      (Some(0), Some(4.2), Some(97.15), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
-      (Some(0), Some(4.2), None,        "2018-02-01 00:00:00", "2018-06-01 05:24:10.999"),
-      (Some(0), Some(4.2), Some(97.15), "2018-06-01 05:24:11", "2018-12-08 23:59:59.999"),
-      (Some(0), None,      Some(97.15), "2018-12-09 00:00:00", finisTemporisString),
-      // id = 1
-      (Some(1), None, None,         initiumTemporisString, "2018-12-31 23:59:59.999"),
-      (Some(1), None, Some(2019.0), "2019-01-01 00:00:00", "2019-12-31 23:59:59.999"),
-      (Some(1), None, Some(2020.0), "2020-01-01 00:00:00", "2020-12-31 23:59:59.999"),
-      (Some(1), None, None,         "2021-01-01 00:00:00", finisTemporisString)
-    ).map(makeRowsWithTimeRangeEnd[Option[Int], Option[Double], Option[Double]])
-      .toDF("id", "value_l", "value_r", defaultFromColName, defaultToColName)
-    val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeFullJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
-    result shouldBe true
-  }
-
-  "rangeFullJoin_rightMap" should "return expected results" in {
-    // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
-    val actual = dfLeft.rangeFullJoin(df2 = dfMap, keys = Seq("id"))
-      .rangeCombine()
-    val expected = Seq(
-      // img = {}
-      (Some(0), None,      None,      initiumTemporisString,     "2017-12-09 23:59:59.999"),
-      (Some(0), Some(4.2), None,      "2017-12-10 00:00:00",     "2017-12-31 23:59:59.999"),
-      (Some(0), Some(4.2), Some("A"), "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999"),
-      (Some(0), Some(4.2), Some("B"), "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999"),
-      (Some(0), Some(4.2), Some("C"), "2018-02-01 00:00:00",     "2018-02-28 23:59:59.999"),
-      (Some(0), Some(4.2), Some("D"), "2018-02-20 00:00:00",     "2018-03-31 23:59:59.999"),
-      (Some(0), Some(4.2), Some("X"), "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123"),
-      (Some(0), Some(4.2), None,      "2018-04-01 00:00:00",     "2018-12-08 23:59:59.999"),
-      (Some(0), None,      None,      "2018-12-09 00:00:00",     finisTemporisString)
-    ).map(makeRowsWithTimeRangeEnd[Option[Int], Option[Double], Option[String]])
-      .toDF("id", "value_l", "img", defaultFromColName, defaultToColName)
-    val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeFullJoin_rightMap", Seq(dfLeft, dfMap))(actual, expected)
-    result shouldBe true
-  }
-
-  "rangeFullJoin_rightMapWithrnkExpressions" should "return expected results" in {
-    // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
-    val actual = dfLeft.rangeFullJoin(df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultFromCol))
-      .rangeCombine()
-    val expected = Seq(
-      // img = {}
-      (Some(0), None,      None, initiumTemporisString, "2017-12-09 23:59:59.999"),
-      (Some(0), Some(4.2), None, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999"),
-      // img = {A}
-      (Some(0), Some(4.2), Some("A"), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
-      // img = {B}
-      (Some(0), Some(4.2), Some("B"), "2018-02-01 00:00:00", "2018-02-28 23:59:59.999"),
-      // img = {D}
-      (Some(0), Some(4.2), Some("D"), "2018-03-01 00:00:00", "2018-03-31 23:59:59.999"),
-      // img = {}
-      (Some(0), Some(4.2), None, "2018-04-01 00:00:00", "2018-12-08 23:59:59.999"),
-      (Some(0), None,      None, "2018-12-09 00:00:00", finisTemporisString)
-    ).map(makeRowsWithTimeRangeEnd[Option[Int], Option[Double], Option[String]])
-      .toDF("id", "value_l", "img", defaultFromColName, defaultToColName)
-    val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeFullJoin_rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
-    result shouldBe true
-  }
-
-  "rangeFullJoin_rightMapWithGapsAndRnkExpressions" should "return expected results" in {
-    // Testing rangeFullJoin where the right dataFrame is not unique for join attributes
-    val argumentRight = Seq(
-      (0, "2018-01-01 00:00:00",     "2018-01-31 23:59:59.999", "A"),
-      (0, "2018-01-01 00:00:00",     "2018-02-28 23:59:59.999", "B"),
-      (0, "2018-02-01 00:00:00",     "2018-02-28 23:59:59.999", "C"),
-      (0, "2018-03-30 00:00:00",     "2018-03-31 23:59:59.999", "D"),
-      (0, "2018-02-25 14:15:16.123", "2018-02-25 14:15:16.123", "X")
-    )
-      .map(makeRowsWithTimeRange)
-      .toDF("id", defaultFromColName, defaultToColName, "img")
-    val actual =
-      dfLeft.rangeFullJoin(df2 = argumentRight, keys = Seq("id"), rnkExpressions = Seq($"img", defaultFromCol))
-        .rangeCombine()
-    val expected = Seq(
-      // img = {}
-      (Some(0), None,      None, initiumTemporisString, "2017-12-09 23:59:59.999"),
-      (Some(0), Some(4.2), None, "2017-12-10 00:00:00", "2017-12-31 23:59:59.999"),
-      // img = {A}
-      (Some(0), Some(4.2), Some("A"), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
-      // img = {B}
-      (Some(0), Some(4.2), Some("B"), "2018-02-01 00:00:00", "2018-02-28 23:59:59.999"),
-      // img = null
-      (Some(0), Some(4.2), None, "2018-03-01 00:00:00", "2018-03-29 23:59:59.999"),
-      // img = {D}
-      (Some(0), Some(4.2), Some("D"), "2018-03-30 00:00:00", "2018-03-31 23:59:59.999"),
-      // img = {}
-      (Some(0), Some(4.2), None, "2018-04-01 00:00:00", "2018-12-08 23:59:59.999"),
-      (Some(0), None,      None, "2018-12-09 00:00:00", finisTemporisString)
-    ).map(makeRowsWithTimeRangeEnd[Option[Int], Option[Double], Option[String]])
-      .toDF("id", "value_l", "img", defaultFromColName, defaultToColName)
-    val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeFullJoin_rightMapWithGapsAndRnkExpressions", Seq(dfLeft, argumentRight))(actual, expected)
-    result shouldBe true
-  }
-
   "rangeLeftJoin_dfRight" should "return expected results" in {
-    val actual = dfLeft.rangeLeftJoin(dfRight, Seq("id"))
+    val actual = dfLeft.rangeLeftJoin(df2 = dfRight, keys = Seq("id"))
       .rangeCombine()
     val expected = Seq(
       (0, 4.2, None,        "2017-12-10 00:00:00", "2017-12-31 23:59:59.999"),
@@ -842,9 +830,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
   "rangeLeftJoin with equally named columns apart join columns" should "return expected results" in {
     val dfL = dfLeft.withColumnRenamed("value_l", "value").as("dfL")
     val dfR = dfRight.withColumnRenamed("value_r", "value").as("dfR")
-    val actual = dfL.rangeLeftJoin(dfR, Seq("id"))
-      // .rangeCombine() // temporal combine not possible with equally named columns in the same DataFrame.
-      .orderBy($"id", defaultFromCol)
+    val actual = dfL.rangeLeftJoin(dfR, Seq("id")).orderBy($"id", defaultFromCol)
     assert(5 == actual.select($"id", $"dfL.value", $"dfR.value").count())
     val expected = Seq(
       (0, 4.2, None,        "2017-12-10 00:00:00", "2017-12-31 23:59:59.999"),

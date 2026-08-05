@@ -211,8 +211,8 @@ object BiTemporalTestUtils extends TestUtils {
     (0, "2028-06-01 00:00:00", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00)),
     (0, "2030-06-01 00:00:00", finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
     (1, initiumTemporisString, finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
-    (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
-    (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+    (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019d)),
+    (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020d)),
     (1, initiumTemporisString, finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
   ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
 

@@ -50,8 +50,8 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
         (0, "2028-06-01 00:00:00.001", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00)),
         (0, "2030-06-01 00:00:00",     finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
         (1, initiumTemporisString,     finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
-        (1, initiumTemporisString,     finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
-        (1, initiumTemporisString,     finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+        (1, initiumTemporisString,     finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019d)),
+        (1, initiumTemporisString,     finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020d)),
         (1, initiumTemporisString,     finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
       ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
         .withColumn(defaultBiTemporalConfig.definedColName, lit(true))
@@ -69,15 +69,15 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
         extend = false
       ).rangeCombine()
       val expected = List(
-        (0, initiumTemporisString,     finisTemporisString,   "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15),  true),
-        (0, "2028-01-01 00:00:00",     "2028-06-01 00:00:00", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15),  true),
-        (0, "2028-01-01 00:00:00",     finisTemporisString,   "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", None,         false),
-        (0, "2028-06-01 00:00:00.001", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00),  true),
-        (0, "2030-06-01 00:00:00",     finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15),  true),
-        (1, initiumTemporisString,     finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None,         true),
-        (1, initiumTemporisString,     finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0), true),
-        (1, initiumTemporisString,     finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0), true),
-        (1, initiumTemporisString,     finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None,         true)
+        (0, initiumTemporisString,     finisTemporisString,   "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15), true),
+        (0, "2028-01-01 00:00:00",     "2028-06-01 00:00:00", "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15), true),
+        (0, "2028-01-01 00:00:00",     finisTemporisString,   "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", None,        false),
+        (0, "2028-06-01 00:00:00.001", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00), true),
+        (0, "2030-06-01 00:00:00",     finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15), true),
+        (1, initiumTemporisString,     finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None,        true),
+        (1, initiumTemporisString,     finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019d), true),
+        (1, initiumTemporisString,     finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020d), true),
+        (1, initiumTemporisString,     finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None,        true)
       ).map(makeRowsBiTemporalDefined).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r",
         defaultBiTemporalConfig.definedColName)
       val result = dfEqual(actual, expected)
@@ -99,8 +99,8 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
         (0, "2028-06-01 00:00:00.001", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00)),
         (0, "2030-06-01 00:00:00",     finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
         (1, initiumTemporisString,     finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
-        (1, initiumTemporisString,     finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
-        (1, initiumTemporisString,     finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+        (1, initiumTemporisString,     finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019d)),
+        (1, initiumTemporisString,     finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020d)),
         (1, initiumTemporisString,     finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
       ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
         .withColumn(defaultBiTemporalConfig.definedColName, lit(true))
@@ -117,20 +117,20 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
         rnkExpressions = fromCols
       ).rangeCombine()
       val expected = List(
-        (0, initiumTemporisString,     "2027-12-31 23:59:59.999", initiumTemporisString, "2018-06-01 05:24:10.999", None,         false),
-        (0, initiumTemporisString,     "2030-05-31 23:59:59.999", "2020-01-01 00:00:00", finisTemporisString,       None,         false),
-        (0, initiumTemporisString,     finisTemporisString,       "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15),  true),
-        (0, "2028-01-01 00:00:00",     "2028-06-01 00:00:00",     "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15),  true),
-        (0, "2028-01-01 00:00:00",     finisTemporisString,       initiumTemporisString, "2017-12-31 23:59:59.999", None,         false),
-        (0, "2028-01-01 00:00:00",     finisTemporisString,       "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", None,         false),
-        (0, "2028-06-01 00:00:00.001", finisTemporisString,       "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00),  true),
-        (0, "2030-06-01 00:00:00",     finisTemporisString,       "2020-01-01 00:00:00", finisTemporisString,       Some(97.15),  true),
-        (1, initiumTemporisString,     finisTemporisString,       initiumTemporisString, "2017-12-31 23:59:59.999", None,         false),
-        (1, initiumTemporisString,     finisTemporisString,       "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None,         true),
-        (1, initiumTemporisString,     finisTemporisString,       "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0), true),
-        (1, initiumTemporisString,     finisTemporisString,       "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0), true),
-        (1, initiumTemporisString,     finisTemporisString,       "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None,         true),
-        (1, initiumTemporisString,     finisTemporisString,       "2100-01-01 00:00:00", finisTemporisString,       None,         false)
+        (0, initiumTemporisString,     "2027-12-31 23:59:59.999", initiumTemporisString, "2018-06-01 05:24:10.999", None,        false),
+        (0, initiumTemporisString,     "2030-05-31 23:59:59.999", "2020-01-01 00:00:00", finisTemporisString,       None,        false),
+        (0, initiumTemporisString,     finisTemporisString,       "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15), true),
+        (0, "2028-01-01 00:00:00",     "2028-06-01 00:00:00",     "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(97.15), true),
+        (0, "2028-01-01 00:00:00",     finisTemporisString,       initiumTemporisString, "2017-12-31 23:59:59.999", None,        false),
+        (0, "2028-01-01 00:00:00",     finisTemporisString,       "2018-02-01 00:00:00", "2018-06-01 05:24:10.999", None,        false),
+        (0, "2028-06-01 00:00:00.001", finisTemporisString,       "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00), true),
+        (0, "2030-06-01 00:00:00",     finisTemporisString,       "2020-01-01 00:00:00", finisTemporisString,       Some(97.15), true),
+        (1, initiumTemporisString,     finisTemporisString,       initiumTemporisString, "2017-12-31 23:59:59.999", None,        false),
+        (1, initiumTemporisString,     finisTemporisString,       "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None,        true),
+        (1, initiumTemporisString,     finisTemporisString,       "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019d), true),
+        (1, initiumTemporisString,     finisTemporisString,       "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020d), true),
+        (1, initiumTemporisString,     finisTemporisString,       "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None,        true),
+        (1, initiumTemporisString,     finisTemporisString,       "2100-01-01 00:00:00", finisTemporisString,       None,        false)
       ).map(makeRowsBiTemporalDefined)
         .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r", defaultBiTemporalConfig.definedColName)
       val result = dfEqual(actual, expected)
@@ -285,8 +285,8 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       (0, "2028-06-01 00:00:00", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00)),
       (0, "2030-06-01 00:00:00", finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
       (1, initiumTemporisString, finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
-      (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
-      (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+      (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019d)),
+      (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020d)),
       (1, initiumTemporisString, finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
     val result = dfEqual(actual, expected)
@@ -306,8 +306,8 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       (0, "2028-06-01 00:00:00", finisTemporisString,   "2018-01-01 00:00:00", "2018-01-31 23:59:59.999", Some(98.00)),
       (0, "2030-06-01 00:00:00", finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
       (1, initiumTemporisString, finisTemporisString,   "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
-      (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
-      (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+      (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019d)),
+      (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020d)),
       (1, initiumTemporisString, finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
     val result = dfEqual(actual, expected)
@@ -363,8 +363,8 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       (0, "2028-06-01 00:00:00", finisTemporisString,   initiumTemporisString, "2018-01-31 23:59:59.999", Some(98.00)),
       (0, "2030-06-01 00:00:00", finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
       (1, initiumTemporisString, finisTemporisString,   initiumTemporisString, "2018-12-31 23:59:59.999", None),
-      (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
-      (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+      (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019d)),
+      (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020d)),
       (1, initiumTemporisString, finisTemporisString,   "2021-01-01 00:00:00", finisTemporisString,       None)
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
     val result = dfEqual(actual, expected)
@@ -381,12 +381,56 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       (0, "2028-06-01 00:00:00", finisTemporisString,   initiumTemporisString, "2018-01-31 23:59:59.999", Some(98.00)),
       (0, "2030-06-01 00:00:00", finisTemporisString,   "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
       (1, initiumTemporisString, finisTemporisString,   initiumTemporisString, "2018-12-31 23:59:59.999", None),
-      (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
-      (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+      (1, initiumTemporisString, finisTemporisString,   "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019d)),
+      (1, initiumTemporisString, finisTemporisString,   "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020d)),
       (1, initiumTemporisString, finisTemporisString,   "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
     val result = dfEqual(actual, expected)
     if (!result) printFailedTestResult("rangeExtendRange_dfRight", dfRight)(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeFullJoin dfLeft with dfRight" should "return expected results" in {
+    val actual = dfLeft.rangeFullJoin(df2 = dfRight, keys = Seq("id"))
+    val expected = List(
+      // 0: NULL, 97.15
+      (0, None, Some(97.15),
+        bigBangDay, doomsDay, Timestamp.valueOf("2018-12-09 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (0,           None,     Some(97.15),
+        Timestamp.valueOf("2030-06-01 00:00:00"), doomsDay, Timestamp.valueOf("2020-01-01 00:00:00"), doomsDay),
+      // 0: 4.2, NULL
+      (0, Some(4.2), None,
+        bigBangDay, Timestamp.valueOf("2027-12-31 23:59:59.999"),
+        Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999")),
+      (0,                                         Some(4.2), None,
+        Timestamp.valueOf("2028-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,                                         Some(4.2), None,
+        Timestamp.valueOf("2028-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999")),
+      // 0: 4.2, 97.15
+      (0, Some(4.2), Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         Some(4.2), Some(97.15),
+        Timestamp.valueOf("2028-01-01 00:00:00"), Timestamp.valueOf("2028-06-01 00:00:00"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      // 0: 4.2, 98
+      (0, Some(4.2), Some(98d),
+        Timestamp.valueOf("2028-06-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+// id 1: rows from dfRight
+      (1, None, None, bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999")),
+      (1,                                         None, Some(2019d), bigBangDay, doomsDay,
+        Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (1,                                         None, Some(2020d), bigBangDay, doomsDay,
+        Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999")),
+      (1,                                         None, None, bigBangDay, doomsDay,
+        Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999"))
+    ).toDF("id", "value_l", "value_r", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin_dfLeft_dfRight", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
@@ -534,8 +578,8 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
       (0, initiumTemporisString, finisTemporisString, "2018-06-01 05:24:11", "2019-12-31 23:59:59.999", Some(97.15)),
       (0, "2030-06-01 00:00:00", finisTemporisString, "2020-01-01 00:00:00", finisTemporisString,       Some(97.15)),
       (1, initiumTemporisString, finisTemporisString, "2018-01-01 00:00:00", "2018-12-31 23:59:59.999", None),
-      (1, initiumTemporisString, finisTemporisString, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019.0)),
-      (1, initiumTemporisString, finisTemporisString, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020.0)),
+      (1, initiumTemporisString, finisTemporisString, "2019-01-01 00:00:00", "2019-12-31 23:59:59.999", Some(2019d)),
+      (1, initiumTemporisString, finisTemporisString, "2020-01-01 00:00:00", "2020-12-31 23:59:59.999", Some(2020d)),
       (1, initiumTemporisString, finisTemporisString, "2021-01-01 00:00:00", "2099-12-31 23:59:59.999", None)
     ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value_r")
     val result = dfEqual(actual, expected)
