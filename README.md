@@ -30,10 +30,10 @@ See also [Builds](#builds) to review compatibility between Spark, Scala and Java
 All interval query operations are available as `multivarRange*` implicit functions on DataFrame, provided by `MultivariateRangeLibrary`. The configuration is supplied as an implicit `MultivarRangeQueryConfig` instance obtained from one of the concrete query utility objects.
 
 ### temporal queries
-`TemporalClosedIntervalQueryUtil` provides configuration for temporal data with a Timestamp interval axis.
+`TemporalClosedQueryUtil` provides configuration for temporal data with a Timestamp interval axis.
 
 ```scala
-import ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedIntervalQueryUtil._
+import ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedQueryUtil._
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
 import java.sql.Timestamp
 
@@ -42,6 +42,7 @@ implicit val tqc: LinearClosedIntervalQueryConfig = LinearClosedIntervalQueryCon
   .withDefaultIntervalDef(fromColName = "valid_from", toColName = "valid_to")
 // make SparkSession implicitly available
 implicit val sss = spark
+
 import sss.implicits._
 
 // prepare some DataFrames

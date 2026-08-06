@@ -69,7 +69,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         fromColName: String = "position_from",
         toColName: String = "position_to"
     )(implicit intervalDef: ClosedInterval[T], logger: Logger): LinearClosedIntervalQueryConfig = {
-      debugLog(s"(withDefaultIntervalDef) fromColName = $fromColName ; toColName = $toColName ; intervalDef = $intervalDef")
+      logger.info(s"(withDefaultIntervalDef) fromColName = $fromColName ; toColName = $toColName ; intervalDef = $intervalDef")
       LinearClosedIntervalQueryConfig(dimensionColNameMap = Map(fromColName -> toColName),
         additionalTechnicalColNames = Nil, intervalDef = intervalDef)
     }
@@ -118,7 +118,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
         fromColName: String = "position_from",
         toColName: String = "position_to"
     )(implicit intervalDef: HalfOpenInterval[T], logger: Logger): LinearHalfOpenIntervalQueryConfig = {
-      debugLog(s"(withDefaultIntervalDef) fromColName = $fromColName ; toColName = $toColName ; intervalDef = $intervalDef")
+      logger.info(s"(withDefaultIntervalDef) fromColName = $fromColName ; toColName = $toColName ; intervalDef = $intervalDef")
       LinearHalfOpenIntervalQueryConfig(dimensionColNameMap = Map(fromColName -> toColName),
         additionalTechnicalColNames = Nil, intervalDef = intervalDef)
     }

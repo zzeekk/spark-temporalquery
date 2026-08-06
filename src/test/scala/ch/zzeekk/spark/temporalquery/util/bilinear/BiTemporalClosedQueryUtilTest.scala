@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.sql.Timestamp
 
-class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
+class BiTemporalClosedQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
 
   import session.implicits._
   private implicit val timeOrdering: Ordering[Timestamp] = timestampOrdering

@@ -2,7 +2,7 @@ package ch.zzeekk.spark.temporalquery.util.linear
 
 import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.util.finisTemporisString
-import ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedIntervalQueryUtil._
+import ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedQueryUtil._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.DoubleType
 object TemporalTestUtils extends TestUtils {

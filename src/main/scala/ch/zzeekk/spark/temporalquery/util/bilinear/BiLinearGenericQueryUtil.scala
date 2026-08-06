@@ -68,7 +68,7 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
         sndFromColName: String = "y_from",
         sndToColName: String = "y_to"
     )(implicit intervalDef: ClosedInterval[T], logger: Logger): BiLinearClosedIntervalQueryConfig = {
-      debugLog(s"(withDefaultIntervalDef) fstFromColName = $fstFromColName ;" +
+      logger.info(s"(withDefaultIntervalDef) fstFromColName = $fstFromColName ;" +
         s" fstToColName = $fstToColName ; sndFromColName = $sndFromColName ;" +
         s" sndToColName = $sndToColName ; intervalDef = $intervalDef")
       BiLinearClosedIntervalQueryConfig(
@@ -111,7 +111,7 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
         sndFromColName: String = "y_from",
         sndToColName: String = "y_to"
     )(implicit intervalDef: HalfOpenInterval[T], logger: Logger): BiLinearHalfOpenIntervalQueryConfig = {
-      debugLog(s"(withDefaultIntervalDef) fstFromColName = $fstFromColName ;" +
+      logger.info(s"(withDefaultIntervalDef) fstFromColName = $fstFromColName ;" +
         s" fstToColName = $fstToColName ; sndFromColName = $sndFromColName ;" +
         s" sndToColName = $sndToColName ; intervalDef = $intervalDef")
       BiLinearHalfOpenIntervalQueryConfig(

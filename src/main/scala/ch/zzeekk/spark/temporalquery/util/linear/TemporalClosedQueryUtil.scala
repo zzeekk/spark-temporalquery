@@ -14,6 +14,6 @@ import java.sql.Timestamp
  * operations if needed implicit val sss = ss // make SparkSession implicitly available val
  * df_joined = df1.linearJoin(df2) // use linear query functions with Spark
  */
-object TemporalClosedIntervalQueryUtil extends LinearGenericQueryUtil[Timestamp] {
+object TemporalClosedQueryUtil extends LinearGenericQueryUtil[Timestamp] {
   implicit val defaultClosedIntervalDef: ClosedInterval[Timestamp] = stdClosedTemporalInterval
 }
