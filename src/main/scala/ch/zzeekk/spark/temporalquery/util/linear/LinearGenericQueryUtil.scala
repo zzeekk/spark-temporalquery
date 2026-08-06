@@ -43,7 +43,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     override def dimensionMap: Map[String, (String, ClosedInterval[T])] = dimensionColNameMap.map { case (f, t) =>
       (f, (t, intervalDef))
     }
-    override lazy val config2: LinearClosedIntervalQueryConfig = this
+    override def config2: LinearClosedIntervalQueryConfig = this
       .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
 
     def fromColName: String = rangeDimensions.head.fromColName
@@ -92,7 +92,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     )
     override def dimensionMap: Map[String, (String, HalfOpenInterval[T])] = dimensionColNameMap
       .map { case (f, t) => (f, (t, intervalDef)) }
-    override lazy val config2: LinearHalfOpenIntervalQueryConfig = this
+    override def config2: LinearHalfOpenIntervalQueryConfig = this
       .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
 
     def fromColName: String = rangeDimensions.head.fromColName

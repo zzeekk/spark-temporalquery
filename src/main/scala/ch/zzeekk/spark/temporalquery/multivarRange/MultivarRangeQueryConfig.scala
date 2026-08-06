@@ -65,7 +65,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
 
   // helper column names
   def definedColName: String = "_defined"
-  def definedCol: Column = col(definedColName)
+  final def definedCol: Column = col(definedColName)
 
   final def rangeDimensions: List[IntervalQueryDimension[T, D]] = dimensionMap.map { case (f, (t, i)) =>
     IntervalQueryDimension(
@@ -180,17 +180,17 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
     applyBooleanColumnFunctionToIntervalDefs(dim => checkFun(values(rangeDimensions.indexOf(dim)), dim))
   }
 
-  val isInRangeExpr: Seq[Column] => Column = checkValue(checkFun = (valCol, dim) =>
+  final val isInRangeExpr: Seq[Column] => Column = checkValue(checkFun = (valCol, dim) =>
     dim.intDef.isInIntervalExpr(valCol, dim.fromCol, dim.toCol))
 
-  val isInBoundariesExpr: Seq[Column] => Column = checkValue(checkFun = (valCol, dim) =>
+  final val isInBoundariesExpr: Seq[Column] => Column = checkValue(checkFun = (valCol, dim) =>
     valCol.between(lit(dim.lowerHorizon), lit(dim.upperHorizon)))
 
-  def isValidRangeExpr: Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
+  final def isValidRangeExpr: Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
     dim.intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)
   )
 
-  def joinRangeExpr(df1: DataFrame, df2: DataFrame)(implicit logger: Logger): Column = {
+  final def joinRangeExpr(df1: DataFrame, df2: DataFrame)(implicit logger: Logger): Column = {
     val joinCol = applyBooleanColumnFunctionToIntervalDefs(dim =>
       dim.intDef.intervalJoinExpr(df1(dim.fromColName), df1(dim.toColName), df2(dim.fromCol2Name), df2(dim.toCol2Name))
     )

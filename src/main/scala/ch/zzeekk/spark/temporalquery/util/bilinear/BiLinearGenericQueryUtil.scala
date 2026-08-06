@@ -39,21 +39,16 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
    * needed as implicit parameter.
    */
   case class BiLinearClosedIntervalQueryConfig(
-      dimensionColNameMap: Map[String, String] = Map("x_from" -> "x_to", "y_from" -> "y_to"),
-      override val additionalTechnicalColNames: List[String] = Nil,
-      intervalDef: ClosedInterval[T]
+      override val dimensionMap: Map[String, (String, ClosedInterval[T])],
+      override val additionalTechnicalColNames: List[String] = Nil
   ) extends ClosedMultivarRangeQueryConfig[T] with BiLinearQueryConfigMarker {
     require(
       numDimensions == 2,
       s"BiLinearClosedIntervalQueryConfig must have exactly 2 dimension but numDimensions = $numDimensions!" +
         s"You may want to use MultivarRangeQueryConfig directly!"
     )
-    override def dimensionMap: Map[String, (String, ClosedInterval[T])] = dimensionColNameMap.map { case (f, t) =>
-      (f, (t, intervalDef))
-    }
-    override lazy val config2: BiLinearClosedIntervalQueryConfig = this
-      .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
-
+    override def config2: BiLinearClosedIntervalQueryConfig = this
+      .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
   }
 
   object BiLinearClosedIntervalQueryConfig {
@@ -72,9 +67,8 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
         s" fstToColName = $fstToColName ; sndFromColName = $sndFromColName ;" +
         s" sndToColName = $sndToColName ; intervalDef = $intervalDef")
       BiLinearClosedIntervalQueryConfig(
-        dimensionColNameMap = Map(fstFromColName -> fstToColName, sndFromColName -> sndToColName),
-        additionalTechnicalColNames = Nil,
-        intervalDef = intervalDef
+        dimensionMap = Map(fstFromColName -> (fstToColName, intervalDef), sndFromColName -> (sndToColName, intervalDef)),
+        additionalTechnicalColNames = Nil
       )
     }
   }
@@ -84,19 +78,16 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
    * needed as implicit parameter.
    */
   case class BiLinearHalfOpenIntervalQueryConfig(
-      dimensionColNameMap: Map[String, String] = Map("x_from" -> "x_to", "y_from" -> "y_to"),
-      override val additionalTechnicalColNames: List[String] = Nil,
-      intervalDef: HalfOpenInterval[T]
+      override val dimensionMap: Map[String, (String, HalfOpenInterval[T])],
+      override val additionalTechnicalColNames: List[String] = Nil
   ) extends HalfOpenMultivarRangeQueryConfig[T] with BiLinearQueryConfigMarker {
     require(
       numDimensions == 2,
       s"BiLinearHalfOpenIntervalQueryConfig must have exactly 2 dimension but numDimensions = $numDimensions!" +
         s"You may want to use MultivarRangeQueryConfig directly!"
     )
-    override def dimensionMap: Map[String, (String, HalfOpenInterval[T])] = dimensionColNameMap
-      .map { case (f, t) => (f, (t, intervalDef)) }
-    override lazy val config2: BiLinearHalfOpenIntervalQueryConfig = this
-      .copy(dimensionColNameMap = dimensionColNameMap.map { case (f, t) => (increaseColNameNb(f), increaseColNameNb(t)) })
+    override def config2: BiLinearHalfOpenIntervalQueryConfig = this
+      .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
   }
 
   object BiLinearHalfOpenIntervalQueryConfig {
@@ -115,9 +106,8 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
         s" fstToColName = $fstToColName ; sndFromColName = $sndFromColName ;" +
         s" sndToColName = $sndToColName ; intervalDef = $intervalDef")
       BiLinearHalfOpenIntervalQueryConfig(
-        dimensionColNameMap = Map(fstFromColName -> fstToColName, sndFromColName -> sndToColName),
-        additionalTechnicalColNames = Nil,
-        intervalDef = intervalDef
+        dimensionMap = Map(fstFromColName -> (fstToColName, intervalDef), sndFromColName -> (sndToColName, intervalDef)),
+        additionalTechnicalColNames = Nil
       )
     }
   }

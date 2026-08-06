@@ -21,10 +21,6 @@ object BiTemporalTestUtils extends TestUtils {
     .withDefaultIntervalDef(fstFromColName = "known_from", fstToColName = "known_to",
       sndFromColName = "valid_from", sndToColName = "valid_to")
 
-  // helper: (id, known_from, known_to, valid_from, valid_to, value)
-  def makeRowsBiTemporal[A, B](row: (A, String, String, String, String, B)): (A, Timestamp, Timestamp, Timestamp, Timestamp, B) =
-    (row._1, Timestamp.valueOf(row._2), Timestamp.valueOf(row._3), Timestamp.valueOf(row._4), Timestamp.valueOf(row._5), row._6)
-
   // helper: (id, known_from, known_to, valid_from, valid_to, value, _defined)
   def makeRowsBiTemporalDefined[A, B](row: (A, String, String, String, String, B, Boolean))
       : (A, Timestamp, Timestamp, Timestamp, Timestamp, B, Boolean) =
@@ -39,27 +35,6 @@ object BiTemporalTestUtils extends TestUtils {
   // is always known, i.e. known_from = initiumTemporisString, known_to = finisTemporisString
   def wrapAlwaysKnown[A, B](row: (A, String, String, B)): (A, String, String, String, String, B) =
     (row._1, initiumTemporisString, finisTemporisString, row._2, row._3, row._4)
-
-  val dfDenseTime: DataFrame = Seq(
-    // entity 0, Jan 1–5: original entry on day 1, corrected on Mar 15 (known_to marks the correction)
-    (0, "2019-01-01 08:00:00", "2019-03-15 00:00:00", "2019-01-01 00:00:00.123456789", "2019-01-05 12:34:56.123456789", 3.14),
-    // entity 0, Jan 5–Feb 1: corrected record, known from the correction date onward
-    (0, "2019-03-15 00:00:00", finisTemporisString, "2019-01-05 12:34:56.123456789", "2019-02-01 02:34:56.1235", 2.72),
-    // entity 0, 1ms pulse on Feb 1: always known
-    (0, initiumTemporisString, finisTemporisString, "2019-02-01 02:34:56.1235", "2019-02-01 02:34:56.1245", 42.0),
-    // entity 0, Feb–Mar: late addition — fact recorded 7 weeks after validity started
-    (0, "2019-03-25 14:00:00", finisTemporisString, "2019-02-01 02:34:56.1245", "2019-03-03 00:00:00", 13.0),
-    // entity 0, Mar–Apr: entered one week into the valid period
-    (0, "2019-03-10 12:00:00", finisTemporisString, "2019-03-03 00:00:00", "2019-04-04 00:00:00", 12.0),
-    // entity 0, Sep blip: known only for the same nanosecond window as validity (momentary knowledge)
-    (0, "2019-09-05 02:34:56.1231", "2019-09-05 02:34:56.1239", "2019-09-05 02:34:56.1231", "2019-09-05 02:34:56.1239", 42.0),
-    // entity 0, 2020+: entered 5 months after validity started
-    (0, "2020-06-01 00:00:00", finisTemporisString, "2020-01-01 01:00:00", "9999-12-31 23:59:59.999999999", 18.17),
-    // entity 1, Jan–Feb: always known
-    (1, initiumTemporisString, finisTemporisString, "2019-01-01 00:00:00.123456789", "2019-02-02 00:00:00", -1.0),
-    // entity 1, Mar 2019–Dec 2021: entered retroactively in Jan 2020
-    (1, "2020-01-15 09:00:00", finisTemporisString, "2019-03-03 01:00:00", "2021-12-01 02:34:56.1", -2.0)
-  ).map(makeRowsBiTemporal).toDF("id", "known_from", "known_to", "valid_from", "valid_to", "value")
 
   val dfDocumentation: DataFrame = Seq(
     (1, "2020-01-01 00:00:00", "2021-01-01 00:00:00", "2019-01-05 12:34:56.123456789", "2019-02-01 02:34:56.1235", 2.72),
