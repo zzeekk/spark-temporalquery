@@ -17,6 +17,7 @@ class BiDimOpenIntervalTests extends AnyFlatSpec with Matchers with ScalaCheckPr
     val expected = List((0d, 1d, 0d, 1d, "A")).toDF("x_from", "x_to", "y_from", "y_to", "value")
 
     forAll(genA = dfConstantUnitSplitted("A")) { df =>
+      logger.info(s"df.count() = ${df.count()} ; df.schema = ${df.schema.catalogString}")
       val actual = df.rangeCombine[Double]()
       val result = dfEqual(actual, expected)
       if (!result) {

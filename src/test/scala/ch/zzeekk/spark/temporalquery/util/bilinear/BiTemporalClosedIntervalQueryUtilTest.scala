@@ -807,6 +807,100 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
     result shouldBe true
   }
 
+  "rangeRightJoin dfLeft with dfRight" should "return expected results" in {
+    val actual = dfLeft.as("dfL").rangeRightJoin(df2 = dfRight.as("dfR"), keys = Seq("id"))
+    debugLog(s"${actual.columns.length} actual.columns: ${actual.columns.mkString(",")}")
+    val expected = List(
+      // 0: NULL , 97.15
+      (0, None, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-12-09 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (0,                                         None, Some(97.15),
+        Timestamp.valueOf("2030-06-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2020-01-01 00:00:00"), doomsDay),
+      // 0: 4.2 , 97.15
+      (0, Some(4.2), Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         Some(4.2), Some(97.15),
+        Timestamp.valueOf("2028-01-01 00:00:00"), Timestamp.valueOf("2028-06-01 00:00:00"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      // 4.2 , 98
+      (0, Some(4.2), Some(98d),
+        Timestamp.valueOf("2028-06-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      // 1: NULL , NULL
+      (1, None, None,
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-12-31 23:59:59.999")),
+      (1,                                         None, None,
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2021-01-01 00:00:00"), Timestamp.valueOf("2099-12-31 23:59:59.999")),
+      // 1: NULL , 2019/2020
+      (1, None, Some(2019d),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2019-01-01 00:00:00"), Timestamp.valueOf("2019-12-31 23:59:59.999")),
+      (1,                                         None, Some(2020d),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2020-01-01 00:00:00"), Timestamp.valueOf("2020-12-31 23:59:59.999"))
+    ).toDF("id", "value_l", "value_r", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeRightJoin dfLeft with dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeRightJoin dfLeft with dfMap" should "return expected results" in {
+    val actual = dfLeft.as("dfL").rangeRightJoin(df2 = dfMap.as("dfR"), keys = Seq("id"))
+    debugLog(s"${actual.columns.length} actual.columns: ${actual.columns.mkString(",")}")
+    val expected = List(
+      (0, 4.2, Some("A"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,                                         4.2, Some("B"),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,                                         4.2, Some("C"),
+        Timestamp.valueOf("2018-02-05 00:00:00"), Timestamp.valueOf("2018-03-15 23:59:59.999"),
+        Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-03-03 23:59:59.999")),
+      (0,                                         4.2, Some("D"),
+        Timestamp.valueOf("2018-02-20 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,                                         4.2, Some("X"),
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-01 23:59:59.999"),
+        Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"))
+    ).toDF("id", "value_l", "img", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeRightJoin dfLeft with dfMap", Seq(dfLeft, dfMap))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeRightJoin dfLeft with dfMap using rnkExpressions" should "return expected results" in {
+    // Testing rangeRightJoin where the right dataFrame is not unique for join attributes
+    // but in a right join rnkExpressions are applied to left data frame
+    val actual = dfLeft.rangeRightJoin(df2 = dfMap, keys = Seq("id"),
+      rnkExpressions = $"img" +: defaultBiTemporalConfig.dimensionMap.keys.toList.sorted.map(col))
+    val expected = List(
+      (0, Some(4.2), Some("A"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,                                         Some(4.2), Some("B"),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,                                         Some(4.2), Some("C"),
+        Timestamp.valueOf("2018-02-05 00:00:00"), Timestamp.valueOf("2018-03-15 23:59:59.999"),
+        Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-03-03 23:59:59.999")),
+      (0,                                         Some(4.2), Some("D"),
+        Timestamp.valueOf("2018-02-20 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,                                         Some(4.2), Some("X"),
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-01 23:59:59.999"),
+        Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"))
+    ).toDF("id", "value_l", "img", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeRightJoin dfLeft with dfMap using rnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
+    result shouldBe true
+  }
+
   "rangeRoundDiscreteTime, rangeCleanupExtend and rangeCombine" should
     "combine, extend ranges, fill gaps and remove overlaps of dfDirtyTimeRanges," +
     " and then convert dfMap to a 1-1-relation by selecting the smallest value" in {

@@ -845,7 +845,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     result shouldBe true
   }
 
-  "rangeRightJoin_dfRight" should "return expected results" in {
+  "rangeRightJoin dfLeft with dfRight" should "return expected results" in {
     val actual = dfLeft.rangeRightJoin(dfRight, Seq("id"))
       .rangeCombine()
     val expected = Seq(
@@ -861,11 +861,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Option[Double]])
       .toDF("id", "value_l", "value_r", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeRightJoin_dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeRightJoin dfLeft with dfRight", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "rangeRightJoin_rightMap" should "return expected results" in {
+  "rangeRightJoin dfLeft with dfMap" should "return expected results" in {
     // Testing rangeRightJoin where the right dataFrame is not unique for join attributes
     val actual = dfLeft.rangeRightJoin(df2 = dfMap, keys = Seq("id"))
       .rangeCombine()
@@ -879,11 +879,11 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
     ).map(makeRowsWithTimeRangeEnd[Int, Option[Double], Option[String]])
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeRightJoin_rightMap", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeRightJoin dfLeft with dfMap", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
-  "rangeRightJoin_rightMapWithrnkExpressions" should "return expected results" in {
+  "rangeRightJoin dfLeft with dfMap using rnkExpressions" should "return expected results" in {
     // Testing rangeRightJoin where the right dataFrame is not unique for join attributes
     // but in a right join rnkExpressions are applied to left data frame
     val actual = dfLeft.rangeRightJoin(df2 = dfMap, keys = Seq("id"), rnkExpressions = Seq($"img", defaultTemporalConfig.fromCol))
@@ -899,7 +899,7 @@ class TemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers with
       .toDF("id", "value_l", "img", defaultTemporalConfig.fromColName, defaultTemporalConfig.toColName)
     val result = dfEqual(actual, expected)
 
-    if (!result) printFailedTestResult("rangeRightJoin_rightMapWithrnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeRightJoin dfLeft with dfMap using rnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
