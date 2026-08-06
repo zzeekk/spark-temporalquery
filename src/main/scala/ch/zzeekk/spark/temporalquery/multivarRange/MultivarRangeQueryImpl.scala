@@ -41,7 +41,7 @@ object MultivarRangeQueryImpl extends Logging {
     if (logger.isDebugEnabled()) df.debLog("df")
     val dfTransformed = transform(df)
     if (logger.isDebugEnabled()) dfTransformed.debLog("dfTransformed")
-    getAlias(df).map(transform(dfTransformed).alias).getOrElse(dfTransformed) // .distinct()
+    getAlias(df).map(dfTransformed.alias).getOrElse(dfTransformed)
   }
 
   /**

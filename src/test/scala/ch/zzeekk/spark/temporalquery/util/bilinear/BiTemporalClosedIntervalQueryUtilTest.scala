@@ -511,7 +511,7 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
         Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"))
     ).toDF("id", "value_l", "img", "known_from", "known_to", "valid_from", "valid_to")
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("rangeFullJoin_dfLeft_dfMap_rnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
+    if (!result) printFailedTestResult("rangeFullJoin dfLeft with dfMap using rnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 
@@ -560,7 +560,7 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
     result shouldBe true
   }
 
-  "rangeInnerJoinrangeInnerJoin dfLeft with dfRightDouble with 'on' semantics" should "return expected results" in {
+  "rangeInnerJoin dfLeft with dfRightDouble with 'on' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin(dfRightDouble.as("dfR"), $"dfL.id" === $"dfR.id")
     assert(actual.columns.count(_ == "id") == 2)
     val expected = List(
@@ -582,7 +582,7 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
     result shouldBe true
   }
 
-  "rangeInnerJoinrangeInnerJoin dfLeft with dfRightDouble with 'using' semantics" should "return expected results" in {
+  "rangeInnerJoin dfLeft with dfRightDouble with 'using' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin(df2 = dfRightDouble.as("dfR"), keys = Seq("id"))
     val expected = List(
       (0d, 4.2, Some(97.15),
@@ -682,6 +682,128 @@ class BiTemporalClosedIntervalQueryUtilTest extends AnyFlatSpec with Matchers wi
     val result = dfEqual(actual, expected)
 
     if (!result) printFailedTestResult("rangeLeftAntiJoin_dfMap_dfRight", Seq(dfMap, dfRight))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeLeftJoin dfLeft with dfRight" should "return expected results" in {
+    val actual = dfLeft.as("dfL").rangeLeftJoin(df2 = dfRight.as("dfR"), keys = Seq("id"))
+    debugLog(s"${actual.columns.length} actual.columns: ${actual.columns.mkString(",")}")
+    val expected = List(
+      // 4.2 , NULL
+      (0, 4.2, None,
+        bigBangDay, Timestamp.valueOf("2027-12-31 23:59:59.999"),
+        Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999")),
+      (0,                                         4.2, None,
+        Timestamp.valueOf("2028-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,                                         4.2, None,
+        Timestamp.valueOf("2028-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-06-01 05:24:10.999")),
+      // 4.2 , 97.15
+      (0, 4.2, Some(97.15),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-06-01 05:24:11"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         4.2, Some(97.15),
+        Timestamp.valueOf("2028-01-01 00:00:00"), Timestamp.valueOf("2028-06-01 00:00:00"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      // 4.2 , 98
+      (0, 4.2, Some(98d),
+        Timestamp.valueOf("2028-06-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999"))
+    ).toDF("id", "value_l", "value_r", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftJoin dfLeft with dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeLeftJoin dfLeft with dfEmpty" should "add an empty column value_r to dfLeft" in {
+    val dfEmpty = dfRight.where(lit(false))
+    val actual = dfLeft.rangeLeftJoin(dfEmpty, Seq("id"))
+    val expected = dfLeft.withColumn("value_r", lit(null).cast("double"))
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftJoin dfLeft with dfEmpty", Seq(dfLeft, dfEmpty))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeLeftJoin dfLeft with dfMap" should "return expected results" in {
+    val actual = dfLeft.as("dfL").rangeLeftJoin(df2 = dfMap.as("dfR"), keys = Seq("id"))
+    debugLog(s"${actual.columns.length} actual.columns: ${actual.columns.mkString(",")}")
+    val expected = List(
+      // 4.2 , NULL
+      (0, 4.2, None,
+        bigBangDay, Timestamp.valueOf("2018-02-04 23:59:59.999"),
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         4.2, None,
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,                                         4.2, None,
+        Timestamp.valueOf("2018-02-05 00:00:00"), Timestamp.valueOf("2018-02-19 23:59:59.999"),
+        Timestamp.valueOf("2018-03-04 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         4.2, None,
+        Timestamp.valueOf("2018-02-20 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-04-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      // 4.2, something
+      (0, 4.2, Some("A"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,                                         4.2, Some("B"),
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,                                         4.2, Some("C"),
+        Timestamp.valueOf("2018-02-05 00:00:00"), Timestamp.valueOf("2018-03-15 23:59:59.999"),
+        Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-03-03 23:59:59.999")),
+      (0,                                         4.2, Some("D"),
+        Timestamp.valueOf("2018-02-20 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,                                         4.2, Some("X"),
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-01 23:59:59.999"),
+        Timestamp.valueOf("2018-02-25 14:15:16.123"), Timestamp.valueOf("2018-02-25 14:15:16.123"))
+    ).toDF("id", "value_l", "img", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftJoin dfLeft with dfMap", Seq(dfLeft, dfMap))(actual, expected)
+    result shouldBe true
+  }
+
+  "rangeLeftJoin dfLeft with dfMap using rnkExpressions" should "return expected results" in {
+    // Testing rangeLeftJoin where the right dataFrame is not unique for join attributes
+    val actual = dfLeft.rangeLeftJoin(df2 = dfMap, keys = Seq("id"),
+      rnkExpressions = $"img" +: defaultBiTemporalConfig.dimensionMap.keys.toList.sorted.map(col))
+    val expected = List(
+      // 4.2, NULL
+      (0, Some(4.2), None,
+        bigBangDay, Timestamp.valueOf("2018-02-04 23:59:59.999"),
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         Some(4.2), None,
+        bigBangDay, doomsDay,
+        Timestamp.valueOf("2017-12-10 00:00:00"), Timestamp.valueOf("2017-12-31 23:59:59.999")),
+      (0,                                         Some(4.2), None,
+        Timestamp.valueOf("2018-02-05 00:00:00"), Timestamp.valueOf("2018-02-19 23:59:59.999"),
+        Timestamp.valueOf("2018-03-04 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      (0,                                         Some(4.2), None,
+        Timestamp.valueOf("2018-02-20 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-04-01 00:00:00"), Timestamp.valueOf("2018-12-08 23:59:59.999")),
+      // 4.2, something
+      (0, Some(4.2), Some("A"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-01-31 23:59:59.999")),
+      (0,                                         Some(4.2), Some("B"),
+        bigBangDay, Timestamp.valueOf("2017-12-31 23:59:59.999"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,                                         Some(4.2), Some("B"),
+        Timestamp.valueOf("2018-01-01 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-02-01 00:00:00"), Timestamp.valueOf("2018-02-28 23:59:59.999")),
+      (0,                                         Some(4.2), Some("C"),
+        Timestamp.valueOf("2018-02-05 00:00:00"), Timestamp.valueOf("2018-03-15 23:59:59.999"),
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-03 23:59:59.999")),
+      (0,                                         Some(4.2), Some("D"),
+        Timestamp.valueOf("2018-02-20 00:00:00"), Timestamp.valueOf("2018-03-15 23:59:59.999"),
+        Timestamp.valueOf("2018-03-04 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999")),
+      (0,                                         Some(4.2), Some("D"),
+        Timestamp.valueOf("2018-03-16 00:00:00"), doomsDay,
+        Timestamp.valueOf("2018-03-01 00:00:00"), Timestamp.valueOf("2018-03-31 23:59:59.999"))
+    ).toDF("id", "value_l", "img", "known_from", "known_to", "valid_from", "valid_to")
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeLeftJoin dfLeft with dfMap using rnkExpressions", Seq(dfLeft, dfMap))(actual, expected)
     result shouldBe true
   }
 

@@ -1,5 +1,6 @@
 *.iml
 *.svg
+*.txt
 .bloop
 .classpath
 .claude
