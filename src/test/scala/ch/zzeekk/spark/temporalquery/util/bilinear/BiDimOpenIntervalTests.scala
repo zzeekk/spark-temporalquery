@@ -2,12 +2,13 @@ package ch.zzeekk.spark.temporalquery.util.bilinear
 
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
 import ch.zzeekk.spark.temporalquery.util.bilinear.BiLinearDoubleQueryUtil._
-import ch.zzeekk.spark.temporalquery.{saveString2File, TestUtils}
+import ch.zzeekk.spark.temporalquery.{saveString2File, Generators, TestUtils}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-class BiDimOpenIntervalTests extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks with TestUtils {
+class BiDimOpenIntervalTests extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks
+    with Generators {
 
   import session.implicits._
   implicit val biDimConfig: BiLinearHalfOpenIntervalQueryConfig = BiLinearHalfOpenIntervalQueryConfig.withDefaultIntervalDef()
