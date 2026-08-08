@@ -6,6 +6,8 @@ import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.{Column, DataFrame}
 import org.slf4j.Logger
 
+import scala.collection.immutable.NumericRange
+
 /**
  * Base class defining the configuration needed for interval queries with Spark
  *
@@ -49,6 +51,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   def dimensionMap: Map[String, (String, D)]
   require(dimensionMap.nonEmpty, "at least one fromCol name must be specified!")
   val numDimensions: Int = dimensionMap.size
+  lazy val iter: NumericRange.Exclusive[Int] = new NumericRange.Exclusive(start = 0, end = numDimensions, step = 1)
 
   def fromToColnames: List[String] = (dimensionMap.keys ++ dimensionMap.values.map(_._1)).toList.sorted
   def additionalTechnicalColNames: List[String]
@@ -129,14 +132,13 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
       s"Number of subtrahend range sides must equal number of dimensions, but numDimensions=$numDimensions" +
         s" and ${subtrahend.length} range sides given: ${subtrahend.mkString(",")} "
     )
-    val iter = new scala.collection.immutable.NumericRange.Exclusive(start = 0, end = numDimensions, step = 1).toSet
     val diff = iter.flatMap { n =>
       val (prefMinuendSides: MultivarRange, nextMinuendSides: MultivarRange) = minuend.splitAt(n)
       List(
         List((nextMinuendSides.head._1,                         rangeIntervalDefs(n).predecessor(subtrahend(n)._1))),
         List((rangeIntervalDefs(n).successor(subtrahend(n)._2), nextMinuendSides.head._2))
       ).map(x => prefMinuendSides ++ x ++ nextMinuendSides.tail)
-    }.filterNot(isEmpty)
+    }.filterNot(isEmpty).toSet
     debugLog(s"(complement) minuend = $minuend ; subtrahend = $subtrahend ; diff = ${diff.mkString(" | ")}")
     MultivarRangeUnion(diff)
   }

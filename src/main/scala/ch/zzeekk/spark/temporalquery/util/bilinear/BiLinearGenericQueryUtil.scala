@@ -6,11 +6,7 @@ package ch.zzeekk.spark.temporalquery.util.bilinear
 
 import ch.zzeekk.spark.temporalquery._
 import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
-import ch.zzeekk.spark.temporalquery.multivarRange.{
-  ClosedMultivarRangeQueryConfig,
-  HalfOpenMultivarRangeQueryConfig,
-  MultivarRangeQueryConfig
-}
+import ch.zzeekk.spark.temporalquery.multivarRange.{ClosedMultivarRangeQueryConfig, HalfOpenMultivarRangeQueryConfig}
 import org.slf4j.Logger
 
 import scala.reflect.runtime.universe.TypeTag
@@ -28,11 +24,6 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
    * an implicit temporal query configuration in scope
    */
   trait BiLinearQueryConfigMarker
-
-  /**
-   * Type which includes BiLinearClosedIntervalQueryConfig and BiLinearHalfOpenIntervalQueryConfig
-   */
-  private type BiLinearQueryConfig = MultivarRangeQueryConfig[T, _] with BiLinearQueryConfigMarker
 
   /**
    * Configuration Parameters for operations on closed intervals. An instance of this class is
