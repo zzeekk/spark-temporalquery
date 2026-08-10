@@ -71,7 +71,7 @@ trait Generators extends TestUtils {
 
   // We need to limit the product of number of split points and dimensions
   // to avoid Java Heap Space exceptions
-  val maxProductNumberSplitpointsDimensions = 28
+  val maxProductNumberSplitpointsDimensions = 22
 
   case class PointN(coords: Iterable[Double] = List(0d)) extends Ordered[PointN] with Serializable {
     val numDim: Int = coords.size
@@ -155,20 +155,23 @@ trait Generators extends TestUtils {
 
   }
 
-  def hypercuboids2dataFrame(value: String)(hcs: Iterable[Hypercuboid])(implicit mrqc: MultivarRangeQueryConfig[Double, _]): DataFrame = {
+  def hypercuboids2dataFrame(valueCol: Column = lit("A").as("value"))
+                            (hcs: Iterable[Hypercuboid])
+                            (implicit mrqc: MultivarRangeQueryConfig[Double, _]): DataFrame = {
     require(hcs.forall(_.numDim == mrqc.numDimensions),
       s"(hypercuboids2dataFrame) All hypercuboids must have the dimension of mrqc = $mrqc")
     logger.info(s"(hypercuboids2dataFrame) mrqc.numDimensions = ${mrqc.numDimensions} ; ${hcs.size} hypercuboids given")
     val dimColNames: List[(String, String)] = mrqc.rangeDimensions.map(d => (d.fromColName, d.toColName))
-    val dfRanges = hcs.map(hc => (hc.ranges, value)).toList.toDF("ranges", "value")
+    val dfRanges = hcs.map(hc => hc.ranges).toList.toDF("ranges")
     val dimCols: Seq[Column] = mrqc.iter.flatMap { i =>
       List(get(col("ranges"), lit(2 * i)).as(dimColNames(i)._1),
         get(col("ranges"), lit(2 * i + 1)).as(dimColNames(i)._2))
     }
-    dfRanges.select(dimCols :+ col("value"): _*)
+    dfRanges.select(dimCols :+ valueCol: _*)
   }
 
-  def getHyperdimDataFrame(value: String)(xs: Iterable[Double]): (DataFrame, GenericHalfOpenIntervalQueryConfig) = {
+  def getHyperdimDataFrame(valueCol: Column = lit("A").as("value"))
+                          (xs: Iterable[Double]): (DataFrame, GenericHalfOpenIntervalQueryConfig) = {
     val splitPts = getPointsFromDoubles(xs.take(maxProductNumberSplitpointsDimensions))
     require(splitPts.nonEmpty, s"(getHyperdimDataFrame) At least one split point needed but splitPts = $splitPts")
     val dims = splitPts.map(_.numDim).distinct
@@ -177,11 +180,11 @@ trait Generators extends TestUtils {
     require(dims.length == 1, s"(getHyperdimDataFrame) All split points must have the same dimension")
     val mrqc = GenericHalfOpenIntervalQueryConfig.withDefaultIntervalDef(numDim = dims.head)
     logger.info(s"(getHyperdimDataFrame) mrqc = $mrqc")
-    (hypercuboids2dataFrame(value)(hcs = Hypercuboid.unit(mrqc.numDimensions).split(splitPts))(mrqc),
+    (hypercuboids2dataFrame(valueCol)(hcs = Hypercuboid.unit(mrqc.numDimensions).split(splitPts))(mrqc),
       mrqc)
   }
 
-  def generateHyperdimDataFrames(value: String): Gen[(DataFrame, GenericHalfOpenIntervalQueryConfig)] =
-    Gen.nonEmptyListOf(g = unitDouble).map(getHyperdimDataFrame(value))
+  def generateHyperdimDataFrames(valueCol: Column = lit("A").as("value")): Gen[(DataFrame, GenericHalfOpenIntervalQueryConfig)] =
+    Gen.nonEmptyListOf(g = unitDouble).map(getHyperdimDataFrame(valueCol))
 
 }
