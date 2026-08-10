@@ -3,6 +3,7 @@ Implicit functions for querying interval data with Apache Spark/Scala.
 Features:
 - support for closed interval and half open intervals (closed-from, open-to)
 - support for discrete (timestamp, integer) and dense (double, float) interval axis datatype
+- support for an arbitrary number of interval dimensions (1D linear, 2D bi-linear/bi-temporal, or N-dimensional via `GenericQueryUtil`)
 
 Breaking changes in version 3.x:
 - Default lower horizon of TemporalClosedIntervalQueryConfig set to 1970-01-01 instead of 0001-01-01 for better compatibility.
@@ -106,6 +107,18 @@ import sss.implicits._
 dfLeft.rangeInnerJoin(dfRight, Seq("id"))
 ```
 
+### N-dimensional range queries
+`GenericQueryUtil` provides configuration for data with an arbitrary number of interval dimensions (not limited to 1 or 2 as with `LinearGenericQueryUtil`/`BiLinearGenericQueryUtil`). This is useful e.g. for hypercuboid-shaped data with more than two range dimensions.
+The following concrete object exists for predefined datatypes:
+- `GenericDoubleQueryUtil`
+You can simply create a seven-dimensional query config with the following lines of code:
+```scala
+import ch.zzeekk.spark.temporalquery.util.GenericDoubleQueryUtil._
+
+implicit val gqc: GenericHalfOpenIntervalQueryConfig = GenericHalfOpenIntervalQueryConfig
+   .withDefaultIntervalDef(numDim = 7)
+```
+
 ## Precondition
 
 For temporal queries a time axis with datatype timestamp is needed. The axis can be configured as:
@@ -161,7 +174,6 @@ You can then use the following additional functions on Dataset/DataFrame
 - `rangeLeftAntiJoin( df2:DataFrame, joinColumns:Seq[String], additionalJoinFilterCondition:Column = lit(true))`
   Left Anti Join of two interval datasets using a list of key-columns named the same as condition (using-join). "Anti left join" means that the result contains all periods from DataFrame 1 which do not occur in DataFrame 2 for the given joinColumns.
   - additionalJoinFilterCondition: you can provide additional non-equi-join conditions which will be combined with the conditions generated from the list of keys.
-  Note: this function is not yet supported on intervalDef's other than type ClosedInterval.
 - `rangeCleanupExtend( keys:Seq[String], rnkExpressions:Seq[Column], aggExpressions:Seq[(String,Column)] = Nil, rnkFilter:Boolean = true, extend:Boolean = true, fillGapsWithNull:Boolean = true )`
   Resolve interval overlaps by prioritizing records according to rnkExpressions and extend the range of each key to cover the whole configured horizon. The resulting DataFrame has an additional column `_defined` which is false for extended ranges.
   - aggExpressions: Aggregates to be calculated on overlapping records (e.g. count)
