@@ -181,7 +181,7 @@ class TemporalClosedQueryUtilTest extends AnyFlatSpec with Matchers with Tempora
   "rangeCleanupExtend_dfMap_NoExtendFillgaps" should
     "combine and remove overlaps of dfMap," +
     " and then convert dfMap to a 1-1-relation by selecting the smallest value of img" in {
-      val actual = dfMap.rangeCleanupExtend(Seq("id"), Seq($"img"), extend = false, fillGapsWithNull = false)
+      val actual = dfMap.rangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq($"img"), extend = false, fillGapsWithNull = false)
         .rangeCombine()
       val expected = Seq(
         (0, Some("A"), "2018-01-01 00:00:00", "2018-01-31 23:59:59.999"),
@@ -196,7 +196,7 @@ class TemporalClosedQueryUtilTest extends AnyFlatSpec with Matchers with Tempora
     }
 
   "rangeCleanupExtend_dfMsOverlap" should "return expected results" in {
-    val actual = dfMsOverlap.rangeCleanupExtend(Seq("id"), Seq(defaultTemporalConfig.fromCol))
+    val actual = dfMsOverlap.rangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq(defaultTemporalConfig.fromCol))
       .rangeCombine()
     val expected = Seq(
       (0, None,      false, initiumTemporisString,     "2018-12-31 23:59:59.999"),
@@ -213,7 +213,8 @@ class TemporalClosedQueryUtilTest extends AnyFlatSpec with Matchers with Tempora
 
   "rangeCleanupExtend_dfDirtyTimeRanges" should "return expected results" in {
     val actual =
-      dfDirtyTimeRanges.rangeRoundDiscreteTime.rangeCleanupExtend(Seq("id"), Seq(defaultTemporalConfig.fromCol, $"value"))
+      dfDirtyTimeRanges.rangeRoundDiscreteTime
+        .rangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq(defaultTemporalConfig.fromCol, $"value"))
         .rangeCombine()
         .orderBy($"id", defaultTemporalConfig.fromCol)
     val expected = Seq(
@@ -242,8 +243,9 @@ class TemporalClosedQueryUtilTest extends AnyFlatSpec with Matchers with Tempora
 
   "rangeCleanupExtend_dfDirtyTimeRanges_NoExtendFillgaps" should "return expected results" in {
     val actual =
-      dfDirtyTimeRanges.rangeRoundDiscreteTime.rangeCleanupExtend(Seq("id"), Seq(defaultTemporalConfig.fromCol, $"value"),
-        extend = false, fillGapsWithNull = false)
+      dfDirtyTimeRanges.rangeRoundDiscreteTime
+        .rangeCleanupExtend(keys = Seq("id"), rnkExpressions = Seq(defaultTemporalConfig.fromCol, $"value"),
+          extend = false, fillGapsWithNull = false)
         .rangeCombine()
         .orderBy($"id", defaultTemporalConfig.fromCol)
     val expected = Seq(

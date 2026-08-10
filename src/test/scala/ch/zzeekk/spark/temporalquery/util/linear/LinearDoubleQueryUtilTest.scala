@@ -19,7 +19,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfLeft" should "return expected results" in {
-    val actual = dfLeft.rangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol))
+    val actual = dfLeft.rangeCleanupExtend[Double](keys = Seq("id"), rnkExpressions = Seq(defaultLinearConfig.fromCol))
       .rangeCombine[Double]()
       .orderBy(defaultLinearConfig.fromCol)
     val expected = Seq(
@@ -121,7 +121,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfMap" should "return expected results" in {
-    val actual = dfMap.rangeCleanupExtend[Double](Seq("id"), Seq($"img"))
+    val actual = dfMap.rangeCleanupExtend[Double](keys = Seq("id"), rnkExpressions = Seq($"img"))
       .rangeCombine[Double]()
     val expected = Seq(
       (0, None,      false, intervalMinValue, 180101d),
@@ -136,7 +136,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfMap_NoExtendFillgaps" should "return expected results" in {
-    val actual = dfMap.rangeCleanupExtend[Double](Seq("id"), Seq($"img"), extend = false, fillGapsWithNull = false)
+    val actual = dfMap.rangeCleanupExtend[Double](keys = Seq("id"), rnkExpressions = Seq($"img"),
+      extend = false, fillGapsWithNull = false)
       .rangeCombine[Double]()
     val expected = Seq(
       (0, Some("A"), 180101d, 180201d),
@@ -150,7 +151,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfSmallOverlap" should "return expected results" in {
-    val actual = dfSmallOverlap.rangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol))
+    val actual = dfSmallOverlap.rangeCleanupExtend[Double](keys = Seq("id"), rnkExpressions = Seq(defaultLinearConfig.fromCol))
       .rangeCombine[Double]()
     val expected = Seq(
       (0, None,      false, intervalMinValue, 190101d),
@@ -165,7 +166,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
   }
 
   "linearCleanupExtend dfDirtyIntervals" should "return expected results" in {
-    val actual = dfDirtyIntervals.rangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol, $"value"))
+    val actual = dfDirtyIntervals.rangeCleanupExtend[Double](keys = Seq("id"), rnkExpressions = Seq(defaultLinearConfig.fromCol, $"value"))
       .rangeCombine[Double]()
       .orderBy($"id", defaultLinearConfig.fromCol)
     val expected = Seq(
@@ -197,8 +198,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearCleanupExtend dfDirtyIntervals_NoExtendFillgaps" should "return expected results" in {
     val actual =
-      dfDirtyIntervals.rangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol, $"value"), extend = false,
-        fillGapsWithNull = false)
+      dfDirtyIntervals.rangeCleanupExtend[Double](keys = Seq("id"), rnkExpressions = Seq(defaultLinearConfig.fromCol, $"value"),
+        extend = false, fillGapsWithNull = false)
         .rangeCombine[Double]()
         .orderBy($"id", defaultLinearConfig.fromCol)
     val expected = Seq(
@@ -229,7 +230,8 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (1, "B", 200704d, 200708d)
     ).toDF("id", "val", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
     // we want the record with the longest interval, i.e. maximal toColName-fromColName
-    val actual = argument.rangeCleanupExtend[Double](Seq("id"), Seq((defaultLinearConfig.toCol - defaultLinearConfig.fromCol).desc))
+    val actual = argument.rangeCleanupExtend[Double](keys = Seq("id"),
+      rnkExpressions = Seq((defaultLinearConfig.toCol - defaultLinearConfig.fromCol).desc))
       .rangeCombine[Double]()
     val expected = Seq(
       (1, None,      false, intervalMinValue, 200701d),
@@ -247,7 +249,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (1, "S", intervalMinValue, intervalMaxValue),
       (1, "X", 200701d,          intervalMaxValue)
     ).toDF("id", "val", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
-    val actual = argument.rangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.fromCol))
+    val actual = argument.rangeCleanupExtend[Double](keys = Seq("id"), rnkExpressions = Seq(defaultLinearConfig.fromCol))
       .rangeCombine[Double]()
     val expected = Seq(
       (1, "S", intervalMinValue, intervalMaxValue)
@@ -260,13 +262,14 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
 
   "linearCleanupExtend rankExpr2Cols" should "return expected results" in {
     val argument = Seq(
-      (1, "S", intervalMinValue, 200701.000000),
+      (1, "S", intervalMinValue, 200701d),
       (1, "X", 200701d,          200924d),
       (1, "B", 200803d,          intervalMaxValue),
       (1, "G", 200924d,          intervalMaxValue)
     ).toDF("id", "val", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
     val actual = argument
-      .rangeCleanupExtend[Double](Seq("id"), Seq(defaultLinearConfig.toCol.desc, defaultLinearConfig.fromCol.asc))
+      .rangeCleanupExtend[Double](keys = Seq("id"),
+        rnkExpressions = Seq(defaultLinearConfig.toCol.desc, defaultLinearConfig.fromCol.asc))
       .rangeCombine[Double]()
     val expected = Seq(
       (1, "S", intervalMinValue, 200701d),
