@@ -331,7 +331,7 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     result shouldBe true
   }
 
-  "linearInnerJoin dfRight 'on' semantics" should "return expected results" in {
+  "rangeInnerJoin dfRight 'on' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin[Double](dfRight.as("dfR"), $"dfL.id" === $"dfR.id")
     assert(actual.columns.count(_ == "id") == 2)
     val expected = Seq(
@@ -340,11 +340,11 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (0, 4.2, 0, Some(97.15), 181023.035010, 181209d)
     ).toDF("id", "value_l", "id", "value_r", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("linearInnerJoin dfRight 'on' semantics", Seq(dfLeft, dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeInnerJoin dfRight 'on' semantics", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "linearInnerJoin dfRight with 'using' semantics" should "return expected results" in {
+  "rangeInnerJoin dfRight with 'using' semantics" should "return expected results" in {
     val actual = dfLeft.as("dfL").rangeInnerJoin[Double](dfRight.as("dfR"), Seq("id"))
     assert(3 == actual.select($"id", $"dfL.value_l", $"dfR.value_r").count())
     val expected = Seq(
@@ -353,11 +353,11 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
       (0, 4.2, Some(97.15), 181023.035010, 181209d)
     ).toDF("id", "value_l", "value_r", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
     val result = dfEqual(actual, expected)
-    if (!result) printFailedTestResult("linearInnerJoin dfRight with 'using' semantics", Seq(dfLeft, dfRight))(actual, expected)
+    if (!result) printFailedTestResult("rangeInnerJoin dfRight with 'using' semantics", Seq(dfLeft, dfRight))(actual, expected)
     result shouldBe true
   }
 
-  "linearInnerJoin with equally named columns apart join columns" should "return expected results" in {
+  "rangeInnerJoin with equally named columns apart join columns" should "return expected results" in {
     val dfL = dfLeft.withColumnRenamed("value_l", "value").as("dfL")
     val dfR = dfRight.withColumnRenamed("value_r", "value").as("dfR")
     val actual = dfL.rangeInnerJoin[Double](dfR, Seq("id"))
@@ -372,100 +372,96 @@ class LinearDoubleQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils
     result shouldBe true
   }
 
-  /*
-    "linearLeftAntiJoin dfRight" should "return expected results" in {
-      val actual = dfLeft.intervalLeftAntiJoin(dfRight,Seq("id"))
-      val expected = Seq(
-        (0,  171210d,  180101d, 4.2),
-        (0,  180201d,  180601.052411, 4.2)
-      ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"value_l")
-      val result = dfEqual(actual,expected)
-  
-      if (!result) printFailedTestResult("linearLeftAntiJoin dfRight",Seq(dfLeft,dfRight))(actual,expected)
-      result shouldBe true
-    }
-  
-    ignore("linearLeftAntiJoin dfMap" should "return expected results" in {
-      val actual = dfLeft.intervalLeftAntiJoin(dfMap,Seq("id"))
-      val expected = Seq(
-        (0,  171210d,  180101d, 4.2),
-        (0,  180401d,  181209d, 4.2)
-      ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"value_l")
-      val result = dfEqual(actual,expected)
-  
-      if (!result) printFailedTestResult("linearLeftAntiJoin dfMap",Seq(dfLeft,dfMap))(actual,expected)
-      result shouldBe true
-    })
-  
-    ignore("linearLeftAntiJoin dfRight_dfMap" should "return expected results" in {
-      val actual = dfRight.intervalLeftAntiJoin(dfMap,Seq("id"))
-      val expected = Seq(
-        (0,  180601.052411,  181023.035010, Some(97.15)),
-        (0,  181023.035010,  200101d,      Some(97.15)),
-        (0,  200101d, intervalMaxValue , Some(97.15)),
-        (1,  180101d,  190101d,      None),
-        (1,  190101d,  200101d,      Some(2019d)),
-        (1,  200101d,  210101d,      Some(2020d)),
-        (1,  210101d,  intervalMaxValue,      None))
-        .toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"value_r")
-      val result = dfEqual(actual,expected)
-  
-      if (!result) printFailedTestResult("linearLeftAntiJoin dfRight_dfMap",Seq(dfRight,dfMap))(actual,expected)
-      result shouldBe true
-    })
-  
-    ignore("linearLeftAntiJoin dfMap_dfRight" should "return expected results" in {
-      val actual = dfMap.intervalLeftAntiJoin(dfRight,Seq("id"))
-      val expected = Seq(
-        (0,  180201d,  180301d, "B"),
-        (0,  180201d,  180301d, "C"),
-        (0,  180220d,  180401d, "D"),
-        (0,  180225.141516123,  180225.141516123, "X")
-      ).toDF("id", defaultConfig.fromColName, defaultConfig.toColName,"img")
-      val result = dfEqual(actual,expected)
-  
-      if (!result) printFailedTestResult("temporalLeftAntiJoin_dfMap_dfRight",Seq(dfMap,dfRight))(actual,expected)
-      result shouldBe true
-    })
-  
-    ignore("linearLeftAntiJoin segmented" should "return expected results" in {
-      val minuend = Seq(
-        (1, 190101d,  200101d),
-        (2, 190101d,  200101.00005),
-        (3, 200101.00057,  220101d),
-        (4, 200101.00025,  200101.00035),
-        (5, 190101d,  200101.000109999),
-        (6, 190101d,  220101d)
-      ).toDF("id",defaultConfig.fromColName, defaultConfig.toColName)
-      val subtrahend = Seq(
-        (0, 200101.00044, 200101.00050),
-        (0, 200101.00001, 200101.00010),
-        (0, 200101.00033, 200101.00040),
-        (0, 200101.00055, 200101.00060),
-        (0, 200101.00022, 200101.00030)
-      ).toDF("id",defaultConfig.fromColName, defaultConfig.toColName)
-  
-      val actual = minuend.intervalLeftAntiJoin(subtrahend,Nil)
-      val expected = Seq(
-        (1, 190101.00000    , 200101d),
-        (2, 190101.00000    , 200101.000001),
-        (3, 200101.000600001, 220101d),
-        (4, 200101.000300001, 200101.000303),
-        (5, 200101.000100001, 200101.00011),
-        (5, 190101.00000    , 200101.000001),
-        (6, 200101.000600001, 220101d),
-        (6, 200101.000500001, 200101.000505),
-        (6, 200101.000400001, 200101.000404),
-        (6, 200101.000300001, 200101.000303),
-        (6, 200101.000100001, 200101.000202),
-        (6, 190101.00000    , 200101.000001)
-      ).toDF("id",defaultConfig.fromColName, defaultConfig.toColName)
-      val result = dfEqual(actual,expected)
-  
-      if (!result) printFailedTestResult("linearLeftAntiJoin segmented",Seq(minuend,subtrahend))(actual,expected)
-      result shouldBe true
-    })
-   */
+  "linearLeftAntiJoin dfRight" should "return expected results" in {
+    val actual = dfLeft.rangeLeftAntiJoin[Double](df2 = dfRight, joinColumns = Seq("id"))
+    val expected = Seq(
+      (0, 171210d, 180101d,       4.2),
+      (0, 180201d, 180601.052411, 4.2)
+    ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "value_l")
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("linearLeftAntiJoin dfRight", Seq(dfLeft, dfRight))(actual, expected)
+    result shouldBe true
+  }
+
+  "linearLeftAntiJoin dfMap" should "return expected results" in {
+    val actual = dfLeft.rangeLeftAntiJoin[Double](dfMap, Seq("id"))
+    val expected = Seq(
+      (0, 171210d, 180101d, 4.2),
+      (0, 180401d, 181209d, 4.2)
+    ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "value_l")
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("linearLeftAntiJoin dfMap", Seq(dfLeft, dfMap))(actual, expected)
+    result shouldBe true
+  }
+
+  "linearLeftAntiJoin dfRight_dfMap" should "return expected results" in {
+    val actual = dfRight.rangeLeftAntiJoin[Double](dfMap, Seq("id"))
+    val expected = Seq(
+      (0, 180601.052411, intervalMaxValue, Some(97.15)),
+      (1, 180101d,       190101d,          None),
+      (1, 190101d,       200101d,          Some(2019d)),
+      (1, 200101d,       210101d,          Some(2020d)),
+      (1, 210101d,       intervalMaxValue, None)
+    )
+      .toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "value_r")
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("linearLeftAntiJoin dfRight_dfMap", Seq(dfRight, dfMap))(actual, expected)
+    result shouldBe true
+  }
+
+  "linearLeftAntiJoin dfMap_dfRight" should "return expected results" in {
+    val actual = dfMap.rangeLeftAntiJoin[Double](dfRight, Seq("id"))
+    val expected = Seq(
+      (0, 180201d, 180301d, "B"),
+      (0, 180201d, 180301d, "C"),
+      (0, 180220d, 180401d, "D")
+    ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName, "img")
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("temporalLeftAntiJoin_dfMap_dfRight", Seq(dfMap, dfRight))(actual, expected)
+    result shouldBe true
+  }
+
+  "linearLeftAntiJoin segmented" should "return expected results" in {
+    val minuend = Seq(
+      (1, 190101d,      200101d),
+      (2, 190101d,      200101.00005),
+      (3, 200101.00057, 220101d),
+      (4, 200101.00025, 200101.00035),
+      (5, 190101d,      200101.000109999),
+      (6, 190101d,      220101d)
+    ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
+    val subtrahend = Seq(
+      (0, 200101.00001, 200101.0001),
+      (0, 200101.00022, 200101.0003),
+      (0, 200101.00033, 200101.0004),
+      (0, 200101.00044, 200101.0005),
+      (0, 200101.00055, 200101.0006)
+    ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
+
+    val actual = minuend.rangeLeftAntiJoin[Double](df2 = subtrahend, joinColumns = Nil)
+    val expected = Seq(
+      (1, 190101d,     200101d),
+      (2, 190101d,     200101.00001),
+      (3, 200101.0006, 220101d),
+      (4, 200101.0003, 200101.00033),
+      (5, 190101d,     200101.00001),
+      (5, 200101.0001, 200101.000109999),
+      (6, 190101d,     200101.00001),
+      (6, 200101.0001, 200101.00022),
+      (6, 200101.0003, 200101.00033),
+      (6, 200101.0004, 200101.00044),
+      (6, 200101.0005, 200101.00055),
+      (6, 200101.0006, 220101d)
+    ).toDF("id", defaultLinearConfig.fromColName, defaultLinearConfig.toColName)
+    val result = dfEqual(actual, expected)
+
+    if (!result) printFailedTestResult("linearLeftAntiJoin segmented", Seq(minuend, subtrahend))(actual, expected)
+    result shouldBe true
+  }
 
   "linearFullJoin dfRight" should "return expected results" in {
     val actual = dfLeft.rangeFullJoin[Double](dfRight, Seq("id")).rangeCombine[Double]()

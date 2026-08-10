@@ -349,8 +349,9 @@ object MultivarRangeQueryImpl extends Logging {
       additionalJoinFilterCondition: Column
       // TODO: Why we require closed interval? Why not IntervalMultidimQueryConfig[T, _]
   )(implicit logger: Logger): DataFrame = {
-    debugLog(s"leftAntiJoinRanges START: keys = ${keys.mkString(", ")}")
-    debugLog(
+    if (keys.isEmpty) logger.warn(s"(leftAntiJoinRanges) no keys specified!" +
+      s" additionalJoinFilterCondition = $additionalJoinFilterCondition ; mrqc = $mrqc")
+    else debugLog(
       s"(leftAntiJoinRanges) START: additionalJoinFilterCondition = $additionalJoinFilterCondition ;" +
         s" keys = (${keys.mkString(",")})"
     )

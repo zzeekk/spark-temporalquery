@@ -151,7 +151,7 @@ object MultivariateRangeLibrary extends Logging {
         joinColumns: Seq[String],
         additionalJoinFilterCondition: Column = lit(true)
     )(implicit
-        mrqc: MultivarRangeQueryConfig[T, ClosedInterval[T]],
+        mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
         logger: Logger
     ): DataFrame =
       MultivarRangeQueryImpl.leftAntiJoinRanges(df1 = df1, df2 = df2, keys = joinColumns, mrqc = mrqc,
