@@ -11,11 +11,7 @@ import org.apache.spark.sql.functions.col
 class MultiVarHalfopenIntervalTests extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks
     with Generators {
 
-  "rangeCombine" should "combine everything possible of every generated dataFrame" in {
-
-    logger.info(s"maxProductNumberSplitpointsDimensions = $maxProductNumberSplitpointsDimensions")
-    println()
-
+  "rangeCombine" should "combine everything possible of every generated dataFrame" in
     forAll(genA = generateHyperdimDataFrames()) { case (df, mrqc) =>
       implicit val mrqcImpl: GenericHalfOpenIntervalQueryConfig = mrqc
       logger.info(s"df.count() = ${df.count()} ; df.distinct().count() = ${df.distinct().count()} ; df.schema = ${df.schema.catalogString}")
@@ -27,6 +23,19 @@ class MultiVarHalfopenIntervalTests extends AnyFlatSpec with Matchers with Scala
       result shouldBe true
     }
 
-  }
+  "rangeinnerJoin with itself" should "return the same data framne" in
+    forAll(genA = generateHyperdimDataFrames(valueCol = (col("x000_from") + col("x000_to")).as("value"),
+      maxNumSplitCoords = 16)) { case (df, mrqc) =>
+      implicit val mrqcImpl: GenericHalfOpenIntervalQueryConfig = mrqc
+      logger.info(s"df.count() = ${df.count()} ; df.distinct().count() = ${df.distinct().count()} ; df.schema = ${df.schema.catalogString}")
+      val dfLeft = df.withColumnRenamed("value", "value_l").withColumn("id", col("value_l") < 1d)
+      val dfRight = dfLeft.withColumnRenamed("value_l", "value_r")
+      val actual = dfLeft.rangeInnerJoin[Double](dfRight, List("id"))
+      val expected = dfLeft.withColumn("value_r", col("value_l"))
+      val result = dfEqual(actual, expected)
+      if (!result) printFailedTestResult("rangeinnerJoin with itself", List(dfLeft, dfRight))(actual, expected)
+      println()
+      result shouldBe true
+    }
 
 }
