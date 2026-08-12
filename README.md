@@ -22,7 +22,7 @@ To use it just add the following maven dependency for your Scala version to the 
 ```
 <dependency>
   <groupId>ch.zzeekk.spark</groupId>
-  <artifactId>spark-temporalquery_2.12</artifactId>
+  <artifactId>spark-temporalquery_2.13</artifactId>
   <version>2.0.1</version>
 </dependency>
 ```
@@ -199,10 +199,8 @@ You can then use the following additional functions on Dataset/DataFrame
   Note: this function requires at least two interval dimensions (i.e. a BiLinear or higher-dimensional config).
 
 ## Builds
-Spark-temporalquery is built and released for Scala 2.11 with Spark 2.4.x and Scala 2.12 with Spark 3.x.
-Spark 3.x does not support Scala 2.11. Newer versions of Spark 2.4.x would support Scala 2.12, but there is no spark-temporalquery release for this combination.
-
-Note that Spark 2.4 needs Java version 8, whereas Spark 3.x is compatible with Java 8/11/17.
+Spark-temporalquery is built and released for Scala 2.13 with Spark 3.5.x.
+We recommend to use Java 17 - 21.
 See also https://spark.apache.org/docs/latest/#downloading. 
 
 ## Troubleshooting
