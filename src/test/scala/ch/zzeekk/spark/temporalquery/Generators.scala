@@ -10,6 +10,7 @@ trait Generators extends TestUtils {
   import session.implicits._
 
   val unitDouble: Gen[Double] = Gen.choose[Double](min = 0.1, max = 0.9)
+  val unitDoubles: Gen[List[Double]] = Gen.nonEmptyListOf(g = unitDouble)
 
   /////////////////////////////////////////////////////////////////////
   ///// generator of data frames with 2 dimensions of type Double /////
@@ -186,6 +187,6 @@ trait Generators extends TestUtils {
       valueCol: Column = lit("A").as("value"),
       maxNumSplitCoords: Int = 22
   ): Gen[(DataFrame, GenericHalfOpenIntervalQueryConfig)] =
-    Gen.nonEmptyListOf(g = unitDouble).map(getHyperdimDataFrame(valueCol, maxNumSplitCoords))
+    unitDoubles.map(getHyperdimDataFrame(valueCol, maxNumSplitCoords))
 
 }

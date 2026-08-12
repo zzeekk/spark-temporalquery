@@ -1,4 +1,5 @@
 *.iml
+*.out
 *.svg
 *.txt
 .bloop
