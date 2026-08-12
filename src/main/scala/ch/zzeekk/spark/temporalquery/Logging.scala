@@ -4,12 +4,20 @@ import org.apache.spark.SparkContext
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.slf4j.{Logger, LoggerFactory}
 
+import java.lang.management.{ManagementFactory, MemoryUsage}
 import scala.util.{Failure, Success, Try}
 
 trait Logging extends Serializable {
   @transient protected lazy val logger: Logger = LoggerFactory.getLogger(getClass.getName)
 
   private var _loggEnvDone: Boolean = false
+
+  protected def getMemoryUsage: String = {
+    def getMem(numBytes: Long): String = s"${math.round(numBytes.toDouble / math.pow(2, 20))} MiB"
+    lazy val memUsage = ManagementFactory.getMemoryMXBean.getHeapMemoryUsage
+    s"init = ${getMem(memUsage.getInit)} | used = ${getMem(memUsage.getUsed)} |" +
+      s" committed = ${getMem(memUsage.getCommitted)} | max = ${getMem(memUsage.getMax)}"
+  }
 
   protected def loggEnv(implicit session: SparkSession, logger: Logger): Unit =
     if (!_loggEnvDone) {
@@ -51,6 +59,7 @@ trait Logging extends Serializable {
 
       logger.info(s"logger.isDebugEnabled ? ${logger.isDebugEnabled()}")
       logger.info(s"Java  Version : $javaVersion")
+      logger.info(s"Java  Memory  : $getMemoryUsage")
       logger.info(s"Java  Command : ${System.getProperty("sun.java.command")}")
       logger.info(s"Java TimeZone : ${java.util.TimeZone.getDefault.getDisplayName()}")
       logger.info(s"Scala Version : $scalaVersion")
