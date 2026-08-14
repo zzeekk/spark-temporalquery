@@ -1,19 +1,19 @@
 package ch.zzeekk.spark.temporalquery.util.bilinear
 
 import ch.zzeekk.spark.temporalquery.interval.HalfOpenInterval
-import ch.zzeekk.spark.temporalquery.util.stdHalfOpenTemporalInterval
+import ch.zzeekk.spark.temporalquery.util.stdHalfOpenDatoralInterval
 
-import java.sql.Timestamp
+import java.sql.Date
 
 /**
- * Linear query utils for interval axis of type Timestamp
+ * Linear query utils for interval axis of type Date
  *
- * Usage: import ch.zzeekk.spark.temporalquery.BiLinearTimestampQueryUtil._ // this imports linear*
+ * Usage: import ch.zzeekk.spark.temporalquery.BiLinearDateQueryUtil._ // this imports linear*
  * implicit functions on DataFrame & Columns implicit val tqc =
  * LinearHalfOpenIntervalQueryConfig.withDefaultIntervalDef() // configure options for linear query
  * operations if needed implicit val sss = ss // make SparkSession implicitly available val
  * df_joined = df1.linearJoin(df2) // use linear query functions with Spark
  */
-object BiTemporalHalfOpenIntervalQueryUtil extends BiLinearGenericQueryUtil[Timestamp] {
-  implicit val defaultHalfOpenIntervalDef: HalfOpenInterval[Timestamp] = stdHalfOpenTemporalInterval
+object BiDatoralHalfOpenIntervalQueryUtil extends BiLinearGenericQueryUtil[Date] {
+  implicit val defaultHalfOpenIntervalDef: HalfOpenInterval[Date] = stdHalfOpenDatoralInterval
 }

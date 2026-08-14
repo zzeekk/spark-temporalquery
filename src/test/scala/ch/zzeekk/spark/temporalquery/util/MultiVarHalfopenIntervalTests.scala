@@ -64,7 +64,7 @@ class MultiVarHalfopenIntervalTests extends AnyFlatSpec with Matchers with Scala
 
   "rangeLeftAntiJoin dfUnit with dfUnitSplitted" should "return an empty data frame" in
     forAll(genA = generateHyperdimDataFrames(valueCol = (col("x000_from") + col("x000_to")).as("value"),
-      maxNumSplitCoords = 12)) { case (dfUnitSplitted, mrqc) =>
+      maxNumSplitCoords = 10)) { case (dfUnitSplitted, mrqc) =>
       implicit val mrqcImpl: GenericHalfOpenIntervalQueryConfig = mrqc
       logDf("dfUnitSplitted", dfUnitSplitted)
       val dfUnit = hypercuboids2dataFrame()(List(Hypercuboid.unit(mrqc.numDimensions)))

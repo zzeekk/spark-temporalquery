@@ -3,11 +3,12 @@ package ch.zzeekk.spark.temporalquery
 import ch.zzeekk.spark.temporalquery.axis.DiscreteTimeAxis
 import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
 
-import java.sql.Timestamp
+import java.sql.{Date, Timestamp}
 import java.time.temporal.ChronoUnit
 
 package object util {
 
+  //// TimeStamp ////
   // The time begins with bigBangDay: What happened before cannot be known as there is no before.
   val initiumTemporisString: String = "1970-01-01 00:00:00"
   val bigBangDay: Timestamp = Timestamp.valueOf(initiumTemporisString)
@@ -28,6 +29,15 @@ package object util {
     lowerHorizon = bigBangDay,
     upperHorizon = doomsDay
   )
+
+  //// Date ////
+  val bigBangDateStr: String = "1970-01-01"
+  val bigBangDate: Date = Date.valueOf(bigBangDateStr)
+
+  val doomsDateStr: String = "9999-01-01"
+  val doomsDate: Date = Date.valueOf(doomsDateStr)
+
+  val stdHalfOpenDatoralInterval: HalfOpenInterval[Date] = HalfOpenInterval[Date](lowerHorizon = bigBangDate, upperHorizon = doomsDate)
 
   /**
    * Converts any value to a Double if possible

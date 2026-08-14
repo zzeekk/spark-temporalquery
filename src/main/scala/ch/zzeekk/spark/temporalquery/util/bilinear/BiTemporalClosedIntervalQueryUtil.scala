@@ -6,9 +6,9 @@ import ch.zzeekk.spark.temporalquery.util.stdClosedTemporalInterval
 import java.sql.Timestamp
 
 /**
- * Linear query utils for interval axis of type Double
+ * Linear query utils for interval axis of type Timestamp
  *
- * Usage: import ch.zzeekk.spark.temporalquery.BiLinearDoubleQueryUtil._ // this imports linear*
+ * Usage: import ch.zzeekk.spark.temporalquery.BiLinearTimestampQueryUtil._ // this imports linear*
  * implicit functions on DataFrame & Columns implicit val tqc =
  * LinearHalfOpenIntervalQueryConfig.withDefaultIntervalDef() // configure options for linear query
  * operations if needed implicit val sss = ss // make SparkSession implicitly available val

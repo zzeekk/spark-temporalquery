@@ -3,11 +3,9 @@ package ch.zzeekk.spark.temporalquery
 import ch.zzeekk.spark.temporalquery.util.{finisTemporisString, initiumTemporisString}
 import org.apache.spark.sql.functions.{col, lit, when}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.scalacheck.Gen
-import org.scalacheck.Gen.{choose, nonEmptyListOf}
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.sql.Timestamp
+import java.sql.{Date, Timestamp}
 import scala.util.{Failure, Success, Try}
 
 trait TestUtils extends Logging {
@@ -175,6 +173,9 @@ trait TestUtils extends Logging {
   // helper: (id, known_from, known_to, valid_from, valid_to, value)
   def makeRowsBiTemporal[A, B](row: (A, String, String, String, String, B)): (A, Timestamp, Timestamp, Timestamp, Timestamp, B) =
     (row._1, Timestamp.valueOf(row._2), Timestamp.valueOf(row._3), Timestamp.valueOf(row._4), Timestamp.valueOf(row._5), row._6)
+
+  def makeRowsBiDatoral[A, B](row: (A, String, String, String, String, B)): (A, Date, Date, Date, Date, B) =
+    (row._1, Date.valueOf(row._2), Date.valueOf(row._3), Date.valueOf(row._4), Date.valueOf(row._5), row._6)
 
   val dfDenseTime: DataFrame = List(
     // entity 0, Jan 1–5: original entry on day 1, corrected on Mar 15 (known_to marks the correction)
