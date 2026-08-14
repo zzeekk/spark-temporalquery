@@ -2,7 +2,7 @@ package ch.zzeekk.spark.temporalquery.util
 
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
 import ch.zzeekk.spark.temporalquery.Generators
-import ch.zzeekk.spark.temporalquery.util.GenericDoubleQueryUtil.GenericHalfOpenIntervalQueryConfig
+import ch.zzeekk.spark.temporalquery.util.GenericDoubleQueryUtil._
 import org.apache.spark.sql.DataFrame
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -27,6 +27,31 @@ class MultiVarHalfopenIntervalTests extends AnyFlatSpec with Matchers with Scala
       println()
       result shouldBe true
     }
+
+  "rangeCombine" should "combine to one row" in {
+    import session.implicits._
+    implicit val mrqc: GenericHalfOpenIntervalQueryConfig = GenericHalfOpenIntervalQueryConfig.withDefaultIntervalDef(numDim = 3)
+    logger.info(s"mrqc = $mrqc")
+    val argument = List(
+      (0d,   0.2,  0d,   1d,   0.4,  1d,   "A"),
+      (0d,   1d,   0d,   1d,   0d,   0.4,  "A"),
+      (0.2,  0.26, 0.1,  0.7,  0.54, 1d,   "A"),
+      (0.2,  1d,   0.7,  1d,   0.4,  1d,   "A"),
+      (0.2,  1d,   0d,   0.1,  0.54, 1d,   "A"),
+      (0.2,  1d,   0d,   0.7,  0.4,  0.54, "A"),
+      (0.26, 0.28, 0.1,  0.7,  0.54, 0.84, "A"),
+      (0.26, 0.28, 0.23, 0.7,  0.84, 1d,   "A"),
+      (0.26, 1d,   0.1,  0.23, 0.84, 1d,   "A"),
+      (0.28, 1d,   0.1,  0.23, 0.54, 0.84, "A"),
+      (0.28, 1d,   0.23, 0.7,  0.54, 1d,   "A")
+    ).toDF("x000_from", "x000_to", "x001_from", "x001_to", "x002_from", "x002_to", "value")
+    val actual = argument.rangeCombine[Double]()
+    val expected = hypercuboids2dataFrame()(List(Hypercuboid.unit(mrqc.numDimensions)))
+    val result = dfEqual(actual, expected)
+    if (!result) printFailedTestResult("rangeCombine", argument)(actual, expected)
+    println()
+    result shouldBe true
+  }
 
   "rangeinnerJoin df1 with df2" should "return the same as rangeinnerJoin df2 with df1" in
     forAll(genA = unitDoubles) { xs =>
