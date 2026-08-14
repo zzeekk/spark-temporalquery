@@ -449,11 +449,25 @@ object MultivariateRangeLibrary extends Logging {
         val visW = vx1 - vx0
         val visH = vy1 - vy0
         if (visW > 0 && visH > 0) {
-          val fontSize = math.min(visW, visH) / 2
+          // Cap the font size so the rendered text stays within the rectangle: one bound keeps a
+          // single line of text from overflowing along the rectangle's short side, while the other
+          // bound accounts for the number of characters, using an average glyph width of ~0.6 *
+          // font-size that holds for common sans-serif fonts. For tall, narrow rectangles (height
+          // more than 3x the width) the text is rotated 90° so it runs along the height, which is
+          // then the constraint the character count is measured against, allowing a larger font.
+          val numChars = math.max(String.valueOf(value).length, 1)
+          val rotate = visH > 3 * visW
+          val (fitW, fitH) = if (rotate) (visH, visW) else (visW, visH)
+          val fontSizeByHeight = fitH * 0.8
+          val fontSizeByWidth = fitW / (numChars * 0.6)
+          val fontSize = math.max(1d, math.min(fontSizeByHeight, fontSizeByWidth))
           val cx = (vx0 + vx1) / 2
           val cy = (vy0 + vy1) / 2
+          val cxStr = f"$cx%.2f"
+          val cyStr = f"$cy%.2f"
+          val transformAttr = if (rotate) " transform=\"rotate(-90," + cxStr + "," + cyStr + ")\"" else ""
           sb.append(
-            f"""  <text x="$cx%.2f" y="$cy%.2f" font-size="$fontSize%.2f" fill="black" text-anchor="middle" dominant-baseline="middle">$value</text>\n"""
+            f"""  <text x="$cxStr" y="$cyStr" font-size="$fontSize%.2f" fill="black" text-anchor="middle" dominant-baseline="middle"$transformAttr>$value</text>\n"""
           )
         }
       }
