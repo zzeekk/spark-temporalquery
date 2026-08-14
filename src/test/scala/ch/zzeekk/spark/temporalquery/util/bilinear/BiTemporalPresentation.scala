@@ -37,17 +37,19 @@ class BiTemporalPresentation extends AnyFlatSpec with Matchers with TestUtils {
     ).map(makeRowsBiDatoral)
       .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "premium")
       .orderBy("id", "premium", "known_from")
+    logger.info(s"*** Data Frame monthlyPremium (${monthlyPremium.count()} rows) ***")
     monthlyPremium.printSchema()
     monthlyPremium.show(false)
     saveString2File("monthlyPremium.svg")(monthlyPremium.toSvg[Date]("premium"))
 
     val address = List(
       (0, "2022-11-13", "2025-09-01", "2023-01-01", doomsDateStr, "AG"),
-      (0, "2025-09-01", doomsDateStr, "2023-01-01", "2025-09-01", "AG"),
+      (0, "2025-09-01", doomsDateStr, "2023-01-01", "2025-08-01", "AG"),
       (0, "2025-09-01", doomsDateStr, "2025-08-01", doomsDateStr, "ZH")
     ).map(makeRowsBiDatoral)
       .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "canton")
       .orderBy("id", "canton", "known_from")
+    logger.info(s"*** Data Frame address (${address.count()} rows) ***")
     address.printSchema()
     address.show(false)
     saveString2File("address.svg")(address.toSvg[Date]("canton"))
@@ -55,14 +57,14 @@ class BiTemporalPresentation extends AnyFlatSpec with Matchers with TestUtils {
     val cantonPremium = address.rangeInnerJoin[Date](df2 = monthlyPremium, keys = List("id"))
       .drop("id").rangeCombine[Date]().orderBy("canton", "premium", "known_from")
     cantonPremium.printSchema()
-    logger.info(s"cantonPremium.count = ${cantonPremium.count()}")
+    logger.info(s"*** Data Frame cantonPremium (${cantonPremium.count()} rows) ***")
     cantonPremium.show(false)
     saveString2File("cantonPremium.svg")(
       cantonPremium.withColumn("canton_premium", concat($"canton", $"premium"))
         .toSvg[Date]("canton_premium")
     )
 
-    true shouldBe true
+    cantonPremium.count() shouldBe 10L
   }
 
 }

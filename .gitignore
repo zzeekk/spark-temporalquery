@@ -1,7 +1,9 @@
 *.iml
+*.log
 *.out
 *.svg
 *.txt
+.DS_Store
 .bloop
 .classpath
 .claude
