@@ -2,6 +2,7 @@ package ch.zzeekk.spark.temporalquery.multivarRange
 
 import ch.zzeekk.spark.temporalquery.Logging
 import ch.zzeekk.spark.temporalquery.interval.{IntervalDef, IntervalQueryDimension}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, SubqueryAlias, UnaryNode}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
@@ -225,12 +226,11 @@ object MultivarRangeQueryImpl extends Logging {
       extend: Boolean = true,
       fillGapsWithNull: Boolean = true
   )(implicit logger: Logger): DataFrame = {
-    debugLog(s"(cleanupExtendRanges) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
-    debugLog(
-      s"(cleanupExtendRanges) rnkExpressions = ${rnkExpressions.mkString(",")} ; aggExpressions = ${aggExpressions.mkString(",")}"
+    logger.info(
+      s"(cleanupExtendRanges) START numDimensions = ${mrqc.numDimensions} ; df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")} ;" +
+        s"rnkExpressions = ${rnkExpressions.mkString(",")} ; aggExpressions = ${aggExpressions.mkString(",")} ;" +
+        s" rnkFilter = $rnkFilter , extend = $extend ; fillGapsWithNull = $fillGapsWithNull ; mrqc = $mrqc"
     )
-    debugLog(s"(cleanupExtendRanges) rnkFilter = $rnkFilter , extend = $extend ; fillGapsWithNull = $fillGapsWithNull")
-    debugLog(s"(cleanupExtendRanges) mrqc = $mrqc")
     if (extend && !fillGapsWithNull) logger.warn("(cleanupExtendRanges) extend=true has no effect if fillGapsWithNull=false!")
     require(
       df.columns.intersect(mrqc.fromToColnames2 :+ mrqc.definedColName).isEmpty,
@@ -249,10 +249,10 @@ object MultivarRangeQueryImpl extends Logging {
 
       val dfJoinCleanExtend =
         unifyMultivarRanges(df = df2nd,
+          mrqc = mrqc.config2,
           keys = keys,
           extend = extend,
-          fillGapsWithNull = fillGapsWithNull,
-          mrqc = mrqc.config2
+          fillGapsWithNull = fillGapsWithNull
         )
           .withColumn(mrqc.definedColName,
             mrqc.applyBooleanColumnFunctionToIntervalDefs(boolColFun = dim => col(dim.toColName).isNotNull))
@@ -407,7 +407,7 @@ object MultivarRangeQueryImpl extends Logging {
     debugLog(s"(leftAntiJoinRanges) dfSubtrahends.schema = ${dfSubtrahends.schema.catalogString}")
 
     val resultSchema = StructType(dfSubtrahends.schema.filterNot(_.name == "subtrahends"))
-    val complementRDD = dfSubtrahends.rdd.flatMap { row =>
+    val complementRDD: RDD[Row] = Try(dfSubtrahends.rdd.flatMap { row =>
       val minuend: mrqc.MultivarRange = dims1.map(d => (row.getAs[T](d.fromColName), row.getAs[T](d.toColName)))
       // Row.getAs[Seq[_]] on an array column actually yields a mutable.ArraySeq at runtime, which
       // is not a subtype of the immutable Seq that complementFamily expects. Go via
@@ -416,7 +416,7 @@ object MultivarRangeQueryImpl extends Logging {
       val subtrahends: Seq[mrqc.MultivarRange] = row.getAs[scala.collection.Seq[scala.collection.Seq[Row]]]("subtrahends")
         .map(sub => sub.map(r => (r.getAs[T]("f"), r.getAs[T]("t"))).toList)
         .toList
-      val complementUnion = mrqc.complementFamily(minuend, subtrahends)(NOPLogger.NOP_LOGGER)
+      val complementUnion: mrqc.MultivarRangeUnion = mrqc.complementFamily(minuend, subtrahends)(NOPLogger.NOP_LOGGER)
       complementUnion.rangeFamily.map { mvr =>
         Row.fromSeq(resultSchema.fields.map { field =>
           val dimIdx = dims1.indexWhere(d => d.fromColName == field.name || d.toColName == field.name)
@@ -424,6 +424,12 @@ object MultivarRangeQueryImpl extends Logging {
           else if (field.name == dims1(dimIdx).fromColName) mvr(dimIdx)._1 else mvr(dimIdx)._2
         })
       }
+    }) match {
+      case Success(rdd) => rdd
+      case Failure(e)   =>
+        logger.error(s"(leftAntiJoinRanges) Could not calculate complementRDD !!!")
+        dfSubtrahends.createdLog("dfSubtrahends")
+        throw e
     }
     val dfComplement = df1.sparkSession.createDataFrame(complementRDD, resultSchema)
     debugLog(s"(leftAntiJoinRanges) dfComplement.schema = ${dfComplement.schema.catalogString}")
@@ -495,9 +501,10 @@ object MultivarRangeQueryImpl extends Logging {
       ignoreColNames: Seq[String] = Nil,
       runId: Int = 1
   )(implicit logger: Logger): DataFrame = {
-    debugLog(s"(combineMultivarRanges(runId=$runId)) df1.schema = ${df.schema.catalogString}")
-    debugLog(s"(combineMultivarRanges(runId=$runId)) ignoreColNames = ${ignoreColNames.mkString(",")}")
-    debugLog(s"(combineMultivarRanges(runId=$runId)) mrqc = $mrqc")
+    logger.info(
+      s"(combineMultivarRanges(runId=$runId)) START numDimensions = ${mrqc.numDimensions} ; df1.schema = ${df.schema.catalogString} ;" +
+        s" ignoreColNames = ${ignoreColNames.mkString(",")} ; mrqc = $mrqc"
+    )
     val dims = mrqc.rangeDimensions
     val resultatCombine = dims.foldLeft(df.where(mrqc.isValidRangeExpr)) { case (df, dim) =>
       combineDimensionRanges(df.where(mrqc.isValidRangeExpr), dim, mrqc.additionalTechnicalColNames, ignoreColNames)
@@ -566,14 +573,15 @@ object MultivarRangeQueryImpl extends Logging {
    */
   private[temporalquery] def unifyMultivarRanges[T: Ordering: TypeTag](
       df: DataFrame,
-      keys: Seq[String],
+      mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
+      keys: Seq[String] = Nil,
       extend: Boolean = false,
-      fillGapsWithNull: Boolean = false,
-      mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
+      fillGapsWithNull: Boolean = false
   )(implicit logger: Logger): DataFrame = {
-    debugLog(s"(unifyMultivarRanges) df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}")
-    debugLog(s"(unifyMultivarRanges) extend = $extend ; fillGapsWithNull = $fillGapsWithNull")
-    debugLog(s"(unifyMultivarRanges) mrqc = $mrqc")
+    logger.info(
+      s"(unifyMultivarRanges) START numDimensions = ${mrqc.numDimensions} ; df.schema = ${df.schema.catalogString} ; keys = ${keys.mkString(",")}," +
+        s" extend = $extend ; fillGapsWithNull = $fillGapsWithNull, mrqc = $mrqc"
+    )
     val dims = mrqc.rangeDimensions
     val dfResultUnify = dims.zip(dims.inits.toSeq.tail.reverse).foldLeft(df) { case (df, (dim, prevDims)) =>
       unifyDimensionRanges(
@@ -585,7 +593,7 @@ object MultivarRangeQueryImpl extends Logging {
         additionalTechnicalColNames = mrqc.additionalTechnicalColNames
       )
     }
-    debugLog(s"(unifyMultivarRanges) dfResultUnify.schema = ${dfResultUnify.schema.catalogString}")
+    logger.info(s"(unifyMultivarRanges) dfResultUnify.schema = ${dfResultUnify.schema.catalogString}")
     dfResultUnify
   }
 

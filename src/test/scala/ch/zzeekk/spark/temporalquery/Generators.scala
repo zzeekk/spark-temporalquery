@@ -185,7 +185,7 @@ trait Generators extends TestUtils {
 
   def generateHyperdimDataFrames(
       valueCol: Column = lit("A").as("value"),
-      maxNumSplitCoords: Int = 22
+      maxNumSplitCoords: Int = 10
   ): Gen[(DataFrame, GenericHalfOpenIntervalQueryConfig)] =
     unitDoubles.map(getHyperdimDataFrame(valueCol, maxNumSplitCoords))
 

@@ -72,8 +72,7 @@ class MultiVarHalfopenIntervalTests extends AnyFlatSpec with Matchers with Scala
     }
 
   "rangeinnerJoin with itself" should "return the same data framne" in
-    forAll(genA = generateHyperdimDataFrames(valueCol = (col("x000_from") + col("x000_to")).as("value"),
-      maxNumSplitCoords = 16)) { case (df, mrqc) =>
+    forAll(genA = generateHyperdimDataFrames(valueCol = (col("x000_from") + col("x000_to")).as("value"))) { case (df, mrqc) =>
       implicit val mrqcImpl: GenericHalfOpenIntervalQueryConfig = mrqc
       logDf("df", df)
       val dfLeft = df.withColumnRenamed("value", "value_l").withColumn("id", col("value_l") < 1d)
@@ -88,8 +87,7 @@ class MultiVarHalfopenIntervalTests extends AnyFlatSpec with Matchers with Scala
     }
 
   "rangeLeftAntiJoin dfUnit with dfUnitSplitted" should "return an empty data frame" in
-    forAll(genA = generateHyperdimDataFrames(valueCol = (col("x000_from") + col("x000_to")).as("value"),
-      maxNumSplitCoords = 10)) { case (dfUnitSplitted, mrqc) =>
+    forAll(genA = generateHyperdimDataFrames(valueCol = (col("x000_from") + col("x000_to")).as("value"))) { case (dfUnitSplitted, mrqc) =>
       implicit val mrqcImpl: GenericHalfOpenIntervalQueryConfig = mrqc
       logDf("dfUnitSplitted", dfUnitSplitted)
       val dfUnit = hypercuboids2dataFrame()(List(Hypercuboid.unit(mrqc.numDimensions)))

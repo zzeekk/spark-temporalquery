@@ -186,24 +186,42 @@ object MultivariateRangeLibrary extends Logging {
     /**
      * Combines consecutive records when there is no change in the non-technical columns. The
      * dataframe is first cleaned up via [[rangeRoundDiscreteTime]], see its description.
+     *
+     * @param keys
+     *   List of column names which form a key beside the dimension axes The value of keys does not
+     *   affect the result but the performance in case of more than 2 dimensions
+     * @param ignoreColNames
+     *   columns to be ignored
+     * @param mrqc
+     *   multi range query configuration
+     * @param logger
+     *   to write beautiful messages
+     * @tparam T
+     *   type of your axes
+     * @return
+     *   compacted data frame
      */
-    def rangeCombine[T: Ordering: TypeTag](ignoreColNames: Seq[String] = Nil)(implicit
+    def rangeCombine[T: Ordering: TypeTag](keys: Seq[String] = Nil, ignoreColNames: Seq[String] = Nil)(implicit
         mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
         logger: Logger
-    ): DataFrame = MultivarRangeQueryImpl.combineMultivarRanges(df1, mrqc, ignoreColNames)
+    ): DataFrame = MultivarRangeQueryImpl.combineMultivarRanges(
+      df = if (mrqc.numDimensions < 3) df1 else df1.rangeUnifyRanges(keys),
+      mrqc = mrqc,
+      ignoreColNames = ignoreColNames
+    )
 
     /**
      * Cuts records into pieces at overlaps, so that at the start of each overlap all active records
      * are split
      */
     def rangeUnifyRanges[T: Ordering: TypeTag](
-        keys: Seq[String],
+        keys: Seq[String] = Nil,
         extend: Boolean = false,
         fillGapsWithNull: Boolean = false
     )(implicit
         mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
         logger: Logger
-    ): DataFrame = MultivarRangeQueryImpl.unifyMultivarRanges(df1, keys, extend, fillGapsWithNull, mrqc)
+    ): DataFrame = MultivarRangeQueryImpl.unifyMultivarRanges(df1, mrqc, keys, extend, fillGapsWithNull)
 
     /**
      * Extends the history of the smallest value per key to minDate
