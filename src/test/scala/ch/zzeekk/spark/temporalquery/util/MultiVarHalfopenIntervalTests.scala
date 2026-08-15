@@ -56,10 +56,10 @@ class MultiVarHalfopenIntervalTests extends AnyFlatSpec with Matchers with Scala
   "rangeinnerJoin df1 with df2" should "return the same as rangeinnerJoin df2 with df1" in
     forAll(genA = unitDoubles) { xs =>
       val (df1, mrqc) = getHyperdimDataFrame((col("x000_from") + col("x000_to")).as("value_l"),
-        maxNumSplitCoords = 16)(xs)
+        maxNumSplitCoords = 10)(xs)
       logDf("df1", df1)
       val (df2, _) = getHyperdimDataFrame((col("x000_from") * col("x000_to")).as("value_r"),
-        maxNumSplitCoords = 22)(xs.reverse)
+        maxNumSplitCoords = 10)(xs.reverse)
       logDf("df2", df2)
       implicit val mrqcImpl: GenericHalfOpenIntervalQueryConfig = mrqc
       val actual = df1.rangeInnerJoin[Double](df2, Nil)
