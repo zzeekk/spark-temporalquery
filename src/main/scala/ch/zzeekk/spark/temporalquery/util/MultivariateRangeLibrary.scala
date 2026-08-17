@@ -25,6 +25,10 @@ object MultivariateRangeLibrary extends Logging {
    */
   implicit class MultivariateRangeFrameExtensions(df1: DataFrame) {
 
+    def getSlice[T: Ordering: TypeTag](coords: Seq[T])(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]): DataFrame =
+      MultivarRangeQueryImpl
+        .getSlice(df1, coords, mrqc)
+
     /**
      * Implements an inner join of historical data over a list of equally named columns
      */

@@ -73,6 +73,12 @@ object MultivarRangeQueryImpl extends Logging {
   private val joinColPostFix1 = "__1"
   private val joinColPostFix2 = "__2"
 
+  private[temporalquery] def getSlice[T: Ordering: TypeTag](
+      df: DataFrame,
+      coords: Seq[T],
+      mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
+  ): DataFrame = df.where(mrqc.getSliceExpression(coords))
+
   private[temporalquery] def roundIntervalsToDiscreteTime[T: Ordering: TypeTag](
       df: DataFrame,
       clmrqc: ClosedMultivarRangeQueryConfig[T]

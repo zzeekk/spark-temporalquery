@@ -175,10 +175,19 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   final def applyBooleanColumnFunctionToIntervalDefs(boolColFun: IntervalQueryDimension[T, D] => Column): Column =
     rangeDimensions.map(boolColFun).reduce((x, y) => x and y)
 
-  // TODO: explain this function
+  /**
+   * @param checkFun
+   *   function returning a boolean valued column
+   * @param values
+   *   value columns to apply checkFun to
+   * @return
+   *   boolean valued column
+   */
   private def checkValue(checkFun: (Column, IntervalQueryDimension[T, D]) => Column)(values: Seq[Column]): Column = {
-    require(values.length == numDimensions,
-      s"Please provide as many values as dimensions! values.length=${values.length} , numDimensions=$numDimensions")
+    require(
+      values.length == numDimensions,
+      s"(checkValue) Please provide as many values as dimensions! values.length=${values.length} , numDimensions=$numDimensions"
+    )
     applyBooleanColumnFunctionToIntervalDefs(dim => checkFun(values(rangeDimensions.indexOf(dim)), dim))
   }
 
@@ -199,5 +208,11 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
     logger.debug(s"joinIntervalExpr2: returning joinCol $joinCol")
     joinCol
   }
+
+  final def getSliceExpressionFromCols(values: Seq[Column]): Column = checkValue(
+    checkFun = { case (col, iqd) => iqd.isInIntervalExpr(col) }
+  )(values)
+
+  final def getSliceExpression(values: Seq[T]): Column = getSliceExpressionFromCols(values.map(lit))
 
 }

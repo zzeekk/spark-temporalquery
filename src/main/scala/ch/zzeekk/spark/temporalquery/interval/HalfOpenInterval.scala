@@ -20,6 +20,7 @@ case class HalfOpenInterval[T: Ordering: TypeTag](
     override val lowerHorizon: T,
     override val upperHorizon: T
 ) extends IntervalDef[T] {
+
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column =
     fromCol <= valueCol && valueCol < toCol
 
