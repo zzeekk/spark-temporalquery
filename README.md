@@ -5,6 +5,14 @@ Features:
 - support for discrete (timestamp, integer) and dense (double, float) interval axis datatype
 - support for an arbitrary number of interval dimensions (1D linear, 2D bi-linear/bi-temporal, or N-dimensional via `GenericQueryUtil`)
 
+Breaking changes in version 4.x:
+- `Timestamp` is no longer treated as a special "temporal" axis type. It is now just another `Ordering` datatype for the interval axis, on par with `Double`/`Float`. The dedicated `TemporalQueryUtil` object together with its `TemporalClosedIntervalQueryConfig`/`TemporalHalfOpenIntervalQueryConfig` case classes has therefore been removed.
+  Use `ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedQueryUtil` (a `LinearGenericQueryUtil[Timestamp]`) instead, with its `LinearClosedIntervalQueryConfig`/`LinearHalfOpenIntervalQueryConfig` configuration case classes.
+- As a consequence, the two separate implicit classes `TemporalDataFrameExtensions` and `LinearDataFrameExtensions` (with duplicated method sets) have been merged into a single `MultivariateRangeFrameExtensions` (`ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary`), which works uniformly regardless of the interval axis datatype and the number of dimensions.
+  All operation methods have been renamed from the `temporalXyz`/`linearXyz` prefixes to `rangeXyz`, e.g. `temporalInnerJoin`/`linearInnerJoin` -> `rangeInnerJoin`, `temporalCombine` -> `rangeCombine`, `temporalCleanupExtend`/`linearCleanupExtend` -> `rangeCleanupExtend`.
+- Classes have been reorganised into new packages: `interval` (`IntervalDef`, `ClosedInterval`, `HalfOpenInterval`), `axis` (`DiscreteAxisDef`, `DiscreteNumericAxis`, `DiscreteTimeAxis`), `multivarRange` (`MultivarRangeQueryConfig` and subclasses) and `util`/`util.linear`/`util.bilinear` for the concrete query-util objects. Adjust your imports accordingly.
+- Added support for bi-dimensional (`BiLinearGenericQueryUtil`, e.g. `BiTemporalClosedIntervalQueryUtil`) and arbitrary N-dimensional (`GenericQueryUtil`) interval queries on the same DataFrame, based on the new dimension-aware `MultivarRangeQueryConfig`.
+
 Breaking changes in version 3.x:
 - Default lower horizon of TemporalClosedIntervalQueryConfig set to 1970-01-01 instead of 0001-01-01 for better compatibility.
   To instantiate the previous configuration use `TemporalClosedIntervalQueryConfig(intervalDef = ClosedInterval(Timestamp.valueOf("1970-01-01 00:00:00"), Timestamp.valueOf("9999-12-31 00:00:00"), DiscreteTimeAxis(ChronoUnit.MILLIS)))`
@@ -23,12 +31,13 @@ To use it just add the following maven dependency for your Scala version to the 
 <dependency>
   <groupId>ch.zzeekk.spark</groupId>
   <artifactId>spark-temporalquery_2.13</artifactId>
-  <version>2.0.1</version>
+  <version>4.0.0</version>
 </dependency>
 ```
 See also [Builds](#builds) to review compatibility between Spark, Scala and Java.
 
-All interval query operations are available as `multivarRange*` implicit functions on DataFrame, provided by `MultivariateRangeLibrary`. The configuration is supplied as an implicit `MultivarRangeQueryConfig` instance obtained from one of the concrete query utility objects.
+All interval query operations are available implicit functions on DataFrame
+by the implicit class `MultivariateRangeFrameExtensions`.
 
 ### temporal queries
 `TemporalClosedQueryUtil` provides configuration for temporal data with a Timestamp interval axis.
