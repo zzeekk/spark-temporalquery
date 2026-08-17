@@ -191,9 +191,6 @@ object MultivariateRangeLibrary extends Logging {
      * Combines consecutive records when there is no change in the non-technical columns. The
      * dataframe is first cleaned up via [[rangeRoundDiscreteTime]], see its description.
      *
-     * @param keys
-     *   List of column names which form a key beside the dimension axes The value of keys does not
-     *   affect the result but the performance in case of more than 2 dimensions
      * @param ignoreColNames
      *   columns to be ignored
      * @param mrqc
@@ -205,7 +202,7 @@ object MultivariateRangeLibrary extends Logging {
      * @return
      *   compacted data frame
      */
-    def rangeCombine[T: Ordering: TypeTag](keys: Seq[String] = Nil, ignoreColNames: Seq[String] = Nil)(implicit
+    def rangeCombine[T: Ordering: TypeTag](ignoreColNames: Seq[String] = Nil)(implicit
         mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
         logger: Logger
     ): DataFrame = MultivarRangeQueryImpl.combineMultivarRanges(
@@ -279,7 +276,7 @@ object MultivariateRangeLibrary extends Logging {
      *   - Null values: grey (#cccccc).
      *
      * For [[ClosedInterval]] dimensions the rendered rectangle extends to `successor(to)` so that
-     * the last discrete step is fully covered visually; for [[HalfOpenInterval]] the `to` value is
+     * the last discrete step is fully covered visually; for [[interval.HalfOpenInterval]] the `to` value is
      * used directly. Rectangles are outlined only for closed intervals.
      *
      * Both axes share the same scale so that the aspect ratio of the data space is preserved; the
