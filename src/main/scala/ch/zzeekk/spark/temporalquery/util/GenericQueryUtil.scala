@@ -5,7 +5,7 @@
 package ch.zzeekk.spark.temporalquery.util
 
 import ch.zzeekk.spark.temporalquery._
-import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval, IntervalQueryDimension}
 import ch.zzeekk.spark.temporalquery.multivarRange.{ClosedMultivarRangeQueryConfig, HalfOpenMultivarRangeQueryConfig}
 import org.slf4j.Logger
 
@@ -27,7 +27,9 @@ class GenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Logging {
    */
   case class GenericClosedIntervalQueryConfig(
       override val dimensionMap: Map[String, (String, ClosedInterval[T])],
-      override val additionalTechnicalColNames: List[String] = Nil
+      override val additionalTechnicalColNames: List[String] = Nil,
+      override val dimLt: (IntervalQueryDimension[T, ClosedInterval[T]], IntervalQueryDimension[T, ClosedInterval[T]]) => Boolean =
+        defaultDimLt
   ) extends ClosedMultivarRangeQueryConfig[T] {
     override def config2: GenericClosedIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
@@ -58,7 +60,9 @@ class GenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Logging {
    */
   case class GenericHalfOpenIntervalQueryConfig(
       override val dimensionMap: Map[String, (String, HalfOpenInterval[T])],
-      override val additionalTechnicalColNames: List[String] = Nil
+      override val additionalTechnicalColNames: List[String] = Nil,
+      override val dimLt: (IntervalQueryDimension[T, HalfOpenInterval[T]], IntervalQueryDimension[T, HalfOpenInterval[T]]) => Boolean =
+        defaultDimLt
   ) extends HalfOpenMultivarRangeQueryConfig[T] {
     override def config2: GenericHalfOpenIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })

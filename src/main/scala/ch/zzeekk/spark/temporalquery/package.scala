@@ -35,10 +35,6 @@ package object temporalquery extends Serializable with Logging {
   }
   val udf_durationInMillis: UserDefinedFunction = udf(durationInMillis _)
 
-  // Source - https://stackoverflow.com/a/14740340
-  // Posted by Travis Brown
-  // Retrieved 2026-07-30, License - CC BY-SA 3.0
-
   implicit class Crossable[X](xs: Set[X]) {
     def cross[Y](ys: Set[Y]): Set[(X, Y)] = xs.flatMap(x => ys.map(y => (x, y)))
   }

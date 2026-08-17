@@ -5,8 +5,9 @@
 package ch.zzeekk.spark.temporalquery.util.bilinear
 
 import ch.zzeekk.spark.temporalquery._
-import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval, IntervalQueryDimension}
 import ch.zzeekk.spark.temporalquery.multivarRange.{ClosedMultivarRangeQueryConfig, HalfOpenMultivarRangeQueryConfig}
+import ch.zzeekk.spark.temporalquery.util.defaultDimLt
 import org.slf4j.Logger
 
 import scala.reflect.runtime.universe.TypeTag
@@ -31,7 +32,9 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
    */
   case class BiLinearClosedIntervalQueryConfig(
       override val dimensionMap: Map[String, (String, ClosedInterval[T])],
-      override val additionalTechnicalColNames: List[String] = Nil
+      override val additionalTechnicalColNames: List[String] = Nil,
+      override val dimLt: (IntervalQueryDimension[T, ClosedInterval[T]], IntervalQueryDimension[T, ClosedInterval[T]]) => Boolean =
+        defaultDimLt
   ) extends ClosedMultivarRangeQueryConfig[T] with BiLinearQueryConfigMarker {
     require(
       numDimensions == 2,
@@ -70,7 +73,9 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
    */
   case class BiLinearHalfOpenIntervalQueryConfig(
       override val dimensionMap: Map[String, (String, HalfOpenInterval[T])],
-      override val additionalTechnicalColNames: List[String] = Nil
+      override val additionalTechnicalColNames: List[String] = Nil,
+      override val dimLt: (IntervalQueryDimension[T, HalfOpenInterval[T]], IntervalQueryDimension[T, HalfOpenInterval[T]]) => Boolean =
+        defaultDimLt
   ) extends HalfOpenMultivarRangeQueryConfig[T] with BiLinearQueryConfigMarker {
     require(
       numDimensions == 2,

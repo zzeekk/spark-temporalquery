@@ -1,7 +1,7 @@
 package ch.zzeekk.spark.temporalquery
 
 import ch.zzeekk.spark.temporalquery.axis.DiscreteTimeAxis
-import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval, IntervalDef, IntervalQueryDimension}
 
 import java.sql.{Date, Timestamp}
 import java.time.temporal.ChronoUnit
@@ -29,6 +29,19 @@ package object util {
     lowerHorizon = bigBangDay,
     upperHorizon = doomsDay
   )
+
+  /**
+   * How to sort the rangeDimensions Please override to adapt to your needs
+   *
+   * @param dim1
+   *   first dimension
+   * @param dim2
+   *   second dimension
+   * @return
+   *   trueth value whether dim1 is smaller than dim2
+   */
+  def defaultDimLt[T, D <: IntervalDef[T]](dim1: IntervalQueryDimension[T, D], dim2: IntervalQueryDimension[T, D]): Boolean =
+    dim1.fromColName < dim2.fromColName
 
   //// Date ////
   val bigBangDateStr: String = "1970-01-01"

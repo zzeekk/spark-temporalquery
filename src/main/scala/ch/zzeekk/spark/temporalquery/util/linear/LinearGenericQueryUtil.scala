@@ -5,11 +5,12 @@
 package ch.zzeekk.spark.temporalquery.util.linear
 
 import ch.zzeekk.spark.temporalquery._
-import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval}
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval, IntervalQueryDimension}
 import ch.zzeekk.spark.temporalquery.multivarRange.{ClosedMultivarRangeQueryConfig, HalfOpenMultivarRangeQueryConfig}
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.col
 import org.slf4j.Logger
+import ch.zzeekk.spark.temporalquery.util.defaultDimLt
 
 import scala.reflect.runtime.universe.TypeTag
 
@@ -33,6 +34,8 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   case class LinearClosedIntervalQueryConfig(
       dimensionColNameMap: Map[String, String] = Map("position_from" -> "position_to"),
       override val additionalTechnicalColNames: List[String] = Nil,
+      override val dimLt: (IntervalQueryDimension[T, ClosedInterval[T]], IntervalQueryDimension[T, ClosedInterval[T]]) => Boolean =
+        defaultDimLt,
       intervalDef: ClosedInterval[T]
   ) extends ClosedMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
     require(
@@ -83,6 +86,8 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
   case class LinearHalfOpenIntervalQueryConfig(
       dimensionColNameMap: Map[String, String] = Map("position_from" -> "position_to"),
       override val additionalTechnicalColNames: List[String] = Nil,
+      override val dimLt: (IntervalQueryDimension[T, HalfOpenInterval[T]], IntervalQueryDimension[T, HalfOpenInterval[T]]) => Boolean =
+        defaultDimLt,
       intervalDef: HalfOpenInterval[T]
   ) extends HalfOpenMultivarRangeQueryConfig[T] with LinearQueryConfigMarker {
     require(

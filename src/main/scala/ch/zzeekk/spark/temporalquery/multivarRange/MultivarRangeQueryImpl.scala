@@ -415,6 +415,7 @@ object MultivarRangeQueryImpl extends Logging {
     val resultSchema = StructType(dfSubtrahends.schema.filterNot(_.name == "subtrahends"))
     val complementRDD: RDD[Row] = Try(dfSubtrahends.rdd.flatMap { row =>
       val minuend: mrqc.MultivarRange = dims1.map(d => (row.getAs[T](d.fromColName), row.getAs[T](d.toColName)))
+      // TODO: convert to dataFrame code
       // Row.getAs[Seq[_]] on an array column actually yields a mutable.ArraySeq at runtime, which
       // is not a subtype of the immutable Seq that complementFamily expects. Go via
       // scala.collection.Seq (the common supertype) and force conversion to List with .toList
@@ -498,7 +499,7 @@ object MultivarRangeQueryImpl extends Logging {
 
   /**
    * Combines consecutive records when there is no change in the non-technical columns. The
-   * dataframe is first cleaned up via [[rangeRoundDiscreteTime]], see its description.
+   * dataframe is first cleaned up via [[roundIntervalsToDiscreteTime]], see its description.
    */
   @tailrec
   private[temporalquery] def combineMultivarRanges[T: Ordering: TypeTag](

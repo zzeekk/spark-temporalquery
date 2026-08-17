@@ -70,6 +70,14 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   def definedColName: String = "_defined"
   final def definedCol: Column = col(definedColName)
 
+  /**
+   * How to sort the rangeDimensions Please override to adapt to your needs
+   *
+   * @return
+   *   truth value whether dim1 is smaller than dim2
+   */
+  val dimLt: (IntervalQueryDimension[T, D], IntervalQueryDimension[T, D]) => Boolean
+
   final def rangeDimensions: List[IntervalQueryDimension[T, D]] = dimensionMap.map { case (f, (t, i)) =>
     IntervalQueryDimension(
       fromColName = f,
@@ -80,7 +88,7 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
       upperHorizon = i.upperHorizon,
       intDef = i
     )
-  }.toList.sortBy(_.fromColName)
+  }.toList.sortWith(lt = dimLt)
 
   final def rangeIntervalDefs: List[D] = rangeDimensions.map(_.intDef)
 
