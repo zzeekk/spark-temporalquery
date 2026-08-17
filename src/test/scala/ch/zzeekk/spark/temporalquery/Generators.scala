@@ -152,7 +152,7 @@ trait Generators extends TestUtils {
 
   }
 
-  def hypercuboids2dataFrame(valueCol: Column = lit("A").as("value"))(hcs: Iterable[Hypercuboid])(implicit
+  def hypercuboids2dataFrame(valueCol: Column = lit(false).as("value"))(hcs: Iterable[Hypercuboid])(implicit
       mrqc: MultivarRangeQueryConfig[Double, _]
   ): DataFrame = {
     require(hcs.forall(_.numDim == mrqc.numDimensions),
@@ -170,7 +170,7 @@ trait Generators extends TestUtils {
   def getHyperdimDataFrame(
       valueCol: Column,
       maxNumSplitCoords: Int
-  )(xs: Iterable[Double]): (DataFrame, GenericHalfOpenIntervalQueryConfig) = {
+  )(xs: Iterable[Double]): (DataFrame, GenericHalfOpenIntervalQueryConfig, List[PointN]) = {
     val splitPts = getPointsFromDoubles(xs.take(maxNumSplitCoords))
     require(splitPts.nonEmpty, s"(getHyperdimDataFrame) At least one split point needed but splitPts = $splitPts")
     val dims = splitPts.map(_.numDim).distinct
@@ -180,13 +180,15 @@ trait Generators extends TestUtils {
     val mrqc = GenericHalfOpenIntervalQueryConfig.withDefaultIntervalDef(numDim = dims.head)
     logger.info(s"(getHyperdimDataFrame) maxNumSplitCoords = $maxNumSplitCoords ; valueCol = $valueCol ; mrqc = $mrqc")
     (hypercuboids2dataFrame(valueCol)(hcs = Hypercuboid.unit(mrqc.numDimensions).split(splitPts))(mrqc),
-      mrqc)
+      mrqc,
+      splitPts
+    )
   }
 
   def generateHyperdimDataFrames(
-      valueCol: Column = lit("A").as("value"),
+      valueCol: Column = lit(false).as("value"),
       maxNumSplitCoords: Int = 10
-  ): Gen[(DataFrame, GenericHalfOpenIntervalQueryConfig)] =
+  ): Gen[(DataFrame, GenericHalfOpenIntervalQueryConfig, List[PointN])] =
     unitDoubles.map(getHyperdimDataFrame(valueCol, maxNumSplitCoords))
 
 }

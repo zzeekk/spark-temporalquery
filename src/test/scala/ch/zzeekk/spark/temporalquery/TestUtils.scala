@@ -89,7 +89,7 @@ trait TestUtils extends Logging {
     val actualReordered = reorderCols(actual, expected)
 
     logger.error(s"!!!! Test $testName Failed !!!")
-    logger.error(s"   ${arguments.length} Arguments ")
+    logger.error(s"   ${arguments.length} Arguments ; counts: ${arguments.map(_.count()).mkString(", ")}  ")
     arguments.foreach(printDf)
     logger.error("   Actual ")
     logger.error(s"  actual.count() =  ${actualReordered.count()}")

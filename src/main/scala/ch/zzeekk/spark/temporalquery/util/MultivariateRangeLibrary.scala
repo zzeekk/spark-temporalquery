@@ -209,7 +209,7 @@ object MultivariateRangeLibrary extends Logging {
         mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
         logger: Logger
     ): DataFrame = MultivarRangeQueryImpl.combineMultivarRanges(
-      df = if (mrqc.numDimensions < 3) df1 else df1.rangeUnifyRanges(keys),
+      df = df1,
       mrqc = mrqc,
       ignoreColNames = ignoreColNames
     )
