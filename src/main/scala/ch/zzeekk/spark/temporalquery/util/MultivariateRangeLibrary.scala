@@ -276,8 +276,8 @@ object MultivariateRangeLibrary extends Logging {
      *   - Null values: grey (#cccccc).
      *
      * For [[ClosedInterval]] dimensions the rendered rectangle extends to `successor(to)` so that
-     * the last discrete step is fully covered visually; for [[interval.HalfOpenInterval]] the `to` value is
-     * used directly. Rectangles are outlined only for closed intervals.
+     * the last discrete step is fully covered visually; for [[interval.HalfOpenInterval]] the `to`
+     * value is used directly. Rectangles are outlined only for closed intervals.
      *
      * Both axes share the same scale so that the aspect ratio of the data space is preserved; the
      * longer axis fills up to 1024 px.
