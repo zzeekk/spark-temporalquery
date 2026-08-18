@@ -1,8 +1,8 @@
-package ch.zzeekk.spark.temporalquery
+package ch.zzeekk.spark.temporalquery.interval
 
+import ch.zzeekk.spark.temporalquery.TestUtils
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
 class HalfOpenIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
 
   private val floatIntervalDef = HalfOpenInterval[Float](lowerHorizon = 0f, upperHorizon = Float.MaxValue)
@@ -10,10 +10,25 @@ class HalfOpenIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
 
   "cut off at boundaries" should "return expected results" in {
     val argExpMap = Map(
-      ("cut off lower boundary", 10f) -> limitedIntervalDef.lowerHorizon,
+      ("cut off lower boundary", 10f)  -> limitedIntervalDef.lowerHorizon,
       ("cut off upper boundary", 999f) -> limitedIntervalDef.upperHorizon
     )
     val results: Set[Boolean] = testArgumentExpectedMapWithComment[Float, Float](limitedIntervalDef.fitToHorizon, argExpMap)
+    results.forall(p => p) shouldBe true
+  }
+
+  "diff" should "calculate minuend-subtrahend" in {
+    val minuend = (3f, 8f) // endpoints of [ 3 , 8 [
+    val argExpMap: Map[(String, (Float, Float)), List[(Float, Float)]] = Map(
+      ("no intersection => no change",       (0f, 1f))  -> List(minuend),
+      ("point in the middle => no change",   (5f, 5f))  -> List((5f, 8f), (3f, 5f)),
+      ("subtrahend juts out to the left",    (0f, 5f))  -> List((5f, 8f)),
+      ("subtrahend surrounded by minuend",   (5f, 6f))  -> List((6f, 8f), (3f, 5f)),
+      ("subtrahend juts out to the right",   (5f, 10f)) -> List((3f, 5f)),
+      ("subtrahend equals minuend => empty", minuend)   -> Nil
+    )
+
+    val results: Set[Boolean] = testArgumentExpectedMapWithComment(floatIntervalDef.complement(minuend), argExpMap)
     results.forall(p => p) shouldBe true
   }
 
@@ -58,7 +73,7 @@ class HalfOpenIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
           , ("2019-01-01 00:00:0", "2020-01-01 00:00:0.999")
         )
       ),
-      ("subset => empty result", "2020-01-01 00:05:6", "2020-01-01 00:05:9", Seq())
+      ("subset => empty result", "2020-01-01 00:05:6", "2020-01-01 00:05:9", Nil)
     ).map { case (comment, validFrom, validTo, resultSeq) => ((comment, (Timestamp.valueOf(validFrom), Timestamp.valueOf(validTo))), resultSeq.map(y => (Timestamp.valueOf(y._1), Timestamp.valueOf(y._2)))) }
       .toMap
 
@@ -67,5 +82,5 @@ class HalfOpenIntervalTest extends AnyFlatSpec with Matchers with TestUtils {
     val results: Set[Boolean] = testArgumentExpectedMapWithComment[(Timestamp,Timestamp), Seq[(Timestamp,Timestamp)]](x => intervalComplement(x._1, x._2, subtrahends, intervalConfig), argExpMap)
     results.forall(p => p) shouldBe true
   }
-  */
+   */
 }
