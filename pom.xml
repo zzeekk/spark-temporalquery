@@ -55,7 +55,7 @@
         <scalafmt.validateOnly>true</scalafmt.validateOnly>
         <scalatest.test.version>3.2.20</scalatest.test.version>
         <scalatest.plus.version>${scalatest.test.version}.0</scalatest.plus.version>
-        <spark.version>3.5.7</spark.version>
+        <spark.version>4.1.1</spark.version>
     </properties>
 
     <profiles>
@@ -79,7 +79,7 @@
                     <plugin>
                         <groupId>net.alchim31.maven</groupId>
                         <artifactId>scala-maven-plugin</artifactId>
-                        <version>4.9.6</version>
+                        <version>4.9.10</version>
                         <executions>
                             <execution>
                                 <id>scala-doc</id>
@@ -214,7 +214,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -228,7 +228,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
+                <version>3.5.6</version>
                 <configuration>
                     <argLine>-Xmx4g</argLine>
                     <skipTests>true</skipTests>
@@ -288,7 +288,7 @@
             <plugin>
                 <groupId>org.antipathy</groupId>
                 <artifactId>mvn-scalafmt_${scala.minor.version}</artifactId>
-                <version>1.1.1713302731.c3d0074</version>
+                <version>1.1.1783760054.f8e8ca3</version>
                 <configuration>
                     <configLocation>${project.basedir}/.scalafmt.conf</configLocation> <!-- path to config -->
                     <skipTestSources>false</skipTestSources> <!-- (Optional) skip formatting test sources -->

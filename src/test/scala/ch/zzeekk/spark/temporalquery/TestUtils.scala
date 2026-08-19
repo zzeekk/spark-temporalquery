@@ -3,6 +3,7 @@ package ch.zzeekk.spark.temporalquery
 import ch.zzeekk.spark.temporalquery.util.{finisTemporisString, initiumTemporisString}
 import org.apache.spark.sql.functions.{col, lit, when}
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.types.StructType
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.sql.{Date, Timestamp}
@@ -55,8 +56,10 @@ trait TestUtils extends Logging {
     else dfToReorder.select(dfRef.columns.map(col): _*)
   }
 
-  def schemaEqual(df1: DataFrame, df2: DataFrame): Boolean =
-    df1.schema.sql == df2.schema.sql // ignore nullability in comparison
+  def schemaEqual(df1: DataFrame, df2: DataFrame): Boolean = {
+    def asNullable(schema: StructType): StructType = StructType(schema.map(_.copy(nullable = true)))
+    asNullable(df1.schema) == asNullable(df2.schema)
+  }
 
   def dfEqual(df1: DataFrame, df2: DataFrame): Boolean = Try {
     val df1reordered = reorderCols(df1, df2)

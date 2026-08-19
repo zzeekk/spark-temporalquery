@@ -6,6 +6,8 @@ Features:
 - support for an arbitrary number of interval dimensions (1D linear, 2D bi-linear/bi-temporal, or N-dimensional via `GenericQueryUtil`)
 
 Breaking changes in version 4.x:
+- Spark-temporalquery is built and released only for Scala 2.13 with Spark 4.1.x.
+  It is not built anymore for Scala 2.11, nor 2.12. Spark 3 is not supported.
 - `Timestamp` is no longer treated as a special "temporal" axis type. It is now just another `Ordering` datatype for the interval axis, on par with `Double`/`Float`. The dedicated `TemporalQueryUtil` object together with its `TemporalClosedIntervalQueryConfig`/`TemporalHalfOpenIntervalQueryConfig` case classes has therefore been removed.
   Use `ch.zzeekk.spark.temporalquery.util.linear.TemporalClosedQueryUtil` (a `LinearGenericQueryUtil[Timestamp]`) instead, with its `LinearClosedIntervalQueryConfig`/`LinearHalfOpenIntervalQueryConfig` configuration case classes.
 - As a consequence, the two separate implicit classes `TemporalDataFrameExtensions` and `LinearDataFrameExtensions` (with duplicated method sets) have been merged into a single `MultivariateRangeFrameExtensions` (`ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary`), which works uniformly regardless of the interval axis datatype and the number of dimensions.
@@ -208,7 +210,7 @@ You can then use the following additional functions on Dataset/DataFrame
   Note: this function requires at least two interval dimensions (i.e. a BiLinear or higher-dimensional config).
 
 ## Builds
-Spark-temporalquery is built and released for Scala 2.13 with Spark 3.5.x.
+Spark-temporalquery is built and released for Scala 2.13 with Spark 4.1.x.
 We recommend to use Java 17 - 21.
 See also https://spark.apache.org/docs/latest/#downloading. 
 
