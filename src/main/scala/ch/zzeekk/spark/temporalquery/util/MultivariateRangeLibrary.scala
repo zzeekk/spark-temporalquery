@@ -285,7 +285,7 @@ object MultivariateRangeLibrary extends Logging {
      * @param valueCol
      *   name of the column whose value determines the rectangle fill colour
      */
-    def toSvg[T: Ordering: TypeTag](valueCol: String)(implicit mrqc: MultivarRangeQueryConfig[T, _]): String = {
+    def toSvg[T: Ordering: TypeTag](valueCol: String, svgMax: Double = 1024d)(implicit mrqc: MultivarRangeQueryConfig[T, _]): String = {
       require(1 < mrqc.numDimensions,
         s"toSvg works only for multi-dimensional data but, numDimensions=${mrqc.numDimensions}")
 
@@ -369,14 +369,10 @@ object MultivariateRangeLibrary extends Logging {
       val (viewMinX, viewMaxX) = realBounds(rects.map(_._1) ++ rects.map(_._2), lowerH1, upperH1)
       val (viewMinY, viewMaxY) = realBounds(rects.map(_._3) ++ rects.map(_._4), lowerH2, upperH2)
 
-      val dataW = viewMaxX - viewMinX
-      val dataH = viewMaxY - viewMinY
+      val dataW: Double = viewMaxX - viewMinX
+      val dataH: Double = viewMaxY - viewMinY
 
-      val svgMax = 1024d
-      val scale = if (dataW == 0 && dataH == 0) 1d
-      else if (dataW == 0) svgMax / dataH
-      else if (dataH == 0) svgMax / dataW
-      else math.min(svgMax / dataW, svgMax / dataH)
+      val scale = if (dataW < 0.1d && dataH < 0.1d) 1d else svgMax / math.max(dataW, dataH)
 
       val svgW = math.ceil(dataW * scale).toInt max 1
       val svgH = math.ceil(dataH * scale).toInt max 1
@@ -433,7 +429,7 @@ object MultivariateRangeLibrary extends Logging {
       val strokeAttr = if (isClosed) """ stroke="black" stroke-width="0.5"""" else ""
 
       val sb = new StringBuilder
-      sb.append(s"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $totalW $totalH">\n""")
+      sb.append(s"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $totalW $totalH" width="$totalW"  height="$totalH">\n""")
       // Data bounding rectangle – positioned at (marginLeft, 0), sized svgW × svgH
       sb.append(s"""  <rect x="$marginLeft" y="0" width="$svgW" height="$svgH" fill="none" stroke="black" stroke-width="1"/>\n""")
       // Axis labels in the margin areas, outside the data rectangle
