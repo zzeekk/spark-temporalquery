@@ -207,8 +207,8 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   final val isInBoundariesExpr: Seq[Column] => Column = checkValue(checkFun = (valCol, dim) =>
     valCol.between(lit(dim.lowerHorizon), lit(dim.upperHorizon)))
 
-  final def isValidRangeExpr: Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
-    dim.intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)
+  final def isNonEmptyRangeExpr: Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
+    dim.intDef.isNonEmptyExpr(dim.fromCol, dim.toCol)
   )
 
   final def joinRangeExpr(df1: DataFrame, df2: DataFrame)(implicit logger: Logger): Column = {

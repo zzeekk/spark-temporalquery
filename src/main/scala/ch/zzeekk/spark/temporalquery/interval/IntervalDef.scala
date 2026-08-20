@@ -33,7 +33,7 @@ abstract class IntervalDef[T: Ordering: TypeTag] extends Serializable {
   /**
    * Expression to check if an interval is valid, e.g. start is before end.
    */
-  def isValidIntervalExpr(fromCol: Column, toCol: Column): Column
+  def isNonEmptyExpr(fromCol: Column, toCol: Column): Column
 
   /**
    * Expression to join two intervals

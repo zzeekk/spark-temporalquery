@@ -18,7 +18,7 @@ class BiTemporalClosedQueryUtilTest extends AnyFlatSpec with Matchers with TestU
   logger.info(s"BiTemporalQueryUtilTest: defaultBiTemporalConfig = $defaultBiTemporalConfig")
   private val fromCols: List[Column] = defaultBiTemporalConfig.rangeDimensions.map(_.fromCol)
 
-  "getDiagonal" should "return the diagonal of df" in {
+  "getDiagonal dfMap" should "return the diagonal of dfMap" in {
     val actual = dfMap.getDiagonal()
     val expected = List(
       (0, "2018-01-01 0:0:0", "2018-02-28 23:59:59.999", "B"),
@@ -29,6 +29,17 @@ class BiTemporalClosedQueryUtilTest extends AnyFlatSpec with Matchers with TestU
     ).map(makeRowsWithTimeRange).toDF("id", "_from", "_to", "img")
     val result = dfEqual(reorderCols(actual, expected), expected)
     if (!result) printFailedTestResult("rangeCleanupExtend", dfMap)(reorderCols(actual, expected), expected)
+    result shouldBe true
+  }
+
+  "getDiagonal dfDirtyTimeRanges" should "return the diagonal of dfDirtyTimeRanges" in {
+    val actual = dfDirtyTimeRanges.getDiagonal()
+    val expected = List(
+      (0, "2021-01-01 01:00:00", "9999-12-31 23:59:59.999999", 18.17),
+      (1, "2020-03-03 01:00:00", "2021-12-01 02:34:56.1",      -2d)
+    ).map(makeRowsWithTimeRange).toDF("id", "_from", "_to", "value")
+    val result = dfEqual(reorderCols(actual, expected), expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend", dfDirtyTimeRanges)(reorderCols(actual, expected), expected)
     result shouldBe true
   }
 

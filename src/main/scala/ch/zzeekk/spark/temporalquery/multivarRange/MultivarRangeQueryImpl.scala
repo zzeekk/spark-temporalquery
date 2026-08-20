@@ -79,11 +79,18 @@ object MultivarRangeQueryImpl extends Logging {
       mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
       fromColName: String,
       toColName: String
-  ): DataFrame = df.select(
-    df.columns.diff(mrqc.fromToColnames).map(col) ++
-      Array(greatest(mrqc.fromColnames.map(col): _*).as(fromColName),
-        least(mrqc.toColnames.map(col): _*).as(toColName)): _*
-  )
+  ): DataFrame = {
+    // all interval defs of the dimension are either half-open or closed; no mixture possible
+    // so the non - emptiness expression is unique
+    // the resulting diagonal data frame uses the interval def,
+    // a priori with the finest discreteAxisDef
+    val nonEmptyFilter = mrqc.rangeIntervalDefs.head.isNonEmptyExpr(col(fromColName), col(toColName))
+    df.select(
+      df.columns.diff(mrqc.fromToColnames).map(col) ++
+        Array(greatest(mrqc.fromColnames.map(col): _*).as(fromColName),
+          least(mrqc.toColnames.map(col): _*).as(toColName)): _*
+    ).where(nonEmptyFilter)
+  }
 
   private[temporalquery] def getSlice[T: Ordering: TypeTag](
       df: DataFrame,
@@ -98,7 +105,7 @@ object MultivarRangeQueryImpl extends Logging {
     val dims = clmrqc.rangeDimensions
     df.withColumns(colsMap = dims.map(d => (d.fromColName, d.intDef.getCeilExpr(col(d.fromColName)))).toMap)
       .withColumns(colsMap = dims.map(d => (d.toColName, d.intDef.getFloorExpr(col(d.toColName)))).toMap)
-      .where(clmrqc.isValidRangeExpr)
+      .where(clmrqc.isNonEmptyRangeExpr)
       // return columns in same order as provided
       .select(df.columns.map(col): _*)
   }
@@ -111,7 +118,7 @@ object MultivarRangeQueryImpl extends Logging {
     df
       .withColumns(colsMap = dims.map(d => (d.fromColName, d.intDef.getCeilExpr(col(d.fromColName)))).toMap)
       .withColumns(colsMap = dims.map(d => (d.toColName, d.intDef.getPredecessorExpr(col(d.toColName)))).toMap)
-      .where(clmrqc.isValidRangeExpr)
+      .where(clmrqc.isNonEmptyRangeExpr)
       // return columns in same order as provided
       .select(df.columns.map(col): _*)
   }
@@ -201,9 +208,9 @@ object MultivarRangeQueryImpl extends Logging {
       s"(buildIntervalRanges) Your dataframe must not contain column $ptColName! df.columns = ${df.columns.mkString(",")}"
     )
     val keyCols = keys.map(col)
-    debugLog(s"(buildDimensionRanges) get start/end-points for every key: ${dim.intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)}")
+    debugLog(s"(buildDimensionRanges) get start/end-points for every key: ${dim.intDef.isNonEmptyExpr(dim.fromCol, dim.toCol)}")
     val dfPoints = df
-      .where(intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)) // filter invalid intervals
+      .where(intDef.isNonEmptyExpr(dim.fromCol, dim.toCol)) // filter invalid intervals
       .select(keyCols :+ dim.fromCol.as(ptColName): _*).union(
         df.select(keyCols :+
             intDef.getSuccessorExpr(dim.toCol).as(ptColName): _*)
@@ -525,8 +532,8 @@ object MultivarRangeQueryImpl extends Logging {
         s" ignoreColNames = ${ignoreColNames.mkString(",")} ; mrqc = $mrqc"
     )
     val dims = mrqc.rangeDimensions
-    val resultatCombine = dims.foldLeft(df.where(mrqc.isValidRangeExpr)) { case (df, dim) =>
-      combineDimensionRanges(df.where(mrqc.isValidRangeExpr), dim, mrqc.additionalTechnicalColNames, ignoreColNames)
+    val resultatCombine = dims.foldLeft(df.where(mrqc.isNonEmptyRangeExpr)) { case (df, dim) =>
+      combineDimensionRanges(df.where(mrqc.isNonEmptyRangeExpr), dim, mrqc.additionalTechnicalColNames, ignoreColNames)
     }
     if (logger.isDebugEnabled()) resultatCombine.createdLog("resultatCombine")
     if (mrqc.numDimensions == 1 || df.except(resultatCombine).isEmpty) {
