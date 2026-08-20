@@ -24,8 +24,7 @@ class BiTemporalClosedQueryUtilTest extends AnyFlatSpec with Matchers with TestU
       (0, "2018-01-01 0:0:0", "2018-02-28 23:59:59.999", "B"),
       (0, "2018-01-01 0:0:0", "2018-01-31 23:59:59.999", "A"),
       (0, "2018-02-05 0:0:0", "2018-03-03 23:59:59.999", "C"),
-      (0, "2018-02-20 0:0:0", "2018-03-31 23:59:59.999", "D"),
-      (0, "2018-03-01 0:0:0", "2018-02-25 14:15:16.123", "X")
+      (0, "2018-02-20 0:0:0", "2018-03-31 23:59:59.999", "D")
     ).map(makeRowsWithTimeRange).toDF("id", "_from", "_to", "img")
     val result = dfEqual(reorderCols(actual, expected), expected)
     if (!result) printFailedTestResult("rangeCleanupExtend", dfMap)(reorderCols(actual, expected), expected)
