@@ -219,10 +219,10 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
     joinCol
   }
 
-  final def getSliceExpressionFromCols(values: Seq[Column]): Column = checkValue(
+  final def getValuesExpressionFromCols(values: Seq[Column]): Column = checkValue(
     checkFun = { case (col, iqd) => iqd.isInIntervalExpr(col) }
   )(values)
 
-  final def getSliceExpression(values: Seq[T]): Column = getSliceExpressionFromCols(values.map(lit))
+  final def getValuesExpression(values: Seq[T]): Column = getValuesExpressionFromCols(values.map(lit))
 
 }

@@ -41,7 +41,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     require(
       numDimensions == 1,
       s"LinearClosedIntervalQueryConfig must have exactly 1 dimension but numDimensions = $numDimensions!" +
-        s"You may want to use MultivarRangeQueryConfig directly!"
+        s" You may want to use MultivarRangeQueryConfig directly!"
     )
     override def dimensionMap: Map[String, (String, ClosedInterval[T])] = dimensionColNameMap.map { case (f, t) =>
       (f, (t, intervalDef))
@@ -93,7 +93,7 @@ class LinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Log
     require(
       numDimensions == 1,
       s"LinearHalfOpenIntervalQueryConfig must have exactly 1 dimension but numDimensions = $numDimensions!" +
-        s"You may want to use MultivarRangeQueryConfig directly!"
+        s" You may want to use MultivarRangeQueryConfig directly!"
     )
     override def dimensionMap: Map[String, (String, HalfOpenInterval[T])] = dimensionColNameMap
       .map { case (f, t) => (f, (t, intervalDef)) }

@@ -31,8 +31,8 @@ object MultivariateRangeLibrary extends Logging {
     )(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]): DataFrame =
       MultivarRangeQueryImpl.getDiagonal(df1, mrqc, fromColName, toColName)
 
-    def getSlice[T: Ordering: TypeTag](coords: Seq[T])(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]): DataFrame =
-      MultivarRangeQueryImpl.getSlice(df1, coords, mrqc)
+    def getValues[T: Ordering: TypeTag](coords: Seq[T])(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]): DataFrame =
+      MultivarRangeQueryImpl.getValues(df1, coords, mrqc)
 
     /**
      * Implements an inner join of historical data over a list of equally named columns

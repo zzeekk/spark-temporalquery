@@ -3,13 +3,13 @@ package ch.zzeekk.spark.temporalquery.util.bilinear
 import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalClosedIntervalQueryUtil._
 import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalHalfOpenIntervalQueryUtil.defaultHalfOpenIntervalDef
-import ch.zzeekk.spark.temporalquery.util.{finisTemporisString, initiumTemporisString}
+import ch.zzeekk.spark.temporalquery.util.{doomsDateStr, finisTemporisString, initiumTemporisString}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.DoubleType
 
 import java.sql.Timestamp
 
-object BiTemporalTestUtils extends TestUtils {
+trait BiTemporalTestUtils extends TestUtils {
 
   import session.implicits._
 
@@ -193,4 +193,44 @@ object BiTemporalTestUtils extends TestUtils {
 
   val dfRightDouble: DataFrame = dfRight.withColumn("id", $"id".cast(DoubleType))
 
+  val dfAddress: DataFrame = List(
+    (0, "2022-11-13", "2025-09-01", "2022-11-13", doomsDateStr, "AG"),
+    (0, "2025-09-01", doomsDateStr, "2022-11-13", "2025-08-01", "AG"),
+    (0, "2025-09-01", doomsDateStr, "2025-08-01", doomsDateStr, "ZH")
+  ).map(makeRowsBiDatoral)
+    .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "canton")
+    .orderBy("id", "canton", "known_from")
+
+  val dfMonthlyPremium: DataFrame = List(
+    (0, "2022-11-13", "2023-10-01", "2023-01-01", doomsDateStr, 100),
+    // each year 1st October: new insurance tariffs entered in database
+    (0, "2023-10-01", doomsDateStr, "2023-01-01", "2024-01-01", 100),
+    (0, "2023-10-01", "2024-10-01", "2024-01-01", doomsDateStr, 110),
+    //
+    (0, "2024-10-01", doomsDateStr, "2024-01-01", "2025-01-01", 110),
+    (0, "2024-10-01", "2025-10-01", "2025-01-01", doomsDateStr, 120),
+    //
+    (0, "2025-10-01", doomsDateStr, "2025-01-01", "2026-01-01", 120),
+    (0, "2025-10-01", "2026-02-01", "2026-01-01", doomsDateStr, 130),
+    //
+    (0, "2026-02-01", doomsDateStr, "2026-01-01", doomsDateStr, 145)
+  ).map(makeRowsBiDatoral)
+    .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "premium")
+    .orderBy("id", "premium", "known_from")
+
+  val dfMonthlyPremiumTimeStamp: DataFrame = List(
+    (0, "2022-11-13 0:0:0", "2023-06-30 23:59:59.999", "2023-01-01 0:0:0", finisTemporisString, 100),
+    // each year 1st October: new insurance tariffs entered in database
+    (0, "2023-10-01 0:0:0 ", finisTemporisString,       "2023-01-01 0:0:0",  "2023-12-31 23:59:59.999", 100),
+    (0, "2023-10-01 0:0:0",  "2024-09-30 23:59:59.999", "2024-01-01 0:0:0 ", finisTemporisString,       110),
+    //
+    (0, "2024-10-01 0:0:0 ", finisTemporisString,       "2024-01-01 0:0:0",  "2024-12-31 23:59:59.999", 110),
+    (0, "2024-10-01 0:0:0",  "2025-09-30 23:59:59.999", "2025-01-01 0:0:0 ", finisTemporisString,       120),
+    //
+    (0, "2025-10-01 0:0:0 ", finisTemporisString,       "2025-01-01 0:0:0",  "2025-12-31 23:59:59.999", 120),
+    (0, "2025-10-01 0:0:0",  "2026-01-31 23:59:59.999", "2026-01-01 0:0:0 ", finisTemporisString,       130),
+    //
+    (0, "2026-02-01 0:0:0 ", finisTemporisString, "2026-01-01 0:0:0 ", finisTemporisString, 145)
+  ).map(makeRowsBiTemporal)
+    .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "premium")
 }

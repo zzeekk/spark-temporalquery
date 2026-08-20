@@ -1,6 +1,7 @@
 package ch.zzeekk.spark.temporalquery.util.bilinear
 
 import ch.zzeekk.spark.temporalquery.interval.HalfOpenInterval
+import ch.zzeekk.spark.temporalquery.util.linear.LinearDoubleQueryUtil.LinearHalfOpenIntervalQueryConfig
 
 /**
  * Linear query utils for interval axis of type Double
@@ -13,4 +14,19 @@ import ch.zzeekk.spark.temporalquery.interval.HalfOpenInterval
  */
 object BiLinearDoubleQueryUtil extends BiLinearGenericQueryUtil[Double] {
   implicit val defaultHalfOpenIntervalDef: HalfOpenInterval[Double] = HalfOpenInterval(Double.NegativeInfinity, Double.PositiveInfinity)
+
+  def drop(bDblQc: BiLinearHalfOpenIntervalQueryConfig, fromColName: String): LinearHalfOpenIntervalQueryConfig = {
+
+    val reducedMap: Map[String, (String, HalfOpenInterval[Double])] = bDblQc.dimensionMap
+      .filterNot { case (f, _) => fromColName == f }
+
+    LinearHalfOpenIntervalQueryConfig(
+      dimensionColNameMap = reducedMap.map { case (f, (t, _)) => (f, t) },
+      additionalTechnicalColNames = bDblQc.additionalTechnicalColNames,
+      dimLt = bDblQc.dimLt,
+      intervalDef = reducedMap.head._2._2
+    )
+
+  }
+
 }

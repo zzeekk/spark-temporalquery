@@ -1,8 +1,6 @@
 package ch.zzeekk.spark.temporalquery.util.bilinear
 
-import ch.zzeekk.spark.temporalquery.TestUtils
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
-import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalTestUtils._
 import ch.zzeekk.spark.temporalquery.util.timestampOrdering
 import org.apache.spark.sql.functions.col
 import org.scalatest.flatspec.AnyFlatSpec
@@ -11,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import java.sql.Timestamp
 import scala.reflect.runtime.universe.typeTag
 
-class SVGexportTest extends AnyFlatSpec with Matchers with TestUtils {
+class SVGexportTest extends AnyFlatSpec with Matchers with BiTemporalTestUtils {
 
   import session.implicits._
   private implicit val timeOrdering: Ordering[Timestamp] = timestampOrdering

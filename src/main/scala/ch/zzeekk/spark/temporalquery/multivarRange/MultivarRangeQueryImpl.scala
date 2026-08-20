@@ -92,11 +92,11 @@ object MultivarRangeQueryImpl extends Logging {
     ).where(nonEmptyFilter)
   }
 
-  private[temporalquery] def getSlice[T: Ordering: TypeTag](
+  private[temporalquery] def getValues[T: Ordering: TypeTag](
       df: DataFrame,
       coords: Seq[T],
       mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
-  ): DataFrame = df.where(mrqc.getSliceExpression(coords))
+  ): DataFrame = df.where(mrqc.getValuesExpression(coords))
 
   private[temporalquery] def roundIntervalsToDiscreteTime[T: Ordering: TypeTag](
       df: DataFrame,
@@ -173,13 +173,27 @@ object MultivarRangeQueryImpl extends Logging {
       .map(key => coalesce(df1Renamed(s"$key$joinColPostFix1"), df2Renamed(s"$key$joinColPostFix2")).as(key))
     val colsDf1 = df1.columns.diff(commonColNames ++ mrqc.technicalColNames).map(df1(_))
     val colsDf2 = df2.columns.diff(commonColNames ++ mrqc.technicalColNames).map(df2(_))
-    // val timeColumns = List(greatest(mrqc.fromCol, mrqc.fromCol2).as(mrqc.fromColName), least(mrqc.toCol, mrqc.toCol2).as(mrqc.toColName))
     val timeColumns = mrqc.rangeDimensions.map { dim =>
       List(greatest(dim.fromCol, dim.fromCol2).as(dim.fromColName), least(dim.toCol, dim.toCol2).as(dim.toColName))
     }.reduce((x, y) => x ++ y)
     val selCols = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
     logger.info(s"(joinRanges) dfJoined.schema = ${dfJoined.schema.catalogString} ; selCols = ${selCols.mkString(",")}")
-    dfJoined.select(selCols: _*)
+
+    Try(dfJoined.select(selCols: _*)) match {
+      case Success(df) => df
+      case Failure(e)  =>
+        logger.error(
+          s"(joinRanges) FAILED: joinType = $joinType ; additionalJoinCondition = $additionalJoinCondition ; keys = (${keys.mkString(",")})"
+        )
+        logger.error(s"(joinRanges) FAILED: mrqc = $mrqc")
+        logger.error(s"(joinRanges) df1.printSchema():")
+        df1.printSchema()
+        logger.error(s"(joinRanges) df2.printSchema():")
+        df2.printSchema()
+        logger.error(s"(joinRanges) dfJoined.printSchema():")
+        dfJoined.printSchema()
+        throw e
+    }
   }
 
   private[temporalquery] def joinIntervalsWithKeysImpl[T: Ordering: TypeTag](
