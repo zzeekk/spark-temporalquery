@@ -33,6 +33,14 @@ class GenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Logging {
   ) extends ClosedMultivarRangeQueryConfig[T] {
     override def config2: GenericClosedIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
+
+    def drop(fromColNames: Seq[String]): GenericClosedIntervalQueryConfig = GenericClosedIntervalQueryConfig(
+      dimensionMap = dimensionMap.filterNot { case (f, _) => fromColNames.contains(f) },
+      additionalTechnicalColNames = additionalTechnicalColNames,
+      dimLt = dimLt
+    )
+      .copy(dimensionMap = dimensionMap.filterNot { case (f, _) => fromColNames.contains(f) })
+
   }
 
   object GenericClosedIntervalQueryConfig {
@@ -66,6 +74,13 @@ class GenericQueryUtil[T: Ordering: TypeTag] extends Serializable with Logging {
   ) extends HalfOpenMultivarRangeQueryConfig[T] {
     override def config2: GenericHalfOpenIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
+
+    def drop(fromColNames: Seq[String]): GenericHalfOpenIntervalQueryConfig = GenericHalfOpenIntervalQueryConfig(
+      dimensionMap = dimensionMap.filterNot { case (f, _) => fromColNames.contains(f) },
+      additionalTechnicalColNames = additionalTechnicalColNames,
+      dimLt = dimLt
+    )
+
   }
 
   object GenericHalfOpenIntervalQueryConfig {

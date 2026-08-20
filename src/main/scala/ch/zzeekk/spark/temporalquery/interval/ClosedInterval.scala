@@ -30,7 +30,7 @@ case class ClosedInterval[T: Ordering: TypeTag](
   override def isInIntervalExpr(valueCol: Column, fromCol: Column, toCol: Column): Column =
     fromCol <= valueCol && valueCol <= toCol
 
-  def isValidIntervalExpr(fromCol: Column, toCol: Column): Column =
+  def isNonEmptyExpr(fromCol: Column, toCol: Column): Column =
     fromCol <= toCol
 
   override def intervalJoinExpr(fromCol1: Column, toCol1: Column, fromCol2: Column, toCol2: Column): Column =

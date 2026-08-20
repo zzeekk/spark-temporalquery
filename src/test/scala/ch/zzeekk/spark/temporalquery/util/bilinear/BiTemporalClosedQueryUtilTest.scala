@@ -1,9 +1,9 @@
 package ch.zzeekk.spark.temporalquery.util.bilinear
 
+import ch.zzeekk.spark.temporalquery.saveString2File
 import ch.zzeekk.spark.temporalquery.util.MultivariateRangeLibrary.MultivariateRangeFrameExtensions
 import ch.zzeekk.spark.temporalquery.util._
-import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalTestUtils._
-import ch.zzeekk.spark.temporalquery.{saveString2File, TestUtils}
+import ch.zzeekk.spark.temporalquery.util.bilinear.BiTemporalClosedIntervalQueryUtil.BiTemporalDataFrameExtensions
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.{col, lit}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -11,12 +11,49 @@ import org.scalatest.matchers.should.Matchers
 
 import java.sql.Timestamp
 
-class BiTemporalClosedQueryUtilTest extends AnyFlatSpec with Matchers with TestUtils {
+class BiTemporalClosedQueryUtilTest extends AnyFlatSpec with Matchers with BiTemporalTestUtils {
 
   import session.implicits._
   private implicit val timeOrdering: Ordering[Timestamp] = timestampOrdering
   logger.info(s"BiTemporalQueryUtilTest: defaultBiTemporalConfig = $defaultBiTemporalConfig")
   private val fromCols: List[Column] = defaultBiTemporalConfig.rangeDimensions.map(_.fromCol)
+
+  "audit dfMonthlyPremium" should "return records which we knew too late" in {
+    val actual = dfMonthlyPremiumTimeStamp
+      .audit(List("id"), "known_from", "known_to", Timestamp.valueOf("2026-08-01 0:0:0"))
+    val expected = List(
+      (0, 100, None,      "2023-07-01 0:0:0", "2023-09-30 23:59:59.999"),
+      (0, 145, Some(130), "2026-01-01 0:0:0", "2026-01-31 23:59:59.999")
+    ).map(makeRowsWithTimeRangeEnd[Int, Int, Option[Int]])
+      .toDF("id", "_audit_premium", "premium", "valid_from", "valid_to")
+    val result = dfEqual(reorderCols(dfToReorder = actual, dfRef = expected), expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend", dfMonthlyPremiumTimeStamp)(reorderCols(actual, expected), expected)
+    result shouldBe true
+  }
+
+  "getDiagonal dfMap" should "return the diagonal of dfMap" in {
+    val actual = dfMap.getDiagonal()
+    val expected = List(
+      (0, "2018-01-01 0:0:0", "2018-02-28 23:59:59.999", "B"),
+      (0, "2018-01-01 0:0:0", "2018-01-31 23:59:59.999", "A"),
+      (0, "2018-02-05 0:0:0", "2018-03-03 23:59:59.999", "C"),
+      (0, "2018-02-20 0:0:0", "2018-03-31 23:59:59.999", "D")
+    ).map(makeRowsWithTimeRange).toDF("id", "_from", "_to", "img")
+    val result = dfEqual(reorderCols(actual, expected), expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend", dfMap)(reorderCols(actual, expected), expected)
+    result shouldBe true
+  }
+
+  "getDiagonal dfDirtyTimeRanges" should "return the diagonal of dfDirtyTimeRanges" in {
+    val actual = dfDirtyTimeRanges.getDiagonal()
+    val expected = List(
+      (0, "2021-01-01 01:00:00", "9999-12-31 23:59:59.999999", 18.17),
+      (1, "2020-03-03 01:00:00", "2021-12-01 02:34:56.1",      -2d)
+    ).map(makeRowsWithTimeRange).toDF("id", "_from", "_to", "value")
+    val result = dfEqual(reorderCols(actual, expected), expected)
+    if (!result) printFailedTestResult("rangeCleanupExtend", dfDirtyTimeRanges)(reorderCols(actual, expected), expected)
+    result shouldBe true
+  }
 
   "rangeCleanupExtend and rangeCombine" should "extend and combine dfLeft" in {
     val actual = dfLeft

@@ -1,12 +1,13 @@
 package ch.zzeekk.spark.temporalquery.multivarRange
 
 import ch.zzeekk.spark.temporalquery.Logging
-import ch.zzeekk.spark.temporalquery.interval.{IntervalDef, IntervalQueryDimension}
+import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, IntervalDef, IntervalQueryDimension}
+import ch.zzeekk.spark.temporalquery.util.anyToDouble
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, SubqueryAlias, UnaryNode}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{DataType, DateType, StructType, TimestampType}
 import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.slf4j.Logger
 import org.slf4j.helpers.NOPLogger
@@ -73,11 +74,29 @@ object MultivarRangeQueryImpl extends Logging {
   private val joinColPostFix1 = "__1"
   private val joinColPostFix2 = "__2"
 
-  private[temporalquery] def getSlice[T: Ordering: TypeTag](
+  private[temporalquery] def getDiagonal[T: Ordering: TypeTag](
+      df: DataFrame,
+      mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
+      fromColName: String,
+      toColName: String
+  ): DataFrame = {
+    // all interval defs of the dimension are either half-open or closed; no mixture possible
+    // so the non - emptiness expression is unique
+    // the resulting diagonal data frame uses the interval def,
+    // a priori with the finest discreteAxisDef
+    val nonEmptyFilter = mrqc.rangeIntervalDefs.head.isNonEmptyExpr(col(fromColName), col(toColName))
+    df.select(
+      df.columns.diff(mrqc.fromToColnames).map(col) ++
+        Array(greatest(mrqc.fromColnames.map(col): _*).as(fromColName),
+          least(mrqc.toColnames.map(col): _*).as(toColName)): _*
+    ).where(nonEmptyFilter)
+  }
+
+  private[temporalquery] def getValues[T: Ordering: TypeTag](
       df: DataFrame,
       coords: Seq[T],
       mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
-  ): DataFrame = df.where(mrqc.getSliceExpression(coords))
+  ): DataFrame = df.where(mrqc.getValuesExpression(coords))
 
   private[temporalquery] def roundIntervalsToDiscreteTime[T: Ordering: TypeTag](
       df: DataFrame,
@@ -86,7 +105,7 @@ object MultivarRangeQueryImpl extends Logging {
     val dims = clmrqc.rangeDimensions
     df.withColumns(colsMap = dims.map(d => (d.fromColName, d.intDef.getCeilExpr(col(d.fromColName)))).toMap)
       .withColumns(colsMap = dims.map(d => (d.toColName, d.intDef.getFloorExpr(col(d.toColName)))).toMap)
-      .where(clmrqc.isValidRangeExpr)
+      .where(clmrqc.isNonEmptyRangeExpr)
       // return columns in same order as provided
       .select(df.columns.map(col): _*)
   }
@@ -99,7 +118,7 @@ object MultivarRangeQueryImpl extends Logging {
     df
       .withColumns(colsMap = dims.map(d => (d.fromColName, d.intDef.getCeilExpr(col(d.fromColName)))).toMap)
       .withColumns(colsMap = dims.map(d => (d.toColName, d.intDef.getPredecessorExpr(col(d.toColName)))).toMap)
-      .where(clmrqc.isValidRangeExpr)
+      .where(clmrqc.isNonEmptyRangeExpr)
       // return columns in same order as provided
       .select(df.columns.map(col): _*)
   }
@@ -154,13 +173,27 @@ object MultivarRangeQueryImpl extends Logging {
       .map(key => coalesce(df1Renamed(s"$key$joinColPostFix1"), df2Renamed(s"$key$joinColPostFix2")).as(key))
     val colsDf1 = df1.columns.diff(commonColNames ++ mrqc.technicalColNames).map(df1(_))
     val colsDf2 = df2.columns.diff(commonColNames ++ mrqc.technicalColNames).map(df2(_))
-    // val timeColumns = List(greatest(mrqc.fromCol, mrqc.fromCol2).as(mrqc.fromColName), least(mrqc.toCol, mrqc.toCol2).as(mrqc.toColName))
     val timeColumns = mrqc.rangeDimensions.map { dim =>
       List(greatest(dim.fromCol, dim.fromCol2).as(dim.fromColName), least(dim.toCol, dim.toCol2).as(dim.toColName))
     }.reduce((x, y) => x ++ y)
     val selCols = commonCols ++ colsDf1 ++ colsDf2 ++ timeColumns
     logger.info(s"(joinRanges) dfJoined.schema = ${dfJoined.schema.catalogString} ; selCols = ${selCols.mkString(",")}")
-    dfJoined.select(selCols: _*)
+
+    Try(dfJoined.select(selCols: _*)) match {
+      case Success(df) => df
+      case Failure(e)  =>
+        logger.error(
+          s"(joinRanges) FAILED: joinType = $joinType ; additionalJoinCondition = $additionalJoinCondition ; keys = (${keys.mkString(",")})"
+        )
+        logger.error(s"(joinRanges) FAILED: mrqc = $mrqc")
+        logger.error(s"(joinRanges) df1.printSchema():")
+        df1.printSchema()
+        logger.error(s"(joinRanges) df2.printSchema():")
+        df2.printSchema()
+        logger.error(s"(joinRanges) dfJoined.printSchema():")
+        dfJoined.printSchema()
+        throw e
+    }
   }
 
   private[temporalquery] def joinIntervalsWithKeysImpl[T: Ordering: TypeTag](
@@ -189,9 +222,9 @@ object MultivarRangeQueryImpl extends Logging {
       s"(buildIntervalRanges) Your dataframe must not contain column $ptColName! df.columns = ${df.columns.mkString(",")}"
     )
     val keyCols = keys.map(col)
-    debugLog(s"(buildDimensionRanges) get start/end-points for every key: ${dim.intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)}")
+    debugLog(s"(buildDimensionRanges) get start/end-points for every key: ${dim.intDef.isNonEmptyExpr(dim.fromCol, dim.toCol)}")
     val dfPoints = df
-      .where(intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)) // filter invalid intervals
+      .where(intDef.isNonEmptyExpr(dim.fromCol, dim.toCol)) // filter invalid intervals
       .select(keyCols :+ dim.fromCol.as(ptColName): _*).union(
         df.select(keyCols :+
             intDef.getSuccessorExpr(dim.toCol).as(ptColName): _*)
@@ -513,8 +546,8 @@ object MultivarRangeQueryImpl extends Logging {
         s" ignoreColNames = ${ignoreColNames.mkString(",")} ; mrqc = $mrqc"
     )
     val dims = mrqc.rangeDimensions
-    val resultatCombine = dims.foldLeft(df.where(mrqc.isValidRangeExpr)) { case (df, dim) =>
-      combineDimensionRanges(df.where(mrqc.isValidRangeExpr), dim, mrqc.additionalTechnicalColNames, ignoreColNames)
+    val resultatCombine = dims.foldLeft(df.where(mrqc.isNonEmptyRangeExpr)) { case (df, dim) =>
+      combineDimensionRanges(df.where(mrqc.isNonEmptyRangeExpr), dim, mrqc.additionalTechnicalColNames, ignoreColNames)
     }
     if (logger.isDebugEnabled()) resultatCombine.createdLog("resultatCombine")
     if (mrqc.numDimensions == 1 || df.except(resultatCombine).isEmpty) {
@@ -719,5 +752,307 @@ object MultivarRangeQueryImpl extends Logging {
   ): DataFrame = df
     .withColumns(colsMap = dims.map(d => (d.fromCol2Name, col(d.fromColName))).toMap)
     .withColumns(colsMap = dims.map(d => (d.toCol2Name, col(d.toColName))).toMap)
+
+  /**
+   * Renders the first two interval dimensions of the DataFrame as an SVG string.
+   *
+   * Each row becomes a `<rect>` whose horizontal extent maps to the first interval dimension and
+   * whose vertical extent maps to the second; higher dimensions are ignored. A bounding rectangle
+   * (no fill, black border) frames the entire data space.
+   *
+   * Colour encoding of `valueCol`:
+   *   - Numeric columns (Double, Float, Long, Int, …): HSL heat-map from H=240 (blue, minimum
+   *     value) to H=0 (red, maximum value) through the full visible spectrum.
+   *   - Other types: a categorical palette of ten distinct colours.
+   *   - Null values: grey (#cccccc).
+   *
+   * For [[ClosedInterval]] dimensions the rendered rectangle extends to `successor(to)` so that the
+   * last discrete step is fully covered visually; for [[interval.HalfOpenInterval]] the `to` value
+   * is used directly. Rectangles are outlined only for closed intervals.
+   *
+   * Both axes share the same scale so that the aspect ratio of the data space is preserved; the
+   * longer axis fills up to 1024 px.
+   *
+   * @param valueCol
+   *   name of the column whose value determines the rectangle fill colour
+   * @param drawDiagonal
+   *   if true, draw a black line for the diagonal of the dimension space, i.e. the line containing
+   *   all points where the two dimensions' coordinates coincide. Only the part of that line lying
+   *   inside the viewbox is drawn; if the diagonal lies completely outside the viewbox, nothing is
+   *   drawn.
+   */
+  private[temporalquery] def toSvg[T: Ordering: TypeTag](
+      df: DataFrame,
+      valueCol: String,
+      svgMax: Double,
+      drawDiagonal: Boolean,
+      mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
+  ): String = {
+    require(1 < mrqc.numDimensions,
+      s"toSvg works only for multi-dimensional data but, numDimensions=${mrqc.numDimensions}")
+
+    val dim1 = mrqc.rangeDimensions.head
+    val dim2 = mrqc.rangeDimensions(1)
+    val isClosed = dim1.intDef.isInstanceOf[ClosedInterval[_]]
+
+    val clampedDf = {
+      val rawCols = mrqc.rangeDimensions.flatMap { dim =>
+        Seq(
+          s"_raw_${dim.fromColName}" -> col(dim.fromColName),
+          s"_raw_${dim.toColName}"   -> col(dim.toColName)
+        )
+      }.toMap
+      val clampCols = mrqc.rangeDimensions.flatMap { dim =>
+        val lo = lit(dim.lowerHorizon)
+        val hi = lit(dim.upperHorizon)
+        Seq(
+          dim.fromColName -> least(greatest(col(dim.fromColName), lo), hi),
+          dim.toColName   -> least(greatest(col(dim.toColName), lo), hi)
+        )
+      }.toMap
+      df.withColumns(rawCols).withColumns(clampCols)
+    }
+    val rows = clampedDf.collect()
+    if (rows.isEmpty) return """<svg xmlns="http://www.w3.org/2000/svg"/>"""
+
+    val schema = clampedDf.schema
+    val from1Idx = schema.fieldIndex(dim1.fromColName)
+    val to1Idx = schema.fieldIndex(dim1.toColName)
+    val from2Idx = schema.fieldIndex(dim2.fromColName)
+    val to2Idx = schema.fieldIndex(dim2.toColName)
+    val valueIdx = schema.fieldIndex(valueCol)
+    val rawFrom1Idx = schema.fieldIndex(s"_raw_${dim1.fromColName}")
+    val rawTo1Idx = schema.fieldIndex(s"_raw_${dim1.toColName}")
+    val rawFrom2Idx = schema.fieldIndex(s"_raw_${dim2.fromColName}")
+    val rawTo2Idx = schema.fieldIndex(s"_raw_${dim2.toColName}")
+
+    // For a closed interval [from, to] the visual extent ends at successor(to): the "to" value
+    // is the last *included* discrete step, so the rectangle must cover one full step beyond it.
+    // For a half-open interval [from, to) the "to" value is already the exclusive upper bound.
+    // We precompute a per-dimension converter (Any => Double) to avoid passing the existential
+    // intDef type to a typed parameter — Scala 2 won't auto-upcast the wildcard.
+    def toDoubleVia(intDef: Any): Any => Double = intDef match {
+      case ci: ClosedInterval[T @unchecked] => (v: Any) => anyToDouble(ci.successor(v.asInstanceOf[T]))
+      case _                                => anyToDouble
+    }
+    val visualTo1 = toDoubleVia(dim1.intDef)
+    val visualTo2 = toDoubleVia(dim2.intDef)
+
+    // (from1, visualTo1, from2, visualTo2, value, rawFrom1, rawTo1, rawFrom2, rawTo2)
+    val rects = rows.map { row =>
+      (anyToDouble(row(from1Idx)), visualTo1(row(to1Idx)),
+        anyToDouble(row(from2Idx)), visualTo2(row(to2Idx)),
+        row(valueIdx),
+        row(rawFrom1Idx), row(rawTo1Idx), row(rawFrom2Idx), row(rawTo2Idx))
+    }
+
+    // lowerHorizon / upperHorizon are sentinel "infinity" values (e.g. 1970-01-01 / 9999-12-31).
+    // We extract them via a pattern match on Any to avoid Scala 2 existential-type restrictions.
+    def horizonsOf(intDef: Any): (Double, Double) = intDef match {
+      case id: IntervalDef[_] => (anyToDouble(id.lowerHorizon), anyToDouble(id.upperHorizon))
+      case _                  => (Double.NegativeInfinity,      Double.PositiveInfinity)
+    }
+    val (lowerH1, upperH1) = horizonsOf(dim1.intDef)
+    val (lowerH2, upperH2) = horizonsOf(dim2.intDef)
+
+    // Derive the viewable range from the non-sentinel ("real") values only, then pad by 10 %.
+    // This prevents the plot from being dominated by intervals that span all the way to the
+    // infinity sentinels, which would compress all the interesting data into a thin green strip.
+    def realBounds(vals: Array[Double], lo: Double, hi: Double): (Double, Double) = {
+      val real = vals.filterNot(v => v == lo || v == hi)
+      if (real.isEmpty) (vals.min, vals.max)
+      else {
+        val rMin = real.min
+        val rMax = real.max
+        val pad = if (rMax == rMin) math.abs(rMin) * 0.1 + 1d else (rMax - rMin) * 0.1
+        (rMin - pad, rMax + pad)
+      }
+    }
+    val (viewMinX, viewMaxX) = realBounds(rects.map(_._1) ++ rects.map(_._2), lowerH1, upperH1)
+    val (viewMinY, viewMaxY) = realBounds(rects.map(_._3) ++ rects.map(_._4), lowerH2, upperH2)
+
+    val dataW: Double = viewMaxX - viewMinX
+    val dataH: Double = viewMaxY - viewMinY
+
+    val scale = if (dataW < 0.1d && dataH < 0.1d) 1d else svgMax / math.max(dataW, dataH)
+
+    val svgW = math.ceil(dataW * scale).toInt max 1
+    val svgH = math.ceil(dataH * scale).toInt max 1
+
+    // Three ticks per axis, at the beginning, the middle and the end of the visible range,
+    // labelled with the actual coordinate value (formatted according to the dimension's type).
+    val fs = 11 // column-name caption font size
+    val tickFs = 10 // tick value label font size
+    val tickLen = 4 // tick mark length, in px
+    def formatTick(v: Double, dataType: DataType): String = dataType match {
+      case DateType      => new java.sql.Date(v.round).toString
+      case TimestampType => new java.sql.Timestamp(v.round).toString
+      case _             =>
+        val rounded = math.round(v * 1000d) / 1000d
+        if (rounded == rounded.toLong.toDouble) rounded.toLong.toString else rounded.toString
+    }
+    val dim1Type = schema(dim1.fromColName).dataType
+    val dim2Type = schema(dim2.fromColName).dataType
+    val xTickValues = Seq(viewMinX, (viewMinX + viewMaxX) / 2, viewMaxX)
+    val yTickValues = Seq(viewMinY, (viewMinY + viewMaxY) / 2, viewMaxY)
+    val xTickLabels = xTickValues.map(formatTick(_, dim1Type))
+    val yTickLabels = yTickValues.map(formatTick(_, dim2Type))
+
+    // Margins outside the data rectangle, sized to fit the tick labels plus the existing
+    // from/to column-name captions. Left margin layout (left to right): rotated caption strip,
+    // gap, Y tick labels, gap, Y tick marks. Bottom margin layout (top to bottom): X tick marks,
+    // gap, X tick labels, gap, column-name caption line.
+    val leftCaptionW = fs + 4
+    val yTickLabelW = math.ceil(yTickLabels.map(_.length).max * tickFs * 0.6).toInt
+    val marginLeft = leftCaptionW + 4 + yTickLabelW + 3 + tickLen
+    val marginBottom = tickLen + 2 + tickFs + 3 + fs + 3
+    val marginTop = math.ceil(tickFs / 2.0).toInt + 4
+    val totalW = marginLeft + svgW
+    val totalH = marginTop + svgH + marginBottom
+
+    // Data rectangle occupies [marginLeft, marginLeft+svgW) × [marginTop, marginTop+svgH).
+    // Coordinates that map outside this area are clipped by SVG's overflow:hidden.
+    def sx(x: Double): Double = marginLeft + (x - viewMinX) * scale
+    def sy(y: Double): Double = marginTop + svgH - (y - viewMinY) * scale
+
+    // Convert HSL (h∈[0,360), s∈[0,1], l∈[0,1]) to a hex colour string
+    def hsl2hex(h: Double, s: Double, l: Double): String = {
+      val c = (1d - math.abs(2 * l - 1)) * s
+      val x = c * (1d - math.abs(h / 60 % 2 - 1))
+      val m = l - c / 2
+      val (r1, g1, b1) =
+        if (h < 60) (c, x, 0d)
+        else if (h < 120) (x, c, 0d)
+        else if (h < 180) (0d, c, x)
+        else if (h < 240) (0d, x, c)
+        else if (h < 300) (x, 0d, c)
+        else (c,              0d, x)
+      f"#${((r1 + m) * 255).round}%02x${((g1 + m) * 255).round}%02x${((b1 + m) * 255).round}%02x"
+    }
+
+    val nonNullValues = rects.flatMap { case (_, _, _, _, v, _, _, _, _) => Option(v) }
+    val isNumeric = nonNullValues.nonEmpty && nonNullValues.forall(_.isInstanceOf[java.lang.Number])
+
+    val fillOf: Any => String = if (isNumeric) {
+      val nums = nonNullValues.map(_.asInstanceOf[java.lang.Number].doubleValue())
+      val minVal = nums.min
+      val range = nums.max - minVal
+      (v: Any) =>
+        v match {
+          case null                => "#cccccc"
+          case n: java.lang.Number =>
+            val t = if (range == 0) 0.5 else (n.doubleValue() - minVal) / range
+            hsl2hex(240d * (1d - t), 1d, 0.5) // hue: 240 = blue, 0 = red
+          case _ => "#cccccc"
+        }
+    } else {
+      val palette = Array("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf")
+      val catMap = nonNullValues.distinct.zipWithIndex
+        .map { case (v, i) => v -> palette(i % palette.length) }.toMap
+      (v: Any) => if (v == null) "#cccccc" else catMap.getOrElse(v, "#808080")
+    }
+
+    val dw = math.min(totalW, totalH) / 100d
+    val strokeAttr =
+      if (isClosed) """ stroke="black" stroke-width="0.5""""
+      else f""" stroke="black" stroke-width="0.5" stroke-dasharray="$dw%.2f,$dw%.2f""""
+
+    val sb = new StringBuilder
+    sb.append(s"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $totalW $totalH" width="$totalW"  height="$totalH">\n""")
+    // Data bounding rectangle – positioned at (marginLeft, marginTop), sized svgW × svgH
+    sb.append(
+      s"""  <rect x="$marginLeft" y="$marginTop" width="$svgW" height="$svgH" fill="none" stroke="black" stroke-width="1"/>\n"""
+    )
+    // X axis ticks: beginning/middle/end of dim1's visible range, below the bounding rectangle.
+    val xTickAnchors = Seq("start", "middle", "end")
+    for (((tickX, label), anchor) <- xTickValues.map(sx).zip(xTickLabels).zip(xTickAnchors)) {
+      val yLine = marginTop + svgH
+      sb.append(
+        f"""  <line x1="$tickX%.2f" y1="$yLine" x2="$tickX%.2f" y2="${yLine + tickLen}" stroke="black" stroke-width="1"/>\n"""
+      )
+      sb.append(
+        f"""  <text x="$tickX%.2f" y="${yLine + tickLen + tickFs}" font-size="$tickFs" fill="#444" text-anchor="$anchor">$label</text>\n"""
+      )
+    }
+    // Y axis ticks: beginning/middle/end of dim2's visible range, left of the bounding rectangle.
+    for ((tickY, label) <- yTickValues.map(sy).zip(yTickLabels)) {
+      sb.append(
+        f"""  <line x1="${marginLeft -
+            tickLen}%.2f" y1="$tickY%.2f" x2="$marginLeft%.2f" y2="$tickY%.2f" stroke="black" stroke-width="1"/>\n"""
+      )
+      sb.append(
+        f"""  <text x="${marginLeft - tickLen -
+            3}%.2f" y="$tickY%.2f" font-size="$tickFs" fill="#444" text-anchor="end" dominant-baseline="middle">$label</text>\n"""
+      )
+    }
+    // Column-name captions in the margin areas, outside the tick labels.
+    val xCenter = leftCaptionW / 2 // centre of the leftmost strip for rotated Y captions
+    val yLow = marginTop + svgH * 3 / 4 // lower-half position for "from" caption
+    val yHigh = marginTop + svgH / 4 // upper-half position for "to" caption
+    val yText = totalH - 3 // baseline of the bottom-most caption line
+    sb.append(s"""  <text x="${marginLeft +
+        2}" y="$yText" font-size="$fs" fill="#444" text-anchor="start">${dim1.fromColName}</text>\n""")
+    sb.append(s"""  <text x="${totalW - 2}" y="$yText" font-size="$fs" fill="#444" text-anchor="end">${dim1.toColName}</text>\n""")
+    sb.append(
+      s"""  <text x="$xCenter" y="$yLow" font-size="$fs" fill="#444" text-anchor="middle" transform="rotate(-90,$xCenter,$yLow)">${dim2.fromColName}</text>\n"""
+    )
+    sb.append(
+      s"""  <text x="$xCenter" y="$yHigh" font-size="$fs" fill="#444" text-anchor="middle" transform="rotate(-90,$xCenter,$yHigh)">${dim2.toColName}</text>\n"""
+    )
+    for ((from1, to1, from2, to2, value, rawF1, rawT1, rawF2, rawT2) <- rects) {
+      sb.append(
+        s"  <!-- ${dim1.fromColName}=$rawF1 ${dim1.toColName}=$rawT1 ${dim2.fromColName}=$rawF2 ${dim2.toColName}=$rawT2 value=$value -->\n"
+      )
+      val x = sx(from1)
+      val y = sy(to2)
+      val w = (to1 - from1) * scale
+      val h = (to2 - from2) * scale
+      sb.append(f"""  <rect x="$x%.2f" y="$y%.2f" width="$w%.2f" height="$h%.2f" fill="${fillOf(value)}"$strokeAttr/>\n""")
+      // Intersect with the data area [marginLeft, marginLeft+svgW] × [marginTop, marginTop+svgH]
+      val vx0 = math.max(x, marginLeft.toDouble)
+      val vx1 = math.min(x + w, (marginLeft + svgW).toDouble)
+      val vy0 = math.max(y, marginTop.toDouble)
+      val vy1 = math.min(y + h, (marginTop + svgH).toDouble)
+      val visW = vx1 - vx0
+      val visH = vy1 - vy0
+      if (visW > 0 && visH > 0) {
+        // Cap the font size so the rendered text stays within the rectangle: one bound keeps a
+        // single line of text from overflowing along the rectangle's short side, while the other
+        // bound accounts for the number of characters, using an average glyph width of ~0.6 *
+        // font-size that holds for common sans-serif fonts. For tall, narrow rectangles (height
+        // more than 3x the width) the text is rotated 90° so it runs along the height, which is
+        // then the constraint the character count is measured against, allowing a larger font.
+        val numChars = math.max(String.valueOf(value).length, 1)
+        val rotate = visH > 3 * visW
+        val (fitW, fitH) = if (rotate) (visH, visW) else (visW, visH)
+        val fontSizeByHeight = fitH * 0.8
+        val fontSizeByWidth = fitW / (numChars * 0.6)
+        val fontSize = math.max(1d, math.min(fontSizeByHeight, fontSizeByWidth)) * 0.8
+        val cx = (vx0 + vx1) / 2
+        val cy = (vy0 + vy1) / 2
+        val cxStr = f"$cx%.2f"
+        val cyStr = f"$cy%.2f"
+        val transformAttr = if (rotate) " transform=\"rotate(-90," + cxStr + "," + cyStr + ")\"" else ""
+        sb.append(
+          f"""  <text x="$cxStr" y="$cyStr" font-size="$fontSize%.2f" fill="black" text-anchor="middle" dominant-baseline="middle"$transformAttr>$value</text>\n"""
+        )
+      }
+    }
+    if (drawDiagonal) {
+      // The diagonal of the dimension space is the line where dim1's coordinate equals dim2's,
+      // i.e. all points (t, t). Clip it against the viewbox [viewMinX,viewMaxX] x [viewMinY,viewMaxY]:
+      // t must lie in both dimensions' visible ranges at once.
+      val tLo = math.max(viewMinX, viewMinY)
+      val tHi = math.min(viewMaxX, viewMaxY)
+      if (tLo <= tHi) {
+        val (x1, y1) = (sx(tLo), sy(tLo))
+        val (x2, y2) = (sx(tHi), sy(tHi))
+        sb.append(f"""  <line x1="$x1%.2f" y1="$y1%.2f" x2="$x2%.2f" y2="$y2%.2f" stroke="black" stroke-width="1"/>\n""")
+      }
+    }
+    sb.append("</svg>")
+    sb.toString()
+  }
 
 }

@@ -39,7 +39,7 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
     require(
       numDimensions == 2,
       s"BiLinearClosedIntervalQueryConfig must have exactly 2 dimension but numDimensions = $numDimensions!" +
-        s"You may want to use MultivarRangeQueryConfig directly!"
+        s" You may want to use MultivarRangeQueryConfig directly!"
     )
     override def config2: BiLinearClosedIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })
@@ -80,7 +80,7 @@ class BiLinearGenericQueryUtil[T: Ordering: TypeTag] extends Serializable with L
     require(
       numDimensions == 2,
       s"BiLinearHalfOpenIntervalQueryConfig must have exactly 2 dimension but numDimensions = $numDimensions!" +
-        s"You may want to use MultivarRangeQueryConfig directly!"
+        s" You may want to use MultivarRangeQueryConfig directly!"
     )
     override def config2: BiLinearHalfOpenIntervalQueryConfig = this
       .copy(dimensionMap = dimensionMap.map { case (f, (t, i)) => (increaseColNameNb(f), (increaseColNameNb(t), i)) })

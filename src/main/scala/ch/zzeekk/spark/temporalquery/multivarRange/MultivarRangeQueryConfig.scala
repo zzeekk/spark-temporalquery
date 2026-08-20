@@ -53,7 +53,9 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   val numDimensions: Int = dimensionMap.size
   lazy val iter: NumericRange.Exclusive[Int] = new NumericRange.Exclusive(start = 0, end = numDimensions, step = 1)
 
-  def fromToColnames: List[String] = (dimensionMap.keys ++ dimensionMap.values.map(_._1)).toList.sorted
+  def fromColnames: List[String] = dimensionMap.keys.toList.sorted
+  def toColnames: List[String] = dimensionMap.values.map(_._1).toList.sorted
+  def fromToColnames: List[String] = (fromColnames ++ toColnames).sorted
   def additionalTechnicalColNames: List[String]
 
   // copy of configuration with 2nd pair of from/to column names used as main column pair
@@ -205,8 +207,8 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   final val isInBoundariesExpr: Seq[Column] => Column = checkValue(checkFun = (valCol, dim) =>
     valCol.between(lit(dim.lowerHorizon), lit(dim.upperHorizon)))
 
-  final def isValidRangeExpr: Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
-    dim.intDef.isValidIntervalExpr(dim.fromCol, dim.toCol)
+  final def isNonEmptyRangeExpr: Column = applyBooleanColumnFunctionToIntervalDefs(dim =>
+    dim.intDef.isNonEmptyExpr(dim.fromCol, dim.toCol)
   )
 
   final def joinRangeExpr(df1: DataFrame, df2: DataFrame)(implicit logger: Logger): Column = {
@@ -217,10 +219,10 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
     joinCol
   }
 
-  final def getSliceExpressionFromCols(values: Seq[Column]): Column = checkValue(
+  final def getValuesExpressionFromCols(values: Seq[Column]): Column = checkValue(
     checkFun = { case (col, iqd) => iqd.isInIntervalExpr(col) }
   )(values)
 
-  final def getSliceExpression(values: Seq[T]): Column = getSliceExpressionFromCols(values.map(lit))
+  final def getValuesExpression(values: Seq[T]): Column = getValuesExpressionFromCols(values.map(lit))
 
 }
