@@ -1,9 +1,9 @@
 package ch.zzeekk.spark.temporalquery.util
 
 import ch.zzeekk.spark.temporalquery.Logging
-import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, IntervalDef}
+import ch.zzeekk.spark.temporalquery.interval.IntervalDef
 import ch.zzeekk.spark.temporalquery.multivarRange.{ClosedMultivarRangeQueryConfig, MultivarRangeQueryConfig, MultivarRangeQueryImpl}
-import org.apache.spark.sql.functions.{col, greatest, least, lit}
+import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.{Column, DataFrame}
 import org.slf4j.Logger
 
@@ -275,7 +275,7 @@ object MultivariateRangeLibrary extends Logging {
      *   - Other types: a categorical palette of ten distinct colours.
      *   - Null values: grey (#cccccc).
      *
-     * For [[ClosedInterval]] dimensions the rendered rectangle extends to `successor(to)` so that
+     * For [[interval.ClosedInterval]] dimensions the rendered rectangle extends to `successor(to)` so that
      * the last discrete step is fully covered visually; for [[interval.HalfOpenInterval]] the `to`
      * value is used directly. Rectangles are outlined only for closed intervals.
      *
@@ -292,222 +292,7 @@ object MultivariateRangeLibrary extends Logging {
      */
     def toSvg[T: Ordering: TypeTag](valueCol: String, svgMax: Double = 1024d, drawDiagonal: Boolean = false)(implicit
         mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
-    ): String = {
-      require(1 < mrqc.numDimensions,
-        s"toSvg works only for multi-dimensional data but, numDimensions=${mrqc.numDimensions}")
-
-      val dim1 = mrqc.rangeDimensions.head
-      val dim2 = mrqc.rangeDimensions(1)
-      val isClosed = dim1.intDef.isInstanceOf[ClosedInterval[_]]
-
-      val clampedDf = {
-        val rawCols = mrqc.rangeDimensions.flatMap { dim =>
-          Seq(
-            s"_raw_${dim.fromColName}" -> col(dim.fromColName),
-            s"_raw_${dim.toColName}"   -> col(dim.toColName)
-          )
-        }.toMap
-        val clampCols = mrqc.rangeDimensions.flatMap { dim =>
-          val lo = lit(dim.lowerHorizon)
-          val hi = lit(dim.upperHorizon)
-          Seq(
-            dim.fromColName -> least(greatest(col(dim.fromColName), lo), hi),
-            dim.toColName   -> least(greatest(col(dim.toColName), lo), hi)
-          )
-        }.toMap
-        df1.withColumns(rawCols).withColumns(clampCols)
-      }
-      val rows = clampedDf.collect()
-      if (rows.isEmpty) return """<svg xmlns="http://www.w3.org/2000/svg"/>"""
-
-      val schema = clampedDf.schema
-      val from1Idx = schema.fieldIndex(dim1.fromColName)
-      val to1Idx = schema.fieldIndex(dim1.toColName)
-      val from2Idx = schema.fieldIndex(dim2.fromColName)
-      val to2Idx = schema.fieldIndex(dim2.toColName)
-      val valueIdx = schema.fieldIndex(valueCol)
-      val rawFrom1Idx = schema.fieldIndex(s"_raw_${dim1.fromColName}")
-      val rawTo1Idx = schema.fieldIndex(s"_raw_${dim1.toColName}")
-      val rawFrom2Idx = schema.fieldIndex(s"_raw_${dim2.fromColName}")
-      val rawTo2Idx = schema.fieldIndex(s"_raw_${dim2.toColName}")
-
-      // For a closed interval [from, to] the visual extent ends at successor(to): the "to" value
-      // is the last *included* discrete step, so the rectangle must cover one full step beyond it.
-      // For a half-open interval [from, to) the "to" value is already the exclusive upper bound.
-      // We precompute a per-dimension converter (Any => Double) to avoid passing the existential
-      // intDef type to a typed parameter — Scala 2 won't auto-upcast the wildcard.
-      def toDoubleVia(intDef: Any): Any => Double = intDef match {
-        case ci: ClosedInterval[T @unchecked] => (v: Any) => anyToDouble(ci.successor(v.asInstanceOf[T]))
-        case _                                => anyToDouble
-      }
-      val visualTo1 = toDoubleVia(dim1.intDef)
-      val visualTo2 = toDoubleVia(dim2.intDef)
-
-      // (from1, visualTo1, from2, visualTo2, value, rawFrom1, rawTo1, rawFrom2, rawTo2)
-      val rects = rows.map { row =>
-        (anyToDouble(row(from1Idx)), visualTo1(row(to1Idx)),
-          anyToDouble(row(from2Idx)), visualTo2(row(to2Idx)),
-          row(valueIdx),
-          row(rawFrom1Idx), row(rawTo1Idx), row(rawFrom2Idx), row(rawTo2Idx))
-      }
-
-      // lowerHorizon / upperHorizon are sentinel "infinity" values (e.g. 1970-01-01 / 9999-12-31).
-      // We extract them via a pattern match on Any to avoid Scala 2 existential-type restrictions.
-      def horizonsOf(intDef: Any): (Double, Double) = intDef match {
-        case id: IntervalDef[_] => (anyToDouble(id.lowerHorizon), anyToDouble(id.upperHorizon))
-        case _                  => (Double.NegativeInfinity,      Double.PositiveInfinity)
-      }
-      val (lowerH1, upperH1) = horizonsOf(dim1.intDef)
-      val (lowerH2, upperH2) = horizonsOf(dim2.intDef)
-
-      // Derive the viewable range from the non-sentinel ("real") values only, then pad by 10 %.
-      // This prevents the plot from being dominated by intervals that span all the way to the
-      // infinity sentinels, which would compress all the interesting data into a thin green strip.
-      def realBounds(vals: Array[Double], lo: Double, hi: Double): (Double, Double) = {
-        val real = vals.filterNot(v => v == lo || v == hi)
-        if (real.isEmpty) (vals.min, vals.max)
-        else {
-          val rMin = real.min
-          val rMax = real.max
-          val pad = if (rMax == rMin) math.abs(rMin) * 0.1 + 1d else (rMax - rMin) * 0.1
-          (rMin - pad, rMax + pad)
-        }
-      }
-      val (viewMinX, viewMaxX) = realBounds(rects.map(_._1) ++ rects.map(_._2), lowerH1, upperH1)
-      val (viewMinY, viewMaxY) = realBounds(rects.map(_._3) ++ rects.map(_._4), lowerH2, upperH2)
-
-      val dataW: Double = viewMaxX - viewMinX
-      val dataH: Double = viewMaxY - viewMinY
-
-      val scale = if (dataW < 0.1d && dataH < 0.1d) 1d else svgMax / math.max(dataW, dataH)
-
-      val svgW = math.ceil(dataW * scale).toInt max 1
-      val svgH = math.ceil(dataH * scale).toInt max 1
-
-      // Margins outside the data rectangle for axis labels.
-      val marginLeft = 20
-      val marginBottom = 18
-      val totalW = marginLeft + svgW
-      val totalH = svgH + marginBottom
-
-      // Data rectangle occupies [marginLeft, totalW) × [0, svgH).
-      // Coordinates that map outside this area are clipped by SVG's overflow:hidden.
-      def sx(x: Double): Double = marginLeft + (x - viewMinX) * scale
-      def sy(y: Double): Double = svgH - (y - viewMinY) * scale
-
-      // Convert HSL (h∈[0,360), s∈[0,1], l∈[0,1]) to a hex colour string
-      def hsl2hex(h: Double, s: Double, l: Double): String = {
-        val c = (1d - math.abs(2 * l - 1)) * s
-        val x = c * (1d - math.abs(h / 60 % 2 - 1))
-        val m = l - c / 2
-        val (r1, g1, b1) =
-          if (h < 60) (c, x, 0d)
-          else if (h < 120) (x, c, 0d)
-          else if (h < 180) (0d, c, x)
-          else if (h < 240) (0d, x, c)
-          else if (h < 300) (x, 0d, c)
-          else (c,              0d, x)
-        f"#${((r1 + m) * 255).round}%02x${((g1 + m) * 255).round}%02x${((b1 + m) * 255).round}%02x"
-      }
-
-      val nonNullValues = rects.flatMap { case (_, _, _, _, v, _, _, _, _) => Option(v) }
-      val isNumeric = nonNullValues.nonEmpty && nonNullValues.forall(_.isInstanceOf[java.lang.Number])
-
-      val fillOf: Any => String = if (isNumeric) {
-        val nums = nonNullValues.map(_.asInstanceOf[java.lang.Number].doubleValue())
-        val minVal = nums.min
-        val range = nums.max - minVal
-        (v: Any) =>
-          v match {
-            case null                => "#cccccc"
-            case n: java.lang.Number =>
-              val t = if (range == 0) 0.5 else (n.doubleValue() - minVal) / range
-              hsl2hex(240d * (1d - t), 1d, 0.5) // hue: 240 = blue, 0 = red
-            case _ => "#cccccc"
-          }
-      } else {
-        val palette = Array("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
-          "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf")
-        val catMap = nonNullValues.distinct.zipWithIndex
-          .map { case (v, i) => v -> palette(i % palette.length) }.toMap
-        (v: Any) => if (v == null) "#cccccc" else catMap.getOrElse(v, "#808080")
-      }
-
-      val strokeAttr = if (isClosed) """ stroke="black" stroke-width="0.5"""" else ""
-
-      val sb = new StringBuilder
-      sb.append(s"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $totalW $totalH" width="$totalW"  height="$totalH">\n""")
-      // Data bounding rectangle – positioned at (marginLeft, 0), sized svgW × svgH
-      sb.append(s"""  <rect x="$marginLeft" y="0" width="$svgW" height="$svgH" fill="none" stroke="black" stroke-width="1"/>\n""")
-      // Axis labels in the margin areas, outside the data rectangle
-      val fs = 11
-      val xCenter = marginLeft / 2 // centre of left margin for rotated Y labels
-      val yLow = svgH * 3 / 4 // lower-half position for "from" label
-      val yHigh = svgH / 4 // upper-half position for "to" label
-      val yText = svgH + marginBottom - 4 // baseline in bottom margin
-      sb.append(s"""  <text x="${marginLeft +
-          2}" y="$yText" font-size="$fs" fill="#444" text-anchor="start">${dim1.fromColName}</text>\n""")
-      sb.append(s"""  <text x="${totalW - 2}" y="$yText" font-size="$fs" fill="#444" text-anchor="end">${dim1.toColName}</text>\n""")
-      sb.append(
-        s"""  <text x="$xCenter" y="$yLow" font-size="$fs" fill="#444" text-anchor="middle" transform="rotate(-90,$xCenter,$yLow)">${dim2.fromColName}</text>\n"""
-      )
-      sb.append(
-        s"""  <text x="$xCenter" y="$yHigh" font-size="$fs" fill="#444" text-anchor="middle" transform="rotate(-90,$xCenter,$yHigh)">${dim2.toColName}</text>\n"""
-      )
-      for ((from1, to1, from2, to2, value, rawF1, rawT1, rawF2, rawT2) <- rects) {
-        sb.append(
-          s"  <!-- ${dim1.fromColName}=$rawF1 ${dim1.toColName}=$rawT1 ${dim2.fromColName}=$rawF2 ${dim2.toColName}=$rawT2 value=$value -->\n"
-        )
-        val x = sx(from1)
-        val y = sy(to2)
-        val w = (to1 - from1) * scale
-        val h = (to2 - from2) * scale
-        sb.append(f"""  <rect x="$x%.2f" y="$y%.2f" width="$w%.2f" height="$h%.2f" fill="${fillOf(value)}"$strokeAttr/>\n""")
-        // Intersect with the data area [marginLeft, marginLeft+svgW] × [0, svgH]
-        val vx0 = math.max(x, marginLeft.toDouble)
-        val vx1 = math.min(x + w, (marginLeft + svgW).toDouble)
-        val vy0 = math.max(y, 0d)
-        val vy1 = math.min(y + h, svgH.toDouble)
-        val visW = vx1 - vx0
-        val visH = vy1 - vy0
-        if (visW > 0 && visH > 0) {
-          // Cap the font size so the rendered text stays within the rectangle: one bound keeps a
-          // single line of text from overflowing along the rectangle's short side, while the other
-          // bound accounts for the number of characters, using an average glyph width of ~0.6 *
-          // font-size that holds for common sans-serif fonts. For tall, narrow rectangles (height
-          // more than 3x the width) the text is rotated 90° so it runs along the height, which is
-          // then the constraint the character count is measured against, allowing a larger font.
-          val numChars = math.max(String.valueOf(value).length, 1)
-          val rotate = visH > 3 * visW
-          val (fitW, fitH) = if (rotate) (visH, visW) else (visW, visH)
-          val fontSizeByHeight = fitH * 0.8
-          val fontSizeByWidth = fitW / (numChars * 0.6)
-          val fontSize = math.max(1d, math.min(fontSizeByHeight, fontSizeByWidth))
-          val cx = (vx0 + vx1) / 2
-          val cy = (vy0 + vy1) / 2
-          val cxStr = f"$cx%.2f"
-          val cyStr = f"$cy%.2f"
-          val transformAttr = if (rotate) " transform=\"rotate(-90," + cxStr + "," + cyStr + ")\"" else ""
-          sb.append(
-            f"""  <text x="$cxStr" y="$cyStr" font-size="$fontSize%.2f" fill="black" text-anchor="middle" dominant-baseline="middle"$transformAttr>$value</text>\n"""
-          )
-        }
-      }
-      if (drawDiagonal) {
-        // The diagonal of the dimension space is the line where dim1's coordinate equals dim2's,
-        // i.e. all points (t, t). Clip it against the viewbox [viewMinX,viewMaxX] x [viewMinY,viewMaxY]:
-        // t must lie in both dimensions' visible ranges at once.
-        val tLo = math.max(viewMinX, viewMinY)
-        val tHi = math.min(viewMaxX, viewMaxY)
-        if (tLo <= tHi) {
-          val (x1, y1) = (sx(tLo), sy(tLo))
-          val (x2, y2) = (sx(tHi), sy(tHi))
-          sb.append(f"""  <line x1="$x1%.2f" y1="$y1%.2f" x2="$x2%.2f" y2="$y2%.2f" stroke="black" stroke-width="1"/>\n""")
-        }
-      }
-      sb.append("</svg>")
-      sb.toString()
-    }
+    ): String = MultivarRangeQueryImpl.toSvg(df1, valueCol, svgMax, drawDiagonal, mrqc)
 
   }
 
