@@ -25,9 +25,14 @@ object MultivariateRangeLibrary extends Logging {
    */
   implicit class MultivariateRangeFrameExtensions(df1: DataFrame) {
 
+    def getDiagonal[T: Ordering: TypeTag](
+        fromColName: String = "_from",
+        toColName: String = "_to"
+    )(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]): DataFrame =
+      MultivarRangeQueryImpl.getDiagonal(df1, mrqc, fromColName, toColName)
+
     def getSlice[T: Ordering: TypeTag](coords: Seq[T])(implicit mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]): DataFrame =
-      MultivarRangeQueryImpl
-        .getSlice(df1, coords, mrqc)
+      MultivarRangeQueryImpl.getSlice(df1, coords, mrqc)
 
     /**
      * Implements an inner join of historical data over a list of equally named columns
@@ -251,8 +256,8 @@ object MultivariateRangeLibrary extends Logging {
       MultivarRangeQueryImpl.roundIntervalsToDiscreteTime(df1, clmrqc)
 
     /**
-     * Transforms [[DataFrame]] with dense time, half open time intervals [fromColName , toColName
-     * [, to discrete time ([fromColName , toColName])
+     * Transforms [[DataFrame]] with dense time, half open time intervals [fromColName , toColName[
+     * to discrete time ([fromColName , toColName])
      *
      * Note: This function needs TemporalQueryConfig with a ClosedInterval definition
      *
@@ -275,9 +280,9 @@ object MultivariateRangeLibrary extends Logging {
      *   - Other types: a categorical palette of ten distinct colours.
      *   - Null values: grey (#cccccc).
      *
-     * For [[interval.ClosedInterval]] dimensions the rendered rectangle extends to `successor(to)` so that
-     * the last discrete step is fully covered visually; for [[interval.HalfOpenInterval]] the `to`
-     * value is used directly. Rectangles are outlined only for closed intervals.
+     * For [[interval.ClosedInterval]] dimensions the rendered rectangle extends to `successor(to)`
+     * so that the last discrete step is fully covered visually; for [[interval.HalfOpenInterval]]
+     * the `to` value is used directly. Rectangles are outlined only for closed intervals.
      *
      * Both axes share the same scale so that the aspect ratio of the data space is preserved; the
      * longer axis fills up to 1024 px.

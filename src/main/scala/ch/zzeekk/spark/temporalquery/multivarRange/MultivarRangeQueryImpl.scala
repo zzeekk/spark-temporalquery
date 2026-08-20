@@ -74,6 +74,17 @@ object MultivarRangeQueryImpl extends Logging {
   private val joinColPostFix1 = "__1"
   private val joinColPostFix2 = "__2"
 
+  private[temporalquery] def getDiagonal[T: Ordering: TypeTag](
+      df: DataFrame,
+      mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]],
+      fromColName: String,
+      toColName: String
+  ): DataFrame = df.select(
+    df.columns.diff(mrqc.fromToColnames).map(col) ++
+      Array(greatest(mrqc.fromColnames.map(col): _*).as(fromColName),
+        least(mrqc.toColnames.map(col): _*).as(toColName)): _*
+  )
+
   private[temporalquery] def getSlice[T: Ordering: TypeTag](
       df: DataFrame,
       coords: Seq[T],

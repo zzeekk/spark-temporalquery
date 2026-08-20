@@ -53,7 +53,9 @@ abstract class MultivarRangeQueryConfig[T: Ordering, D <: IntervalDef[T]] extend
   val numDimensions: Int = dimensionMap.size
   lazy val iter: NumericRange.Exclusive[Int] = new NumericRange.Exclusive(start = 0, end = numDimensions, step = 1)
 
-  def fromToColnames: List[String] = (dimensionMap.keys ++ dimensionMap.values.map(_._1)).toList.sorted
+  def fromColnames: List[String] = dimensionMap.keys.toList.sorted
+  def toColnames: List[String] = dimensionMap.values.map(_._1).toList.sorted
+  def fromToColnames: List[String] = (fromColnames ++ toColnames).sorted
   def additionalTechnicalColNames: List[String]
 
   // copy of configuration with 2nd pair of from/to column names used as main column pair
