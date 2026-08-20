@@ -1007,7 +1007,7 @@ object MultivarRangeQueryImpl extends Logging {
         val (fitW, fitH) = if (rotate) (visH, visW) else (visW, visH)
         val fontSizeByHeight = fitH * 0.8
         val fontSizeByWidth = fitW / (numChars * 0.6)
-        val fontSize = math.max(1d, math.min(fontSizeByHeight, fontSizeByWidth))
+        val fontSize = math.max(1d, math.min(fontSizeByHeight, fontSizeByWidth)) * 0.8
         val cx = (vx0 + vx1) / 2
         val cy = (vy0 + vy1) / 2
         val cxStr = f"$cx%.2f"
