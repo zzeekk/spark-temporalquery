@@ -43,8 +43,8 @@ class BiTemporalPresentation extends AnyFlatSpec with Matchers with TestUtils {
     saveString2File("monthlyPremium.svg")(monthlyPremium.toSvg[Date]("premium"))
 
     val address = List(
-      (0, "2022-11-13", "2025-09-01", "2023-01-01", doomsDateStr, "AG"),
-      (0, "2025-09-01", doomsDateStr, "2023-01-01", "2025-08-01", "AG"),
+      (0, "2022-11-13", "2025-09-01", "2022-11-13", doomsDateStr, "AG"),
+      (0, "2025-09-01", doomsDateStr, "2022-11-13", "2025-08-01", "AG"),
       (0, "2025-09-01", doomsDateStr, "2025-08-01", doomsDateStr, "ZH")
     ).map(makeRowsBiDatoral)
       .toDF("id", "known_from", "known_to", "valid_from", "valid_to", "canton")

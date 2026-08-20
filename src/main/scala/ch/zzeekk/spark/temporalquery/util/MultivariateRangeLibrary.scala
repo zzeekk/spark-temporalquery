@@ -284,8 +284,15 @@ object MultivariateRangeLibrary extends Logging {
      *
      * @param valueCol
      *   name of the column whose value determines the rectangle fill colour
+     * @param drawDiagonal
+     *   if true, draw a black line for the diagonal of the dimension space, i.e. the line
+     *   containing all points where the two dimensions' coordinates coincide. Only the part of that
+     *   line lying inside the viewbox is drawn; if the diagonal lies completely outside the
+     *   viewbox, nothing is drawn.
      */
-    def toSvg[T: Ordering: TypeTag](valueCol: String, svgMax: Double = 1024d)(implicit mrqc: MultivarRangeQueryConfig[T, _]): String = {
+    def toSvg[T: Ordering: TypeTag](valueCol: String, svgMax: Double = 1024d, drawDiagonal: Boolean = false)(implicit
+        mrqc: MultivarRangeQueryConfig[T, _ <: IntervalDef[T]]
+    ): String = {
       require(1 < mrqc.numDimensions,
         s"toSvg works only for multi-dimensional data but, numDimensions=${mrqc.numDimensions}")
 
@@ -484,6 +491,18 @@ object MultivariateRangeLibrary extends Logging {
           sb.append(
             f"""  <text x="$cxStr" y="$cyStr" font-size="$fontSize%.2f" fill="black" text-anchor="middle" dominant-baseline="middle"$transformAttr>$value</text>\n"""
           )
+        }
+      }
+      if (drawDiagonal) {
+        // The diagonal of the dimension space is the line where dim1's coordinate equals dim2's,
+        // i.e. all points (t, t). Clip it against the viewbox [viewMinX,viewMaxX] x [viewMinY,viewMaxY]:
+        // t must lie in both dimensions' visible ranges at once.
+        val tLo = math.max(viewMinX, viewMinY)
+        val tHi = math.min(viewMaxX, viewMaxY)
+        if (tLo <= tHi) {
+          val (x1, y1) = (sx(tLo), sy(tLo))
+          val (x2, y2) = (sx(tHi), sy(tHi))
+          sb.append(f"""  <line x1="$x1%.2f" y1="$y1%.2f" x2="$x2%.2f" y2="$y2%.2f" stroke="black" stroke-width="1"/>\n""")
         }
       }
       sb.append("</svg>")
