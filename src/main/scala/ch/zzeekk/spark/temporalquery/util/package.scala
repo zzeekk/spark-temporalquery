@@ -5,10 +5,15 @@ import ch.zzeekk.spark.temporalquery.interval.{ClosedInterval, HalfOpenInterval,
 
 import java.sql.{Date, Timestamp}
 import java.time.temporal.ChronoUnit
+import scala.annotation.unused
+import scala.reflect.runtime.universe.{typeTag, TypeTag}
 
 package object util {
 
   //// TimeStamp ////
+  @unused
+  val timeTag: TypeTag[Timestamp] = typeTag[Timestamp]
+
   // The time begins with bigBangDay: What happened before cannot be known as there is no before.
   val initiumTemporisString: String = "1970-01-01 00:00:00"
   val bigBangDay: Timestamp = Timestamp.valueOf(initiumTemporisString)
@@ -44,11 +49,17 @@ package object util {
     dim1.fromColName < dim2.fromColName
 
   //// Date ////
+  @unused
+  val dateTag: TypeTag[Date] = typeTag[Date]
+
   val bigBangDateStr: String = "1970-01-01"
   val bigBangDate: Date = Date.valueOf(bigBangDateStr)
 
   val doomsDateStr: String = "9999-01-01"
   val doomsDate: Date = Date.valueOf(doomsDateStr)
+
+  @unused
+  val dateOrdering: Ordering[Date] = Ordering.fromLessThan[Date]((a, b) => a.before(b))
 
   val stdHalfOpenDatoralInterval: HalfOpenInterval[Date] = HalfOpenInterval[Date](lowerHorizon = bigBangDate, upperHorizon = doomsDate)
 
