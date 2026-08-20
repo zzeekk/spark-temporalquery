@@ -7,7 +7,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, SubqueryAlias, UnaryNode}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{DataType, DateType, StructType, TimestampType}
 import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.slf4j.Logger
 import org.slf4j.helpers.NOPLogger
@@ -858,16 +858,41 @@ object MultivarRangeQueryImpl extends Logging {
     val svgW = math.ceil(dataW * scale).toInt max 1
     val svgH = math.ceil(dataH * scale).toInt max 1
 
-    // Margins outside the data rectangle for axis labels.
-    val marginLeft = 20
-    val marginBottom = 18
-    val totalW = marginLeft + svgW
-    val totalH = svgH + marginBottom
+    // Three ticks per axis, at the beginning, the middle and the end of the visible range,
+    // labelled with the actual coordinate value (formatted according to the dimension's type).
+    val fs = 11 // column-name caption font size
+    val tickFs = 10 // tick value label font size
+    val tickLen = 4 // tick mark length, in px
+    def formatTick(v: Double, dataType: DataType): String = dataType match {
+      case DateType      => new java.sql.Date(v.round).toString
+      case TimestampType => new java.sql.Timestamp(v.round).toString
+      case _             =>
+        val rounded = math.round(v * 1000d) / 1000d
+        if (rounded == rounded.toLong.toDouble) rounded.toLong.toString else rounded.toString
+    }
+    val dim1Type = schema(dim1.fromColName).dataType
+    val dim2Type = schema(dim2.fromColName).dataType
+    val xTickValues = Seq(viewMinX, (viewMinX + viewMaxX) / 2, viewMaxX)
+    val yTickValues = Seq(viewMinY, (viewMinY + viewMaxY) / 2, viewMaxY)
+    val xTickLabels = xTickValues.map(formatTick(_, dim1Type))
+    val yTickLabels = yTickValues.map(formatTick(_, dim2Type))
 
-    // Data rectangle occupies [marginLeft, totalW) × [0, svgH).
+    // Margins outside the data rectangle, sized to fit the tick labels plus the existing
+    // from/to column-name captions. Left margin layout (left to right): rotated caption strip,
+    // gap, Y tick labels, gap, Y tick marks. Bottom margin layout (top to bottom): X tick marks,
+    // gap, X tick labels, gap, column-name caption line.
+    val leftCaptionW = fs + 4
+    val yTickLabelW = math.ceil(yTickLabels.map(_.length).max * tickFs * 0.6).toInt
+    val marginLeft = leftCaptionW + 4 + yTickLabelW + 3 + tickLen
+    val marginBottom = tickLen + 2 + tickFs + 3 + fs + 3
+    val marginTop = math.ceil(tickFs / 2.0).toInt + 4
+    val totalW = marginLeft + svgW
+    val totalH = marginTop + svgH + marginBottom
+
+    // Data rectangle occupies [marginLeft, marginLeft+svgW) × [marginTop, marginTop+svgH).
     // Coordinates that map outside this area are clipped by SVG's overflow:hidden.
     def sx(x: Double): Double = marginLeft + (x - viewMinX) * scale
-    def sy(y: Double): Double = svgH - (y - viewMinY) * scale
+    def sy(y: Double): Double = marginTop + svgH - (y - viewMinY) * scale
 
     // Convert HSL (h∈[0,360), s∈[0,1], l∈[0,1]) to a hex colour string
     def hsl2hex(h: Double, s: Double, l: Double): String = {
@@ -907,18 +932,44 @@ object MultivarRangeQueryImpl extends Logging {
       (v: Any) => if (v == null) "#cccccc" else catMap.getOrElse(v, "#808080")
     }
 
-    val strokeAttr = if (isClosed) """ stroke="black" stroke-width="0.5"""" else ""
+    val dw = math.min(totalW, totalH) / 100d
+    val strokeAttr =
+      if (isClosed) """ stroke="black" stroke-width="0.5""""
+      else f""" stroke="black" stroke-width="0.5" stroke-dasharray="$dw%.2f,$dw%.2f""""
 
     val sb = new StringBuilder
     sb.append(s"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $totalW $totalH" width="$totalW"  height="$totalH">\n""")
-    // Data bounding rectangle – positioned at (marginLeft, 0), sized svgW × svgH
-    sb.append(s"""  <rect x="$marginLeft" y="0" width="$svgW" height="$svgH" fill="none" stroke="black" stroke-width="1"/>\n""")
-    // Axis labels in the margin areas, outside the data rectangle
-    val fs = 11
-    val xCenter = marginLeft / 2 // centre of left margin for rotated Y labels
-    val yLow = svgH * 3 / 4 // lower-half position for "from" label
-    val yHigh = svgH / 4 // upper-half position for "to" label
-    val yText = svgH + marginBottom - 4 // baseline in bottom margin
+    // Data bounding rectangle – positioned at (marginLeft, marginTop), sized svgW × svgH
+    sb.append(
+      s"""  <rect x="$marginLeft" y="$marginTop" width="$svgW" height="$svgH" fill="none" stroke="black" stroke-width="1"/>\n"""
+    )
+    // X axis ticks: beginning/middle/end of dim1's visible range, below the bounding rectangle.
+    val xTickAnchors = Seq("start", "middle", "end")
+    for (((tickX, label), anchor) <- xTickValues.map(sx).zip(xTickLabels).zip(xTickAnchors)) {
+      val yLine = marginTop + svgH
+      sb.append(
+        f"""  <line x1="$tickX%.2f" y1="$yLine" x2="$tickX%.2f" y2="${yLine + tickLen}" stroke="black" stroke-width="1"/>\n"""
+      )
+      sb.append(
+        f"""  <text x="$tickX%.2f" y="${yLine + tickLen + tickFs}" font-size="$tickFs" fill="#444" text-anchor="$anchor">$label</text>\n"""
+      )
+    }
+    // Y axis ticks: beginning/middle/end of dim2's visible range, left of the bounding rectangle.
+    for ((tickY, label) <- yTickValues.map(sy).zip(yTickLabels)) {
+      sb.append(
+        f"""  <line x1="${marginLeft -
+            tickLen}%.2f" y1="$tickY%.2f" x2="$marginLeft%.2f" y2="$tickY%.2f" stroke="black" stroke-width="1"/>\n"""
+      )
+      sb.append(
+        f"""  <text x="${marginLeft - tickLen -
+            3}%.2f" y="$tickY%.2f" font-size="$tickFs" fill="#444" text-anchor="end" dominant-baseline="middle">$label</text>\n"""
+      )
+    }
+    // Column-name captions in the margin areas, outside the tick labels.
+    val xCenter = leftCaptionW / 2 // centre of the leftmost strip for rotated Y captions
+    val yLow = marginTop + svgH * 3 / 4 // lower-half position for "from" caption
+    val yHigh = marginTop + svgH / 4 // upper-half position for "to" caption
+    val yText = totalH - 3 // baseline of the bottom-most caption line
     sb.append(s"""  <text x="${marginLeft +
         2}" y="$yText" font-size="$fs" fill="#444" text-anchor="start">${dim1.fromColName}</text>\n""")
     sb.append(s"""  <text x="${totalW - 2}" y="$yText" font-size="$fs" fill="#444" text-anchor="end">${dim1.toColName}</text>\n""")
@@ -937,11 +988,11 @@ object MultivarRangeQueryImpl extends Logging {
       val w = (to1 - from1) * scale
       val h = (to2 - from2) * scale
       sb.append(f"""  <rect x="$x%.2f" y="$y%.2f" width="$w%.2f" height="$h%.2f" fill="${fillOf(value)}"$strokeAttr/>\n""")
-      // Intersect with the data area [marginLeft, marginLeft+svgW] × [0, svgH]
+      // Intersect with the data area [marginLeft, marginLeft+svgW] × [marginTop, marginTop+svgH]
       val vx0 = math.max(x, marginLeft.toDouble)
       val vx1 = math.min(x + w, (marginLeft + svgW).toDouble)
-      val vy0 = math.max(y, 0d)
-      val vy1 = math.min(y + h, svgH.toDouble)
+      val vy0 = math.max(y, marginTop.toDouble)
+      val vy1 = math.min(y + h, (marginTop + svgH).toDouble)
       val visW = vx1 - vx0
       val visH = vy1 - vy0
       if (visW > 0 && visH > 0) {

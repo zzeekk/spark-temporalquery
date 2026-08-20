@@ -32,8 +32,8 @@ class SVGexportTest extends AnyFlatSpec with Matchers with TestUtils {
     actual should endWith("</svg>")
     // 7 data rows + 1 bounding rectangle
     actual.split("<rect").length - 1 shouldBe 8
-    // half-open intervals: data rectangles carry no stroke outline
-    actual should not include "stroke-width=\"0.5\""
+    // half-open intervals: data rectangles are outlined with a dashed stroke
+    actual should include("stroke-dasharray=")
     // bounding rectangle is still outlined
     actual should include("stroke-width=\"1\"")
     // numeric value column → gradient fill colours (hex literals)
@@ -52,8 +52,9 @@ class SVGexportTest extends AnyFlatSpec with Matchers with TestUtils {
     actual should endWith("</svg>")
     // 6 data rows + 1 bounding rectangle
     actual.split("<rect").length - 1 shouldBe 7
-    // closed intervals: data rectangles have a stroke outline
+    // closed intervals: data rectangles have a solid (non-dashed) stroke outline
     actual should include("stroke-width=\"0.5\"")
+    actual should not include "stroke-dasharray="
     // bounding rectangle is still outlined
     actual should include("stroke-width=\"1\"")
     actual should include("fill=\"#")
