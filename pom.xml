@@ -7,7 +7,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ch.zzeekk.spark</groupId>
     <artifactId>spark-temporalquery_${scala.minor.version}</artifactId>
-    <version>3.0.0</version>
+    <version>4.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Spark Temporal Queries Library</name>
@@ -42,29 +42,23 @@
     </developers>
 
     <properties>
-        <fasterxml.jackson.version>2.18.3</fasterxml.jackson.version>
-        <maven.compiler.release>17</maven.compiler.release>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <fasterxml.jackson.version>2.20.0</fasterxml.jackson.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <maven.compiler.testRelease>${java.version}</maven.compiler.testRelease>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spark.version>3.5.5</spark.version>
+        <scala.minor.version>2.13</scala.minor.version>
+        <scala.version>${scala.minor.version}.17</scala.version>
+        <scalafmt.changedOnly>true</scalafmt.changedOnly>
+        <scalafmt.skip>false</scalafmt.skip>
+        <scalafmt.validateOnly>true</scalafmt.validateOnly>
+        <scalatest.test.version>3.2.20</scalatest.test.version>
+        <scalatest.plus.version>${scalatest.test.version}.0</scalatest.plus.version>
+        <spark.version>4.1.1</spark.version>
     </properties>
 
     <profiles>
-        <profile>
-            <id>scala-2.13</id>
-            <properties>
-                <scala.minor.version>2.13</scala.minor.version>
-                <scala.version>${scala.minor.version}.16</scala.version>
-            </properties>
-        </profile>
-        <profile>
-            <id>scala-2.12</id>
-            <properties>
-                <scala.minor.version>2.12</scala.minor.version>
-                <scala.version>${scala.minor.version}.20</scala.version>
-            </properties>
-        </profile>
         <profile>
             <id>release-sonatype</id>
             <distributionManagement>
@@ -85,7 +79,7 @@
                     <plugin>
                         <groupId>net.alchim31.maven</groupId>
                         <artifactId>scala-maven-plugin</artifactId>
-                        <version>4.9.5</version>
+                        <version>4.9.10</version>
                         <executions>
                             <execution>
                                 <id>scala-doc</id>
@@ -100,11 +94,12 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-gpg-plugin -->
                     <!-- sign artifacts with gpg -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.2.7</version>
+                        <version>3.2.8</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -122,16 +117,16 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- https://mvnrepository.com/artifact/org.sonatype.central/central-publishing-maven-plugin -->
                     <!-- deploy to sonatype central -->
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.7.0</version>
+                        <version>0.11.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
-                            <tokenAuth>true</tokenAuth>
-                            <autoPublish>false</autoPublish>     
+                            <autoPublish>false</autoPublish>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -168,7 +163,13 @@
         <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.minor.version}</artifactId>
-            <version>3.2.19</version>
+            <version>${scalatest.test.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.scalatestplus</groupId>
+            <artifactId>scalacheck-1-19_${scala.minor.version}</artifactId>
+            <version>${scalatest.plus.version}</version>
             <scope>test</scope>
         </dependency>
         <!-- Log4j2 needs this to read configuration in yaml format -->
@@ -178,7 +179,6 @@
             <version>${fasterxml.jackson.version}</version>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
 
     <build>
@@ -214,7 +214,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -224,26 +224,13 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- rewrite pom for compiling with different scala version profiles -->
-            <plugin>
-                <groupId>org.spurint.maven.plugins</groupId>
-                <artifactId>scala-cross-maven-plugin</artifactId>
-                <version>0.3.0</version>
-                <executions>
-                    <execution>
-                        <id>rewrite-pom</id>
-                        <goals>
-                            <goal>rewrite-pom</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
             <!-- disable surefire -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.3</version>
+                <version>3.5.6</version>
                 <configuration>
+                    <argLine>-Xmx4g</argLine>
                     <skipTests>true</skipTests>
                 </configuration>
             </plugin>
@@ -253,22 +240,83 @@
                 <artifactId>scalatest-maven-plugin</artifactId>
                 <version>2.2.0</version>
                 <configuration>
-                    <argLine>-Xmx16g -Duser.timezone=Europe/Zurich -Dfile.encoding=UTF-8 --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED --add-opens=java.base/sun.nio.cs=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED</argLine>
+                    <argLine>
+                        --add-exports java.base/sun.nio.ch=ALL-UNNAMED
+                        --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+                        --add-opens=java.base/java.lang=ALL-UNNAMED
+                        --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED
+                        --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+                        --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+                        --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.cs=ALL-UNNAMED
+                        --add-opens=java.base/sun.security.action=ALL-UNNAMED
+                        --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+                    </argLine>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>${project.artifactId}.txt</filereports>
-                    <stdout>WFT</stdout>  <!-- without color, show full stack traces, show reminder of failed and canceled tests with short stack traces see: http://www.scalatest.org/user_guide/using_scalatest_with_sbt-->
+                    <stdout>WFT
+                    </stdout>  <!-- without color, show full stack traces, show reminder of failed and canceled tests with short stack traces see: http://www.scalatest.org/user_guide/using_scalatest_with_sbt-->
                     <environmentVariables>
                         <SPARK_LOCAL_IP>127.0.0.1
                         </SPARK_LOCAL_IP> <!-- Suppresses Spark IP discovery during tests (when executed with mvn test) -->
                     </environmentVariables>
-                    <argLine>--add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.cs=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED</argLine>
+                    <argLine>--add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED
+                        --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED
+                        --add-opens=java.base/java.util=ALL-UNNAMED
+                        --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+                        --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+                        --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.cs=ALL-UNNAMED
+                        --add-opens=java.base/sun.security.action=ALL-UNNAMED
+                        --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+                    </argLine>
                 </configuration>
                 <executions>
                     <execution>
                         <id>test</id>
                         <goals>
                             <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Scalafmt: https://github.com/SimonJPegg/mvn_scalafmt
+                 Doc: https://scalameta.org/scalafmt/docs/configuration.html -->
+            <plugin>
+                <groupId>org.antipathy</groupId>
+                <artifactId>mvn-scalafmt_${scala.minor.version}</artifactId>
+                <version>1.1.1783760054.f8e8ca3</version>
+                <configuration>
+                    <configLocation>${project.basedir}/.scalafmt.conf</configLocation> <!-- path to config -->
+                    <skipTestSources>false</skipTestSources> <!-- (Optional) skip formatting test sources -->
+                    <skipSources>false</skipSources> <!-- (Optional) skip formatting main sources -->
+                    <sourceDirectories> <!-- (Optional) Paths to source-directories. Overrides ${project.build.sourceDirectory} -->
+                        <param>${project.basedir}/src/main/scala</param>
+                    </sourceDirectories>
+                    <testSourceDirectories> <!-- (Optional) Paths to test-source-directories. Overrides ${project.build.testSourceDirectory} -->
+                        <param>${project.basedir}/src/test/scala</param>
+                    </testSourceDirectories>
+                    <validateOnly>false</validateOnly> <!-- check formatting without changing files -->
+                    <onlyChangedFiles>false
+                    </onlyChangedFiles> <!-- only format (staged) files that have been changed from the specified git branch -->
+                    <showReformattedOnly>false</showReformattedOnly> <!-- log only modified files -->
+                    <!-- The git branch to check against
+                    If branch.startsWith(": ") the value in <branch> tag is used as a command to run
+                    and the output will be used as the actual branch-->
+                    <branch>: git rev-parse &#45;&#45;abbrev-ref HEAD</branch> <!-- the current branch-->
+                    <!-- <branch>master</branch>-->
+                    <useSpecifiedRepositories>false
+                    </useSpecifiedRepositories> <!-- use project repositories configuration for scalafmt dynamic loading -->
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>scalafmt</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>format</goal>
                         </goals>
                     </execution>
                 </executions>
